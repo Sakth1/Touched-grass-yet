@@ -1,0 +1,63 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Virtual Environments (uv & pip) ---
+.venv/
+.venv*
+uv.lock
+
+# --- Build / Packaging ---
+build/
+dist/
+eggs/
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+
+# --- IDEs / Editors ---
+# VS Code
+.vscode/
+*.code-workspace
+# PyCharm / IntelliJ
+.idea/
+*.iml
+# Emacs / Vim
+*~
+*.swp
+
+# --- OS Junk ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Environment & Secrets ---
+.env
+.flaskenv
+.env.local
+
+# --- Testing / Coverage ---
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.tox/
+
+# --- Notebooks ---
+.ipynb_checkpoints
