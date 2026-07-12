@@ -61,3 +61,6 @@ coverage.xml
 
 # --- Notebooks ---
 .ipynb_checkpoints
+
+# --- Manually added ---
+dev_dairy.md

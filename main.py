@@ -1,5 +1,10 @@
+import flet as ft
+
+from src.app import entrypoint
+
+
 def main():
-    print("Hello from touched-grass-yet!")
+    ft.run(entrypoint)
 
 
 if __name__ == "__main__":
