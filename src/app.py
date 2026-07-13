@@ -1,6 +1,8 @@
 import flet as ft
 
-from src.UI.home_page import HomePage
+from UI.home_page import HomePage
+from core.application.collection_manager import CollectionManager
+
 
 class MainView:
     def __init__(self, page: ft.Page):
@@ -9,15 +11,15 @@ class MainView:
         self.home_page = HomePage(page)
         self.page.width = 400
         self.page.height = 400
-        self.page.drawer = ft.NavigationDrawer(           
+        self.page.drawer = ft.NavigationDrawer(
             on_change=self.on_navigation_drawer_change,
             controls=[
-            ft.Container(height=12),
-            ft.NavigationDrawerDestination(
-                label="Home",
-                icon=ft.Icons.HOME,
-            ),
-            ]
+                ft.Container(height=12),
+                ft.NavigationDrawerDestination(
+                    label="Home",
+                    icon=ft.Icons.HOME,
+                ),
+            ],
         )
 
         self.page.add(
@@ -30,14 +32,15 @@ class MainView:
             )
         )
 
-
     async def handle_show_drawer(self, e: ft.Event[ft.Button]):
         print("Show drawer")
         await self.page.show_drawer()
 
-
     def on_navigation_drawer_change(self, e):
         print(e)
 
+
 def entrypoint(page: ft.Page):
-    MainView(page)
+    #MainView(page)
+    col_mgr = CollectionManager()
+    col_mgr.initiate()
