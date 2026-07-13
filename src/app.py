@@ -41,6 +41,6 @@ class MainView:
 
 
 def entrypoint(page: ft.Page):
-    #MainView(page)
+    # MainView(page)
     col_mgr = CollectionManager()
     col_mgr.initiate()

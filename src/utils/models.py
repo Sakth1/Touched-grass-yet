@@ -1,5 +1,18 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import TypeAlias, Union
+
+
+class WindowsCollectionManager:
+    pass
+
+
+class AndroidCollectionManager:
+    pass
+
+
+CollectionManager: TypeAlias = Union[WindowsCollectionManager, AndroidCollectionManager]
+
 
 @dataclass
 class WindowsSystemInfo:
@@ -17,6 +30,7 @@ class WindowsSystemInfo:
     CurrentTime: str
     UTC: str
     BootTime: str
+
 
 class SystemType(Enum):
     UNKNOWN = 0
