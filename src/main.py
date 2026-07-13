@@ -1,6 +1,6 @@
 import flet as ft
 
-from src.app import entrypoint
+from app import entrypoint
 
 
 def main():

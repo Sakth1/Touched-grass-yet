@@ -1,12 +1,40 @@
 [project]
 name = "touched-grass-yet"
 version = "0.1.0"
-description = "Add your description here"
+description = ""
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "black>=26.5.1",
-    "flet>=0.85.3",
-    "psutils>=3.3.15",
-    "ruff>=0.15.21",
+requires-python = ">=3.10"
+authors = [
+    { name = "Sakth1", email = "sakthimurugankgm@gmail.com" }
 ]
+dependencies = [
+    "apsw>=3.53.3.1",
+    "bleak>=3.0.2",
+    "duckdb>=1.5.4",
+    "flet>=0.85.3",
+    "orjson>=3.11.9",
+    "psutil>=7.2.2",
+    "pycaw>=20251023",
+    "pydantic>=2.13.4",
+    "pywin32>=312",
+    "rich>=15.0.0",
+    "screeninfo>=0.8.1",
+    "websockets>=16.1",
+    "wmi>=1.5.1",
+]
+
+[dependency-groups]
+dev = [
+    "flet-cli>=0.85.3",
+    "flet-desktop>=0.85.3",
+    "flet-web>=0.85.3",
+]
+
+[tool.flet]
+org = "com.mycompany"
+product = "touched-grass-yet"
+company = "Flet"
+copyright = "Copyright (C) 2023-2026 by Flet"
+
+[tool.flet.app]
+path = "src"
