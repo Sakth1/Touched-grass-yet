@@ -1,38 +1,26 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from typing import TypeAlias, Union
-
-
-class WindowsCollectionManager:
-    pass
-
-
-class AndroidCollectionManager:
-    pass
-
-
-CollectionManager: TypeAlias = Union[WindowsCollectionManager, AndroidCollectionManager]
-
-
-@dataclass
-class WindowsSystemInfo:
-    OS: str
-    Release: str
-    Version: str
-    Platform: str
-    Machine: str
-    Architecture: str
-    Processor: str
-    Node: str
-    Hostname: str
-    CurrentUser: str
-    CurrentDirectory: str
-    CurrentTime: str
-    UTC: str
-    BootTime: str
+from typing import Any
+from uuid import UUID, uuid4
 
 
 class SystemType(Enum):
     UNKNOWN = 0
     WINDOWS = 1
     ANDROID = 2
+
+
+@dataclass
+class Tick:
+    id: UUID = field(default_factory=uuid4)
+    watcher: str = ""
+    timestamp: datetime = field(default_factory=lambda: datetime.utcnow())
+    data: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class WatcherConfig:
+    name: str = ""
+    interval_s: float = 1.0
+    enabled: bool = True

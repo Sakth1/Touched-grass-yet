@@ -1,46 +1,25 @@
+import logging
+
 import flet as ft
 
 from UI.home_page import HomePage
 from core.application.collection_manager import CollectionManager
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
-class MainView:
-    def __init__(self, page: ft.Page):
-        super().__init__()
-        self.page = page
-        self.home_page = HomePage(page)
-        self.page.width = 400
-        self.page.height = 400
-        self.page.drawer = ft.NavigationDrawer(
-            on_change=self.on_navigation_drawer_change,
-            controls=[
-                ft.Container(height=12),
-                ft.NavigationDrawerDestination(
-                    label="Home",
-                    icon=ft.Icons.HOME,
-                ),
-            ],
-        )
-
-        self.page.add(
-            ft.SafeArea(
-                content=ft.Button(
-                    "Show drawer",
-                    icon=ft.Icons.MENU,
-                    on_click=self.handle_show_drawer,
-                ),
-            )
-        )
-
-    async def handle_show_drawer(self, e: ft.Event[ft.Button]):
-        print("Show drawer")
-        await self.page.show_drawer()
-
-    def on_navigation_drawer_change(self, e):
-        print(e)
+logger = logging.getLogger(__name__)
 
 
-def entrypoint(page: ft.Page):
-    # MainView(page)
-    col_mgr = CollectionManager()
-    col_mgr.initiate()
+async def entrypoint(page: ft.Page):
+    page.title = "Touched Grass Yet"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.window.width = 500
+    page.window.height = 600
+
+    manager = CollectionManager()
+
+    HomePage(page, manager)
+    page.update()

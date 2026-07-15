@@ -1,69 +1,26 @@
-# TouchedGrassYet app
+# Touched Grass Yet
 
-## Run the app
+Cross-device app usage timeline tracker. Tracks what application you're using, on which device, and for how long — with idle detection.
 
-### uv
+**Philosophy**: Track only what matters — foreground app, window title, idle status. No CPU/RAM/network/audio/screenshots.
 
-Run as a desktop app:
+## Architecture
 
-```bash
-uv run flet run
+Watchers poll at fixed intervals and emit **Ticks** (state snapshots). Adjacent identical ticks are merged into sessions during storage.
+
+```
+WindowWatcher (2s) ─┐
+AfkWatcher    (5s) ─┤── TickBus → Scheduler → Storage → UI
+PowerWatcher (60s) ─┘
 ```
 
-Run as a web app:
+## Run
 
 ```bash
-uv run flet run --web
+uv run flet run           # desktop
+uv run flet run --web     # web
 ```
 
-For more details on running the app, refer to the [Getting Started Guide](https://flet.dev/docs/).
+## Dependencies
 
-## Build the app
-
-### Android
-
-```bash
-flet build apk -v
-```
-
-For more details on building and signing `.apk` or `.aab`, refer to the [Android Packaging Guide](https://flet.dev/docs/publish/android/).
-
-### iOS
-
-```bash
-flet build ipa -v
-```
-
-For more details on building and signing `.ipa`, refer to the [iOS Packaging Guide](https://flet.dev/docs/publish/ios/).
-
-### macOS
-
-```bash
-flet build macos -v
-```
-
-For more details on building macOS package, refer to the [macOS Packaging Guide](https://flet.dev/docs/publish/macos/).
-
-### Linux
-
-```bash
-flet build linux -v
-```
-
-For more details on building Linux package, refer to the [Linux Packaging Guide](https://flet.dev/docs/publish/linux/).
-
-### Windows
-
-```bash
-flet build windows -v
-```
-
-For more details on building Windows package, refer to the [Windows Packaging Guide](https://flet.dev/docs/publish/windows/).
-
-### Web
-
-```bash
-flet build web -v
-```
-
-For more details on building Web app, refer to the [Web Packaging Guide](https://flet.dev/docs/publish/web/).
+apsw, duckdb, flet, orjson, psutil, pywin32, rich
