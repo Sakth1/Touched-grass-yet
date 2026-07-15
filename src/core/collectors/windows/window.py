@@ -4,20 +4,12 @@ import psutil
 import win32gui
 import win32process
 
-from utils.models import Tick, WatcherConfig
-
 logger = logging.getLogger(__name__)
 
 
-class WindowWatcher:
-    def __init__(self, config: WatcherConfig | None = None):
-        self.config = config or WatcherConfig(
-            name="window",
-            interval_s=2.0,
-            enabled=True,
-        )
-
-    async def tick(self) -> Tick | None:
+class WindowAnalyzer:
+    @staticmethod
+    def analyze() -> dict | None:
         try:
             hwnd = win32gui.GetForegroundWindow()
             if not hwnd:
@@ -32,13 +24,7 @@ class WindowWatcher:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 app = "unknown"
 
-            return Tick(
-                watcher="window",
-                data={
-                    "app": app,
-                    "title": title,
-                },
-            )
+            return {"app": app, "title": title}
         except Exception:
-            logger.exception("Window tick failed")
+            logger.exception("Window analysis failed")
             return None

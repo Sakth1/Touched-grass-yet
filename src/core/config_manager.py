@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONFIG = {
     "collection_enabled": True,
     "tick_interval_overrides": {},
-    "watchers_enabled": ["window", "afk"],
+    "watchers_enabled": ["foreground", "afk"],
     "log_level": "INFO",
 }
 
@@ -53,7 +53,7 @@ class ConfigManager:
 
     @property
     def watchers_enabled(self) -> list[str]:
-        return self._data.get("watchers_enabled", ["window", "afk"])
+        return self._data.get("watchers_enabled", ["foreground", "afk"])
 
     @property
     def log_level(self) -> str:

@@ -79,17 +79,26 @@ class HomePage:
         )
 
     def _on_tick(self, tick: Tick) -> None:
-        if tick.watcher != "window":
+        if tick.watcher != "foreground":
             return
 
         title = tick.data.get("title", "-")
         app = tick.data.get("app", "-")
-        display = f"{app} — {title}" if title else app
+        browser = tick.data.get("browser")
+        page_title = tick.data.get("page_title")
+        domain = tick.data.get("inferred_domain")
+
+        if browser and page_title:
+            display = f"{browser}: {page_title}"
+            if domain:
+                display += f" ({domain})"
+        else:
+            display = f"{app} — {title}" if title else app
 
         self._current_title.value = display
 
         ts = tick.timestamp.strftime("%H:%M:%S")
-        entry = ft.Text(f"[{ts}] Window: {display}", size=11, no_wrap=True)
+        entry = ft.Text(f"[{ts}] {display}", size=11, no_wrap=True)
         self._log_area.controls.append(entry)
 
         if len(self._log_area.controls) > MAX_LOG_ENTRIES:

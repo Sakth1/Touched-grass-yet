@@ -2,7 +2,7 @@ import logging
 
 from core.config_manager import ConfigManager
 from core.collectors.base import Watcher
-from core.collectors.windows.window import WindowWatcher
+from core.collectors.windows.foreground import ForegroundWatcher
 from core.collectors.windows.afk import AfkWatcher
 from core.collectors.windows.power import PowerWatcher
 
@@ -16,7 +16,7 @@ class WindowsRuntime:
     def create_watchers(self) -> list[Watcher]:
         enabled = self._config.watchers_enabled
         all_watchers = {
-            "window": WindowWatcher,
+            "foreground": ForegroundWatcher,
             "afk": AfkWatcher,
             "power": PowerWatcher,
         }
