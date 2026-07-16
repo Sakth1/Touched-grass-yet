@@ -35,10 +35,12 @@ class AndroidForegroundWatcher:
         day_start_ms = _day_start_ms(now_ms)
         stats = query_usage_stats(day_start_ms, now_ms)
         if not stats:
+            logger.debug("No usage stats returned — permission not granted or no foreground activity")
             return None
 
         deltas = _compute_deltas(stats, self._last_foreground_ms)
         if not deltas:
+            logger.debug("No foreground-time deltas — no app changes since last poll")
             return None
 
         top_pkg = max(deltas, key=lambda p: deltas[p]["delta_ms"])
@@ -66,16 +68,19 @@ class AndroidForegroundWatcher:
     def _collect_events(self, now_ms: int) -> list:
         if self._last_event_time_ms == 0:
             self._last_event_time_ms = now_ms - _EVENT_WINDOW_MS
+            logger.debug("Event collector initialized, window start: %d", self._last_event_time_ms)
             return []
 
         begin_ms = self._last_event_time_ms - _EVENT_WINDOW_MS
         end_ms = now_ms - _EVENT_TRUNCATION_BUFFER_MS
         if end_ms <= begin_ms:
+            logger.debug("Event window too short (begin=%d, end=%d), skipping", begin_ms, end_ms)
             return []
 
         raw_events = query_usage_events(begin_ms, end_ms)
         self._last_event_time_ms = now_ms
         if not raw_events:
+            logger.debug("No usage events returned for window %d-%d", begin_ms, end_ms)
             return []
 
         transitions = []

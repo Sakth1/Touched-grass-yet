@@ -188,10 +188,11 @@ class HomePage:
                 ft.ElevatedButton("Open Settings", on_click=lambda e: self._open_settings(dlg)),
             ],
         )
-        self.page.open(dlg)
+        self.page.show_dialog(dlg)
 
     def _close_dialog(self, dlg):
-        self.page.close(dlg)
+        dlg.open = False
+        self.page.update()
 
     def _open_settings(self, dlg):
         dlg.open = False

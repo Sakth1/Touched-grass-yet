@@ -5,6 +5,7 @@ from core.collectors.android.package_resolver import resolve as resolve_package
 
 logger = logging.getLogger(__name__)
 
+_Context = None
 _UsageStatsManager = None
 _UsageEvents = None
 _activity = None
@@ -30,18 +31,19 @@ def _get_activity():
 
 
 def _ensure_jnius():
-    global _UsageStatsManager, _UsageEvents, _manager
+    global _Context, _UsageStatsManager, _UsageEvents, _manager
     if _manager is not None:
         return True
     try:
         from jnius import autoclass
+        _Context = autoclass("android.content.Context")
         _UsageStatsManager = autoclass("android.app.usage.UsageStatsManager")
         _UsageEvents = autoclass("android.app.usage.UsageEvents")
 
         activity = _get_activity()
         if activity is None:
             return False
-        _manager = activity.getSystemService("usagestats")
+        _manager = activity.getSystemService(_Context.USAGE_STATS_SERVICE)
         return True
     except Exception:
         logger.warning("jnius unavailable")
@@ -56,7 +58,8 @@ def check_usage_stats_permission() -> bool:
         from jnius import autoclass
         AppOpsManager = autoclass("android.app.AppOpsManager")
         Process = autoclass("android.os.Process")
-        appOps = activity.getSystemService("appops")
+        Context = autoclass("android.content.Context")
+        appOps = activity.getSystemService(Context.APP_OPS_SERVICE)
         mode = appOps.checkOpNoThrow(
             AppOpsManager.OPSTR_GET_USAGE_STATS,
             Process.myUid(),
@@ -74,6 +77,7 @@ def _query_jnius(begin_ms: int, end_ms: int) -> dict:
     try:
         stats_list = _manager.queryUsageStats(0, begin_ms, end_ms)
         if stats_list is None:
+            logger.debug("queryUsageStats returned None for range %d-%d", begin_ms, end_ms)
             return {}
         result = {}
         for i in range(stats_list.size()):
@@ -105,6 +109,7 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
     try:
         events = _manager.queryEvents(begin_ms, end_ms)
         if events is None:
+            logger.debug("queryEvents returned None for range %d-%d", begin_ms, end_ms)
             return []
         result = []
         event = _UsageEvents.Event()
