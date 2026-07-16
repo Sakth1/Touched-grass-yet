@@ -1,6 +1,6 @@
 [project]
 name = "touched-grass-yet"
-version = "0.1.1"
+version = "0.1.2"
 description = "Cross-device app usage timeline tracker"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ dependencies = [
     "flet>=0.85.3",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
-    "pywin32>=312; sys_platform == 'win32'",
+    "pywin32>=306; sys_platform == 'win32'",
     "rich>=15.0.0",
 ]
 

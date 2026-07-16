@@ -3,6 +3,8 @@ import os
 import uuid
 from functools import lru_cache
 
+from core.paths import get_data_dir
+
 try:
     import winreg
 except ImportError:
@@ -25,8 +27,7 @@ def _machine_guid() -> str | None:
 
 
 def _file_device_id() -> str:
-    appdata = os.environ.get("APPDATA", os.path.expanduser("~"))
-    config_dir = os.path.join(appdata, "TouchedGrassYet")
+    config_dir = get_data_dir()
     device_file = os.path.join(config_dir, "device.json")
     os.makedirs(config_dir, exist_ok=True)
 
