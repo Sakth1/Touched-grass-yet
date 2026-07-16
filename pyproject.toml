@@ -32,7 +32,6 @@ copyright = "Copyright (C) 2023-2026 by Flet"
 path = "src"
 
 [tool.flet.android]
-permissions = ["android.permission.PACKAGE_USAGE_STATS"]
 split_per_abi = true
 compile_packages = true
 dependencies = [
@@ -43,6 +42,9 @@ dependencies = [
     "pyjnius",
     "rich>=15.0.0",
 ]
+
+[tool.flet.android.permission]
+"android.permission.PACKAGE_USAGE_STATS" = true
 
 [tool.touched-grass-yet.release]
 binary_name = "Touched-Grass-Yet"
