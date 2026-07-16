@@ -152,7 +152,7 @@ class HomePage:
         if self._manager.system_type == SystemType.ANDROID:
             from core.collectors.android.usage_stats import check_usage_stats_permission
             if not check_usage_stats_permission():
-                await self._show_permission_dialog()
+                await self.show_permission_dialog()
                 return
 
         self._start_btn.disabled = True
@@ -175,7 +175,7 @@ class HomePage:
         self.page.update()
         await self._manager.stop()
 
-    async def _show_permission_dialog(self):
+    async def show_permission_dialog(self):
         dlg = ft.AlertDialog(
             title=ft.Text("Usage Access Required"),
             content=ft.Text(
