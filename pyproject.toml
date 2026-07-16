@@ -1,7 +1,7 @@
 [project]
 name = "touched-grass-yet"
 version = "0.1.0"
-description = ""
+description = "Cross-device app usage timeline tracker"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -13,7 +13,7 @@ dependencies = [
     "flet>=0.85.3",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
-    "pywin32>=312",
+    "pywin32>=312; sys_platform == 'win32'",
     "rich>=15.0.0",
 ]
 
@@ -32,3 +32,19 @@ copyright = "Copyright (C) 2023-2026 by Flet"
 
 [tool.flet.app]
 path = "src"
+
+[tool.flet.android]
+permissions = ["android.permission.PACKAGE_USAGE_STATS"]
+split_per_abi = true
+compile_packages = true
+dependencies = [
+    "apsw>=3.53.3.1",
+    "duckdb>=1.5.4",
+    "flet>=0.85.3",
+    "orjson>=3.11.9",
+    "psutil>=7.2.2",
+    "rich>=15.0.0",
+]
+
+[tool.touched-grass-yet.release]
+binary_name = "Touched-Grass-Yet"
