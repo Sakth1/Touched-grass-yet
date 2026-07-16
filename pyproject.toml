@@ -1,6 +1,6 @@
 [project]
 name = "touched-grass-yet"
-version = "0.1.2"
+version = "0.1.3"
 description = "Cross-device app usage timeline tracker"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,6 +40,7 @@ dependencies = [
     "flet>=0.85.3",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
+    "pyjnius>=1.4.0",
     "rich>=15.0.0",
 ]
 

@@ -4,6 +4,7 @@ import flet as ft
 
 from UI.home_page import HomePage
 from core.application.collection_manager import CollectionManager
+from core.logging_setup import setup_file_logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,6 +19,8 @@ async def entrypoint(page: ft.Page):
     page.theme_mode = ft.ThemeMode.DARK
     page.window.width = 500
     page.window.height = 600
+
+    setup_file_logging()
 
     manager = CollectionManager()
 

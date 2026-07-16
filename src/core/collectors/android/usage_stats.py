@@ -20,7 +20,7 @@ def _ensure_jnius():
     try:
         from jnius import autoclass
     except ImportError:
-        logger.debug("Pyjnius not available — not on Android")
+        logger.warning("pyjnius not available — cannot access Android UsageStatsManager")
         return False
 
     _UsageStatsManager = autoclass("android.app.usage.UsageStatsManager")
@@ -29,6 +29,27 @@ def _ensure_jnius():
     _mActivity = _PythonActivity.mActivity
     _manager = _mActivity.getSystemService("usagestats")
     return True
+
+
+def check_usage_stats_permission() -> bool:
+    try:
+        from jnius import autoclass
+    except ImportError:
+        logger.warning("pyjnius not available — cannot check Usage Access permission")
+        return False
+    try:
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        appOps = PythonActivity.mActivity.getSystemService("appops")
+        Process = autoclass("android.os.Process")
+        mode = appOps.checkOpNoThrow(
+            "android:get_usage_stats",
+            Process.myUid(),
+            PythonActivity.mActivity.getPackageName(),
+        )
+        return mode == 0
+    except Exception as e:
+        logger.warning("Failed to check Usage Access permission: %s", e)
+        return False
 
 
 def query_usage_stats(begin_ms: int, end_ms: int) -> dict:
@@ -52,8 +73,11 @@ def query_usage_stats(begin_ms: int, end_ms: int) -> dict:
                 "app_name": resolve_package(pkg),
             }
         return result
-    except Exception:
-        logger.exception("queryUsageStats failed")
+    except Exception as e:
+        if "SecurityException" in type(e).__name__:
+            logger.warning("Usage Access permission not granted — cannot query usage stats")
+        else:
+            logger.exception("queryUsageStats failed")
         return {}
 
 
@@ -76,8 +100,11 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
                 "time_stamp_ms": event.getTimeStamp(),
             })
         return result
-    except Exception:
-        logger.exception("queryUsageEvents failed")
+    except Exception as e:
+        if "SecurityException" in type(e).__name__:
+            logger.warning("Usage Access permission not granted — cannot query usage events")
+        else:
+            logger.exception("queryUsageEvents failed")
         return []
 
 
