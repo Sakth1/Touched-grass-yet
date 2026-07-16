@@ -6,6 +6,10 @@ _ANDROID_PACKAGE = "com.mycompany.touched-grass-yet"
 
 
 def get_data_dir() -> str:
+    flet_data = os.environ.get("FLET_APP_STORAGE_DATA")
+    if flet_data:
+        return flet_data
+
     system = platform.system()
     if system == "Android":
         home = os.environ.get("HOME")
