@@ -8,6 +8,7 @@ from pathlib import Path
 import sqlite3
 
 from core.device_identity import get_device_id
+from core.paths import get_data_dir
 from utils.models import Tick
 
 logger = logging.getLogger(__name__)
@@ -30,13 +31,8 @@ MERGE_CONFIG: dict[str, dict] = {
 }
 
 
-def _data_dir() -> str:
-    appdata = os.environ.get("APPDATA", os.path.expanduser("~"))
-    return os.path.join(appdata, "TouchedGrassYet")
-
-
 def _db_path() -> str:
-    return os.path.join(_data_dir(), "data.db")
+    return os.path.join(get_data_dir(), "data.db")
 
 
 def _schema_dir() -> str:
