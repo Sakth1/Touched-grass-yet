@@ -1,5 +1,4 @@
 import logging
-import subprocess
 
 import flet as ft
 
@@ -189,21 +188,13 @@ class HomePage:
                 ft.ElevatedButton("Open Settings", on_click=lambda e: self._open_settings(dlg)),
             ],
         )
-        self.page.dialog = dlg
-        dlg.open = True
-        self.page.update()
+        self.page.open(dlg)
 
     def _close_dialog(self, dlg):
-        dlg.open = False
-        self.page.update()
+        self.page.close(dlg)
 
     def _open_settings(self, dlg):
         dlg.open = False
         self.page.update()
-        try:
-            subprocess.run(
-                ["am", "start", "-a", "android.settings.USAGE_ACCESS_SETTINGS", "--user", "0"],
-                capture_output=True, text=True, timeout=5,
-            )
-        except Exception as e:
-            logger.error("Failed to open usage access settings: %s", e)
+        from core.collectors.android.usage_stats import open_usage_access_settings
+        open_usage_access_settings()
