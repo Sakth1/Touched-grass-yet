@@ -87,7 +87,7 @@ def _query_jnius(begin_ms: int, end_ms: int) -> dict:
                 "package_name": pkg,
                 "total_time_foreground_ms": stat.getTotalTimeInForeground(),
                 "last_time_used_ms": stat.getLastTimeUsed(),
-                "first_time_used_ms": stat.getFirstTimeUsed(),
+                "first_time_used_ms": stat.getFirstTimeStamp(),
                 "app_name": resolve_package(pkg),
             }
         return result
