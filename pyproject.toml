@@ -8,7 +8,6 @@ authors = [
     { name = "Sakth1", email = "sakthimurugankgm@gmail.com" }
 ]
 dependencies = [
-    "apsw>=3.53.3.1",
     "duckdb>=1.5.4",
     "flet>=0.85.3",
     "orjson>=3.11.9",
@@ -38,7 +37,6 @@ permissions = ["android.permission.PACKAGE_USAGE_STATS"]
 split_per_abi = true
 compile_packages = true
 dependencies = [
-    "apsw>=3.53.3.1",
     "duckdb>=1.5.4",
     "flet>=0.85.3",
     "orjson>=3.11.9",
