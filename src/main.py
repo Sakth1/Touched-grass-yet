@@ -3,7 +3,7 @@ from app import entrypoint
 
 
 def main():
-    ft.app(target=entrypoint)
+    ft.run(main=entrypoint)
 
 
 if __name__ == "__main__":

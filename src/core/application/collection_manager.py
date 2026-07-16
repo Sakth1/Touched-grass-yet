@@ -5,6 +5,7 @@ from utils.models import SystemType
 from core.tick_bus import TickBus
 from core.scheduler import Scheduler
 from core.config_manager import ConfigManager
+from core.storage import Storage
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ class CollectionManager:
         self._config.load()
         self._bus = TickBus()
         self._scheduler = Scheduler(self._bus)
+        self._storage = Storage()
         self._runtime = None
         self._system_type = SystemType.UNKNOWN
         self._running = False
@@ -44,6 +46,8 @@ class CollectionManager:
         self._system_type = self.detect_platform()
         logger.info("Detected platform: %s", self._system_type)
 
+        self._bus.subscribe(self._storage.on_tick)
+
         self._runtime = self._create_runtime()
 
         watchers = self._runtime.create_watchers()
@@ -60,6 +64,7 @@ class CollectionManager:
         await self._scheduler.stop()
         if self._runtime:
             self._runtime.shutdown()
+        self._storage.close()
         logger.info("Collection stopped")
 
     @property
@@ -73,3 +78,7 @@ class CollectionManager:
     @property
     def system_type(self) -> SystemType:
         return self._system_type
+
+    @property
+    def storage(self) -> Storage:
+        return self._storage
