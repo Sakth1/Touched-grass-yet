@@ -39,20 +39,20 @@ class SettingsPanel:
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                     ft.Divider(height=10),
-                    ft.ElevatedButton(
+                    ft.Button(
                         "View App Log",
                         icon=ft.Icons.DESCRIPTION,
                         on_click=self._load_log,
                     ),
                     ft.Row(
                         controls=[
-                            ft.ElevatedButton(
+                            ft.Button(
                                 "Refresh",
                                 icon=ft.Icons.REFRESH,
                                 on_click=self._load_log,
                                 visible=False,
                             ),
-                            ft.ElevatedButton(
+                            ft.Button(
                                 "Copy to Clipboard",
                                 icon=ft.Icons.COPY,
                                 on_click=self._copy_log,
@@ -64,7 +64,12 @@ class SettingsPanel:
                     self._status_text,
                     ft.Container(
                         content=self._log_scroll,
-                        border=ft.border.all(1, ft.Colors.GREY_700),
+                        border=ft.Border(
+                            left=ft.BorderSide(1, ft.Colors.GREY_700),
+                            top=ft.BorderSide(1, ft.Colors.GREY_700),
+                            right=ft.BorderSide(1, ft.Colors.GREY_700),
+                            bottom=ft.BorderSide(1, ft.Colors.GREY_700),
+                        ),
                         border_radius=6,
                         padding=8,
                         expand=True,
