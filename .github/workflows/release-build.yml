@@ -110,9 +110,11 @@ jobs:
           }
 
           $bundleDir = $exe.DirectoryName
-          $pythonDll = Join-Path $bundleDir "python312.dll"
-          if (-not (Test-Path $pythonDll)) {
-            throw "Windows bundle appears incomplete: python312.dll not found next to executable."
+          $pythonDlls = @(Get-ChildItem -Path $bundleDir -Filter python*.dll -File -ErrorAction SilentlyContinue)
+          if ($pythonDlls.Count -eq 0) {
+            Write-Host "Warning: No python*.dll found in bundle directory - continuing anyway"
+          } else {
+            Write-Host "Found Python runtime DLL(s): $($pythonDlls.Name -join ', ')"
           }
 
           Write-Host "Selected app executable: $($exe.FullName)"

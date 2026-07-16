@@ -145,7 +145,7 @@ uv run flet run --web     # web app
 
 ## Dependencies
 
-apsw, duckdb, flet, orjson, psutil, pywin32, rich
+duckdb, flet, orjson, psutil, pywin32, rich
 
 (Removed from initial scope: bleak, pycaw, pydantic, screeninfo, websockets, wmi)
 
