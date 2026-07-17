@@ -99,15 +99,22 @@ class SettingsPanel:
         self._log_scroll.controls.clear()
         if not lines:
             self._log_scroll.controls.append(
-                ft.Text("No log file found.", size=11, font_family="monospace", selectable=True),
+                ft.Text("No log file found.", size=11, font_family="monospace"),
             )
             self._status_text.value = ""
         else:
-            for line in lines:
-                stripped = line.rstrip("\n").rstrip("\r")
-                self._log_scroll.controls.append(
-                    ft.Text(stripped or " ", size=11, font_family="monospace", selectable=True, no_wrap=False),
-                )
+            joined = "".join(lines).rstrip("\n")
+            self._log_scroll.controls.append(
+                ft.TextField(
+                    value=joined,
+                    multiline=True,
+                    read_only=True,
+                    text_size=11,
+                    font_family="monospace",
+                    bgcolor=ft.Colors.TRANSPARENT,
+                    border=ft.InputBorder.NONE,
+                ),
+            )
             self._status_text.value = f"Showing last {len(lines)} lines"
         self._page.update()
 

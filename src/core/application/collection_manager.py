@@ -64,6 +64,7 @@ class CollectionManager:
         await self._scheduler.stop()
         if self._runtime:
             self._runtime.shutdown()
+        self._bus.unsubscribe(self._storage.on_tick)
         logger.info("Collection stopped")
 
     @property

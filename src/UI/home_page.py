@@ -132,13 +132,13 @@ class HomePage:
         self.page.update()
 
     def _on_android_tick(self, tick: Tick) -> None:
-        deltas = tick.data.get("deltas")
-        if deltas:
-            items = sorted(deltas.items(), key=lambda x: x[1]["delta_ms"], reverse=True)
+        durations = tick.data.get("durations")
+        if durations:
+            items = sorted(durations.items(), key=lambda x: x[1].get("duration_ms", 0), reverse=True)
             parts = []
             for pkg, d in items:
                 label = d.get("app_name") or pkg
-                parts.append(f"{label} ({d['delta_s']}s)")
+                parts.append(f"{label} ({d.get('duration_s', 0)}s)")
             display = ", ".join(parts)
             self._current_title.value = items[0][1].get("app_name") or items[0][0]
         else:
@@ -169,14 +169,11 @@ class HomePage:
         logger.info("Starting collection")
         self._log_area.controls.append(ft.Text("Starting collection...", size=12))
 
-        self._manager.bus.subscribe(self._on_tick)
-
         self.page.update()
         await self._manager.start()
+        self._manager.bus.subscribe(self._on_tick)
 
     async def _handle_stop(self, e):
-        self._manager.bus.unsubscribe(self._on_tick)
-
         self._start_btn.disabled = False
         self._stop_btn.disabled = True
         self._status_text.value = "Status: Stopped"
@@ -184,6 +181,7 @@ class HomePage:
         self._log_area.controls.append(ft.Text("Stopping collection...", size=12))
         self.page.update()
         await self._manager.stop()
+        self._manager.bus.unsubscribe(self._on_tick)
 
     async def show_permission_dialog(self):
         dlg = ft.AlertDialog(

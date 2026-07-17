@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 SCHEMA_VERSION = 1
 
 MERGE_CONFIG: dict[str, dict] = {
+    "android_foreground": {
+        "merge_keys": None,
+        "pulsetime": 60.0,
+    },
     "foreground": {
         "merge_keys": None,
         "pulsetime": 3.0,

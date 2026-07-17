@@ -1,6 +1,8 @@
 import json
 import logging
-from pathlib import Path
+import os
+
+from core.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +16,7 @@ DEFAULT_CONFIG = {
 
 class ConfigManager:
     def __init__(self, path: str | None = None):
-        self._path = Path(path or "config.json")
+        self._path = path or os.path.join(get_data_dir(), "config.json")
         self._data: dict = dict(DEFAULT_CONFIG)
 
     def load(self) -> None:
