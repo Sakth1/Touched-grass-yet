@@ -105,10 +105,9 @@ class SettingsPanel:
         else:
             for line in lines:
                 stripped = line.rstrip("\n").rstrip("\r")
-                if stripped:
-                    self._log_scroll.controls.append(
-                        ft.Text(stripped, size=11, font_family="monospace", selectable=True, no_wrap=False),
-                    )
+                self._log_scroll.controls.append(
+                    ft.Text(stripped or " ", size=11, font_family="monospace", selectable=True, no_wrap=False),
+                )
             self._status_text.value = f"Showing last {len(lines)} lines"
         self._page.update()
 

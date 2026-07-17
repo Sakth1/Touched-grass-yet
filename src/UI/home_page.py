@@ -33,10 +33,10 @@ class HomePage:
             disabled=True,
         )
 
-        self._log_area = ft.Column(
-            scroll=ft.ScrollMode.ALWAYS,
+        self._log_area = ft.ListView(
             expand=True,
             spacing=2,
+            auto_scroll=True,
         )
 
         self.page.add(
