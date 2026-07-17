@@ -35,6 +35,11 @@ class AndroidForegroundWatcher:
             logger.debug("No usage stats returned")
             return None
 
+        stale = self._last_foreground_ms.keys() - stats.keys()
+        if stale:
+            for pkg in stale:
+                del self._last_foreground_ms[pkg]
+
         if not self._last_foreground_ms:
             _init_baseline(stats, self._last_foreground_ms)
             foreground_pkg = _resolve_initial_foreground(now_ms)

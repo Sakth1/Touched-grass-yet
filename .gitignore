@@ -162,6 +162,10 @@ cython_debug/
 # Flet
 /storage/
 
+# AI
+.agents
+skills-lock.json
+
 # Manually added
 src/trial and error
 dev_dairy.md
