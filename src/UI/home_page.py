@@ -135,25 +135,26 @@ class HomePage:
         deltas = tick.data.get("deltas")
         if deltas:
             items = sorted(deltas.items(), key=lambda x: x[1]["delta_ms"], reverse=True)
+            parts = []
+            for pkg, d in items:
+                label = d.get("app_name") or pkg
+                parts.append(f"{label} ({d['delta_s']}s)")
+            display = ", ".join(parts)
             self._current_title.value = items[0][1].get("app_name") or items[0][0]
         else:
             app_name = tick.data.get("app_name", "")
             pkg = tick.data.get("package", "")
-            self._current_title.value = app_name or pkg
+            display = f"{app_name} ({pkg})" if app_name else pkg
+            self._current_title.value = display
 
-        self._refresh_log_display()
+        ts = tick.timestamp.strftime("%H:%M:%S")
+        entry = ft.Text(f"[{ts}] {display}", size=11, no_wrap=False)
+        self._log_area.controls.append(entry)
+
+        if len(self._log_area.controls) > MAX_LOG_ENTRIES:
+            self._log_area.controls.pop(0)
+
         self.page.update()
-
-    def _refresh_log_display(self) -> None:
-        from core.logging_setup import read_log_lines
-        lines = read_log_lines(MAX_LOG_ENTRIES)
-        self._log_area.controls.clear()
-        for line in lines:
-            stripped = line.rstrip("\n").rstrip("\r")
-            if stripped:
-                self._log_area.controls.append(
-                    ft.Text(stripped, size=9, no_wrap=True, font_family="monospace"),
-                )
 
     async def _handle_start(self, e):
         if self._manager.system_type == SystemType.ANDROID:
