@@ -41,3 +41,4 @@ class Scheduler:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
+        self._watchers.clear()
