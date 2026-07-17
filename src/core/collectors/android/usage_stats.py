@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 _Context = None
 _UsageStatsManager = None
 _UsageEvents = None
+_UsageEventClass = None
 _activity = None
 _manager = None
 
@@ -31,7 +32,7 @@ def _get_activity():
 
 
 def _ensure_jnius():
-    global _Context, _UsageStatsManager, _UsageEvents, _manager
+    global _Context, _UsageStatsManager, _UsageEvents, _UsageEventClass, _manager
     if _manager is not None:
         return True
     try:
@@ -39,6 +40,7 @@ def _ensure_jnius():
         _Context = autoclass("android.content.Context")
         _UsageStatsManager = autoclass("android.app.usage.UsageStatsManager")
         _UsageEvents = autoclass("android.app.usage.UsageEvents")
+        _UsageEventClass = autoclass("android.app.usage.UsageEvents$Event")
 
         activity = _get_activity()
         if activity is None:
@@ -112,7 +114,7 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
             logger.debug("queryEvents returned None for range %d-%d", begin_ms, end_ms)
             return []
         result = []
-        event = _UsageEvents.Event()
+        event = _UsageEventClass()
         while events.hasNextEvent():
             events.getNextEvent(event)
             result.append({
