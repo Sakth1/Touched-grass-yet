@@ -132,11 +132,20 @@ class HomePage:
         self.page.update()
 
     def _on_android_tick(self, tick: Tick) -> None:
-        app_name = tick.data.get("app_name", "")
-        pkg = tick.data.get("package", "")
-        display = f"{app_name} ({pkg})" if app_name else pkg
-
-        self._current_title.value = display
+        deltas = tick.data.get("deltas")
+        if deltas:
+            items = sorted(deltas.items(), key=lambda x: x[1]["delta_ms"], reverse=True)
+            parts = []
+            for pkg, d in items:
+                label = d.get("app_name") or pkg
+                parts.append(f"{label} ({d['delta_s']}s)")
+            display = ", ".join(parts)
+            self._current_title.value = parts[0].split(" (")[0]
+        else:
+            app_name = tick.data.get("app_name", "")
+            pkg = tick.data.get("package", "")
+            display = f"{app_name} ({pkg})" if app_name else pkg
+            self._current_title.value = display
 
         ts = tick.timestamp.strftime("%H:%M:%S")
         entry = ft.Text(f"[{ts}] {display}", size=11, no_wrap=True)

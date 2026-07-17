@@ -39,24 +39,33 @@ class AndroidForegroundWatcher:
             _init_baseline(stats, self._last_foreground_ms)
             foreground_pkg = _resolve_initial_foreground(now_ms)
             if foreground_pkg:
-                logger.debug("First tick — initial foreground from events: %s", foreground_pkg)
+                app_name = resolve_package(foreground_pkg)
+                logger.info("foreground [events]: %s", app_name)
                 return Tick(
                     watcher="android_foreground",
                     data={
                         "package": foreground_pkg,
-                        "app_name": resolve_package(foreground_pkg),
+                        "app_name": app_name,
+                        "deltas": {},
                         "source": "events",
                     },
                 )
-            logger.debug("First tick — initialized baseline, waiting for next tick")
+            logger.info("foreground [baseline]: initialized %d packages", len(stats))
             return None
 
         deltas = _compute_deltas(stats, self._last_foreground_ms)
         if not deltas:
-            logger.debug("No foreground-time deltas since last poll")
+            logger.info("foreground [idle]: no app activity this interval")
             return None
 
         top_pkg = max(deltas, key=lambda p: deltas[p]["delta_ms"])
+
+        parts = sorted(deltas.items(), key=lambda x: x[1]["delta_ms"], reverse=True)
+        logger.info(
+            "foreground [%ds]: %s",
+            int(self.config.interval_s),
+            ", ".join(f"{d['app_name']} {d['delta_s']}s" for _, d in parts),
+        )
 
         return Tick(
             watcher="android_foreground",
