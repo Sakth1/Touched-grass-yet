@@ -1,6 +1,10 @@
+import logging
+
 import flet as ft
 
 from core.logging_setup import read_log_lines
+
+logger = logging.getLogger(__name__)
 
 MAX_VISIBLE_LINES = 500
 
@@ -8,15 +12,12 @@ MAX_VISIBLE_LINES = 500
 class SettingsPanel:
     def __init__(self, page: ft.Page):
         self._page = page
-        self._controls_built = False
-        self._log_text = ft.Text("", size=11, font_family="monospace", selectable=True)
+        self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._log_scroll = ft.ListView(
-            controls=[self._log_text],
             expand=True,
             auto_scroll=False,
             spacing=0,
         )
-        self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
 
         self._build()
 
@@ -95,16 +96,25 @@ class SettingsPanel:
 
     def _load_log(self, e=None):
         lines = read_log_lines(MAX_VISIBLE_LINES)
+        self._log_scroll.controls.clear()
         if not lines:
-            self._log_text.value = "No log file found."
+            self._log_scroll.controls.append(
+                ft.Text("No log file found.", size=11, font_family="monospace", selectable=True),
+            )
             self._status_text.value = ""
         else:
-            self._log_text.value = "".join(lines)
+            for line in lines:
+                stripped = line.rstrip("\n").rstrip("\r")
+                if stripped:
+                    self._log_scroll.controls.append(
+                        ft.Text(stripped, size=11, font_family="monospace", selectable=True, no_wrap=False),
+                    )
             self._status_text.value = f"Showing last {len(lines)} lines"
         self._page.update()
 
     def _copy_log(self, e=None):
-        text = self._log_text.value or ""
+        lines = read_log_lines(MAX_VISIBLE_LINES)
+        text = "".join(lines)
         if text:
             self._page.set_clipboard(text)
             self._status_text.value = "Copied to clipboard"

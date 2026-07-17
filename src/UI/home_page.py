@@ -33,10 +33,10 @@ class HomePage:
             disabled=True,
         )
 
-        self._log_area = ft.ListView(
+        self._log_area = ft.Column(
+            scroll=ft.ScrollMode.ALWAYS,
             expand=True,
             spacing=2,
-            auto_scroll=True,
         )
 
         self.page.add(
@@ -123,7 +123,7 @@ class HomePage:
         self._current_title.value = display
 
         ts = tick.timestamp.strftime("%H:%M:%S")
-        entry = ft.Text(f"[{ts}] {display}", size=11, no_wrap=True)
+        entry = ft.Text(f"[{ts}] {display}", size=11, no_wrap=False)
         self._log_area.controls.append(entry)
 
         if len(self._log_area.controls) > MAX_LOG_ENTRIES:
@@ -166,6 +166,7 @@ class HomePage:
         self._start_btn.disabled = True
         self._stop_btn.disabled = False
         self._status_text.value = "Status: Running"
+        logger.info("Starting collection")
         self._log_area.controls.append(ft.Text("Starting collection...", size=12))
 
         self._manager.bus.subscribe(self._on_tick)
@@ -179,6 +180,7 @@ class HomePage:
         self._start_btn.disabled = False
         self._stop_btn.disabled = True
         self._status_text.value = "Status: Stopped"
+        logger.info("Stopping collection")
         self._log_area.controls.append(ft.Text("Stopping collection...", size=12))
         self.page.update()
         await self._manager.stop()
