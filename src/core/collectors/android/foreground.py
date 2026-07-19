@@ -1,17 +1,17 @@
 import logging
 
-from utils.models import Tick, WatcherConfig
-from core.collectors.android.usage_stats import (
-    query_usage_stats,
-    query_usage_events,
-    get_current_time_ms,
-)
 from core.collectors.android.package_resolver import resolve as resolve_package
+from core.collectors.android.usage_stats import (
+    _EVENT_TYPE_PAUSED,
+    _EVENT_TYPE_RESUMED,
+    check_usage_stats_permission,
+    get_current_time_ms,
+    query_usage_events,
+    query_usage_stats,
+)
+from utils.models import Tick, WatcherConfig
 
 logger = logging.getLogger(__name__)
-
-_EVENT_TYPE_RESUMED = 1
-_EVENT_TYPE_PAUSED = 2
 
 _MS_PER_S = 1000
 _EVENT_WINDOW_OVERLAP_MS = 120_000
@@ -29,9 +29,24 @@ class AndroidForegroundWatcher:
         self._previous_app: str | None = None
         self._last_foreground_ms: dict[str, int] = {}
         self._active_events: dict[str, int] = {}
+        self._permission_lost = False
 
     async def tick(self) -> Tick | None:
         now_ms = get_current_time_ms()
+
+        if not check_usage_stats_permission():
+            if not self._permission_lost:
+                logger.warning("Usage Stats permission lost — pausing foreground watcher")
+                self._permission_lost = True
+                self._last_foreground_ms.clear()
+                self._active_events.clear()
+                self._last_tick_ms = None
+                self._previous_app = None
+            return None
+
+        if self._permission_lost:
+            logger.info("Usage Stats permission restored — resuming foreground watcher")
+            self._permission_lost = False
 
         if self._last_tick_ms is None:
             return self._first_tick(now_ms)
