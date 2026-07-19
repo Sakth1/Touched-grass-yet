@@ -5,9 +5,10 @@ import argparse
 import os
 import re
 import subprocess
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+import tomllib
 
 SEMVER_PATTERN = re.compile(
     r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
@@ -171,6 +172,18 @@ def command_extract_release_metadata(args: argparse.Namespace) -> int:
     return 0
 
 
+def _latest_version_tag() -> str | None:
+    result = subprocess.run(
+        ["git", "tag", "--list", "v*", "--sort=-version:refname"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return result.stdout.strip().splitlines()[0]
+
+
 def command_detect_version_bump(args: argparse.Namespace) -> int:
     pyproject_path = Path(args.pyproject)
     current_version = read_version_from_pyproject(pyproject_path)
@@ -206,7 +219,28 @@ def command_detect_version_bump(args: argparse.Namespace) -> int:
                     f"previous={previous_version}, current={current_version}"
                 )
     else:
-        reason = "no previous commit in push event; skipping auto-release"
+        latest_tag = _latest_version_tag()
+        if latest_tag:
+            try:
+                tag_version = normalize_tag(latest_tag)
+                parse_semver(tag_version)
+                comparison = compare_semver(current_version, tag_version)
+                if comparison > 0:
+                    should_release = "true"
+                    reason = (
+                        f"version increased from {tag_version} to {current_version}"
+                    )
+                elif comparison == 0:
+                    reason = f"version unchanged at {current_version} (tag already exists)"
+                else:
+                    raise ValueError(
+                        "project.version must increase on main/master. "
+                        f"tag={tag_version}, current={current_version}"
+                    )
+            except (ValueError, KeyError) as error:
+                reason = f"latest tag invalid ({error}); skipping auto-release"
+        else:
+            reason = "no previous commit and no tags found; skipping auto-release"
 
     outputs = {
         "current_version": current_version,
