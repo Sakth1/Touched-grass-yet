@@ -1,11 +1,11 @@
 import logging
 import platform
 
-from utils.models import SystemType
-from core.tick_bus import TickBus
-from core.scheduler import Scheduler
 from core.config_manager import ConfigManager
+from core.scheduler import Scheduler
 from core.storage import Storage
+from core.tick_bus import TickBus
+from utils.models import SystemType
 
 logger = logging.getLogger(__name__)
 

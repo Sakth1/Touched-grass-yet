@@ -2,9 +2,9 @@ import logging
 
 import flet as ft
 
-from UI.home_page import HomePage
 from core.application.collection_manager import CollectionManager
 from core.logging_setup import setup_file_logging
+from UI.home_page import HomePage
 from utils.models import SystemType
 
 logging.basicConfig(

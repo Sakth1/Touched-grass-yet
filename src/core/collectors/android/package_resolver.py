@@ -1,3 +1,4 @@
+import importlib.util
 import logging
 import os
 from functools import lru_cache
@@ -72,9 +73,7 @@ def _ensure_jnius():
     global _PackageManager, _activity
     if _PackageManager is not None:
         return True
-    try:
-        from jnius import autoclass
-    except ImportError:
+    if importlib.util.find_spec("jnius") is None:
         logger.warning("pyjnius not available — cannot resolve package names")
         return False
 

@@ -2,8 +2,8 @@ import logging
 
 import flet as ft
 
-from UI.settings_page import SettingsPanel
 from core.application.collection_manager import CollectionManager
+from UI.settings_page import SettingsPanel
 from utils.models import SystemType, Tick
 
 logger = logging.getLogger(__name__)

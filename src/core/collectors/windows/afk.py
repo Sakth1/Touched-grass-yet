@@ -1,5 +1,4 @@
 import ctypes
-from ctypes import wintypes
 
 from utils.models import Tick, WatcherConfig
 

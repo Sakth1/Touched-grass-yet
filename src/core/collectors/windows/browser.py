@@ -1,7 +1,6 @@
 import re
 from dataclasses import dataclass
 
-
 BROWSER_PROCESSES = {
     "chrome.exe": "Chrome",
     "msedge.exe": "Edge",

@@ -1,8 +1,8 @@
 import logging
 
-from utils.models import Tick, WatcherConfig
-from core.collectors.windows.window import WindowAnalyzer
 from core.collectors.windows.browser import analyze as analyze_browser
+from core.collectors.windows.window import WindowAnalyzer
+from utils.models import Tick, WatcherConfig
 
 logger = logging.getLogger(__name__)
 
