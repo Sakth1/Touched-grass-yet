@@ -23,6 +23,10 @@ MERGE_CONFIG: dict[str, dict] = {
         "merge_keys": ["status"],
         "pulsetime": 10.0,
     },
+    "android_power": {
+        "merge_keys": None,
+        "pulsetime": 120.0,
+    },
     "foreground": {
         "merge_keys": None,
         "pulsetime": 3.0,

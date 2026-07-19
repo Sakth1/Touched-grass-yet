@@ -146,6 +146,36 @@ def is_screen_on() -> bool:
         return True
 
 
+def get_battery_info() -> dict:
+    try:
+        activity = _get_activity()
+        if activity is None:
+            return {"battery_pct": None, "charging": None}
+
+        from jnius import autoclass
+
+        BatteryManager = autoclass("android.os.BatteryManager")
+        Context = autoclass("android.content.Context")
+        battery_manager = activity.getSystemService(Context.BATTERY_SERVICE)
+
+        capacity = battery_manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        if capacity < 0:
+            return {"battery_pct": None, "charging": None}
+
+        Intent = autoclass("android.content.Intent")
+        IntentFilter = autoclass("android.content.IntentFilter")
+        battery_status = activity.registerReceiver(None, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
+        if battery_status is None:
+            return {"battery_pct": capacity, "charging": None}
+
+        plugged = battery_status.getIntExtra("plugged", 0)
+        return {"battery_pct": capacity, "charging": plugged != 0}
+    except Exception:
+        logger.debug("Failed to read battery info, defaulting to None")
+        return {"battery_pct": None, "charging": None}
+
+
 def get_current_time_ms() -> int:
     import time
     return int(time.time() * 1000)
