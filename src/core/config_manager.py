@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 
 from core.paths import get_data_dir
 
@@ -15,8 +16,8 @@ DEFAULT_CONFIG = {
 
 
 class ConfigManager:
-    def __init__(self, path: str | None = None):
-        self._path = path or os.path.join(get_data_dir(), "config.json")
+    def __init__(self, path: str | Path | None = None):
+        self._path = Path(path or os.path.join(get_data_dir(), "config.json"))
         self._data: dict = dict(DEFAULT_CONFIG)
 
     def load(self) -> None:
@@ -35,8 +36,8 @@ class ConfigManager:
 
     def save(self) -> None:
         try:
-            with open(self._path, "w") as f:
-                json.dump(self._data, f, indent=2)
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._path.write_text(json.dumps(self._data, indent=2), encoding="utf-8")
             logger.info("Config saved to %s", self._path)
         except Exception:
             logger.exception("Failed to save config")
