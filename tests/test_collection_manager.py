@@ -102,8 +102,9 @@ class TestScreenMonitor:
         cm = CollectionManager()
         cm._running = True
 
+        screen_states = [True, False, False, False, False, False]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=[True, False, False, False]),
+            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -124,8 +125,9 @@ class TestScreenMonitor:
         cm._auto_paused = True
         cm._set_paused(True)
 
+        screen_states = [False, True, True, True, True, True]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=[False, True, True, True]),
+            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -145,8 +147,9 @@ class TestScreenMonitor:
         cm._running = True
         cm.pause()
 
+        screen_states = [False, True, True, True, True, True]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=[False, True, True, True]),
+            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
