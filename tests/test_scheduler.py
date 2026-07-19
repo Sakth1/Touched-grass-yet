@@ -183,3 +183,113 @@ class TestSchedulerLifecycle:
         await scheduler.stop()
         assert not scheduler._running
         assert len(scheduler._tasks) == 0
+
+
+class TestSchedulerPauseResume:
+    async def test_pause_stops_tick_delivery(self, scheduler, bus):
+        received = []
+        bus.subscribe(lambda t: received.append(t.watcher))
+
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+
+        await scheduler.start()
+        await asyncio.sleep(0.05)
+        before = len(received)
+
+        scheduler.pause()
+        assert scheduler.is_paused
+        await asyncio.sleep(0.05)
+        after_pause = len(received)
+
+        assert after_pause == before
+
+        await scheduler.stop()
+
+    async def test_resume_resumes_tick_delivery(self, scheduler, bus):
+        received = []
+        bus.subscribe(lambda t: received.append(t.watcher))
+
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+
+        await scheduler.start()
+        await asyncio.sleep(0.05)
+        scheduler.pause()
+        await asyncio.sleep(0.05)
+
+        scheduler.resume()
+        assert not scheduler.is_paused
+        await asyncio.sleep(0.05)
+        after_resume = len(received)
+
+        assert after_resume > 0
+
+        await scheduler.stop()
+
+    async def test_pause_does_not_cancel_tasks(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+
+        await scheduler.start()
+        tasks_before = scheduler._tasks.copy()
+
+        scheduler.pause()
+        await asyncio.sleep(0.05)
+
+        assert len(scheduler._tasks) == len(tasks_before)
+        assert not any(t.done() for t in scheduler._tasks)
+
+        await scheduler.stop()
+
+    async def test_pause_twice_is_noop(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+        await scheduler.start()
+
+        scheduler.pause()
+        tick_count_before = w.tick_count
+        scheduler.pause()
+
+        assert scheduler.is_paused
+        assert w.tick_count == tick_count_before
+
+        await scheduler.stop()
+
+    async def test_resume_without_pause_is_noop(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+        await scheduler.start()
+
+        scheduler.resume()
+        assert not scheduler.is_paused
+
+        await scheduler.stop()
+
+    async def test_stop_while_paused_clears_state(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+        await scheduler.start()
+        scheduler.pause()
+
+        await scheduler.stop()
+        assert not scheduler._running
+        assert not scheduler.is_paused
+        assert len(scheduler._tasks) == 0
+
+    async def test_watcher_count_increments_while_running_not_paused(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=0.01))
+        scheduler.register(w)
+
+        await scheduler.start()
+        await asyncio.sleep(0.05)
+        count_while_running = w.tick_count
+
+        scheduler.pause()
+        await asyncio.sleep(0.05)
+        count_while_paused = w.tick_count
+
+        assert count_while_paused == count_while_running
+        assert count_while_running > 0
+
+        await scheduler.stop()

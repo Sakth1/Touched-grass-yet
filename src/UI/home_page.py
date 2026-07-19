@@ -15,17 +15,26 @@ class HomePage:
     def __init__(self, page: ft.Page, manager: CollectionManager):
         self.page = page
         self._manager = manager
+
         self._settings = SettingsPanel(page)
         self._status_text = ft.Text("Status: Stopped", size=16)
         self._platform_text = ft.Text(f"Platform: {manager.system_type.name}", size=14)
-
         self._current_title = ft.Text("-", size=14, weight=ft.FontWeight.BOLD)
+        self._running = False
 
         self._start_btn = ft.Button(
             "Start Collection",
             on_click=self._handle_start,
             icon=ft.Icons.PLAY_ARROW,
         )
+
+        self._pause_btn = ft.Button(
+            "Pause",
+            on_click=self._handle_pause_toggle,
+            icon=ft.Icons.PAUSE,
+            disabled=True,
+        )
+
         self._stop_btn = ft.Button(
             "Stop Collection",
             on_click=self._handle_stop,
@@ -38,6 +47,8 @@ class HomePage:
             spacing=2,
             auto_scroll=True,
         )
+
+        self._manager.on_pause_changed = self._on_pause_state_changed
 
         self.page.add(
             ft.Stack(
@@ -82,6 +93,7 @@ class HomePage:
                             ft.Row(
                                 controls=[
                                     self._start_btn,
+                                    self._pause_btn,
                                     self._stop_btn,
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER,
@@ -156,6 +168,33 @@ class HomePage:
 
         self.page.update()
 
+    def _on_pause_state_changed(self, paused: bool) -> None:
+        if paused:
+            self._status_text.value = "Status: Paused"
+            self._status_text.color = ft.Colors.ORANGE
+            self._pause_btn.text = "Resume"
+            self._pause_btn.icon = ft.Icons.PLAY_ARROW
+        else:
+            self._status_text.value = "Status: Running"
+            self._status_text.color = ft.Colors.GREEN
+            self._pause_btn.text = "Pause"
+            self._pause_btn.icon = ft.Icons.PAUSE
+        self.page.update()
+
+    def _set_collection_ui(self, running: bool, paused: bool = False) -> None:
+        self._running = running
+        self._start_btn.disabled = running
+        self._pause_btn.disabled = not running
+        self._stop_btn.disabled = not running
+        if running:
+            self._on_pause_state_changed(paused)
+        else:
+            self._status_text.value = "Status: Stopped"
+            self._status_text.color = None
+            self._pause_btn.text = "Pause"
+            self._pause_btn.icon = ft.Icons.PAUSE
+        self.page.update()
+
     async def _handle_start(self, e):
         if self._manager.system_type == SystemType.ANDROID:
             from core.collectors.android.usage_stats import check_usage_stats_permission
@@ -163,25 +202,31 @@ class HomePage:
                 await self.show_permission_dialog()
                 return
 
-        self._start_btn.disabled = True
-        self._stop_btn.disabled = False
-        self._status_text.value = "Status: Running"
-        logger.info("Starting collection")
         self._log_area.controls.append(ft.Text("Starting collection...", size=12))
-
+        self._set_collection_ui(running=True)
         self.page.update()
+
         await self._manager.start()
         self._manager.bus.subscribe(self._on_tick)
 
+        if self._manager.is_paused:
+            self._on_pause_state_changed(True)
+
+    async def _handle_pause_toggle(self, e):
+        if self._manager.is_paused:
+            self._log_area.controls.append(ft.Text("Resuming collection...", size=12))
+            self._manager.resume()
+        else:
+            self._log_area.controls.append(ft.Text("Pausing collection...", size=12))
+            self._manager.pause()
+        self.page.update()
+
     async def _handle_stop(self, e):
-        self._start_btn.disabled = False
-        self._stop_btn.disabled = True
-        self._status_text.value = "Status: Stopped"
-        logger.info("Stopping collection")
         self._log_area.controls.append(ft.Text("Stopping collection...", size=12))
         self.page.update()
         await self._manager.stop()
         self._manager.bus.unsubscribe(self._on_tick)
+        self._set_collection_ui(running=False)
 
     async def show_permission_dialog(self):
         dlg = ft.AlertDialog(

@@ -13,6 +13,7 @@ class Scheduler:
         self._watchers: list[Watcher] = []
         self._tasks: list[asyncio.Task] = []
         self._running = False
+        self._paused = False
 
     def register(self, watcher: Watcher) -> None:
         self._watchers.append(watcher)
@@ -23,20 +24,34 @@ class Scheduler:
             task = asyncio.create_task(self._run_loop(w))
             self._tasks.append(task)
 
+    def pause(self) -> None:
+        self._paused = True
+        logger.info("Scheduler paused")
+
+    def resume(self) -> None:
+        self._paused = False
+        logger.info("Scheduler resumed")
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused
+
     async def _run_loop(self, watcher: Watcher) -> None:
         cfg = watcher.config
         logger.info("Starting watcher %s (every %ss)", cfg.name, cfg.interval_s)
         while self._running:
             try:
-                tick = await watcher.tick()
-                if tick is not None:
-                    await self._bus.send(tick)
+                if not self._paused:
+                    tick = await watcher.tick()
+                    if tick is not None:
+                        await self._bus.send(tick)
             except Exception:
                 logger.exception("Watcher %s failed", cfg.name)
             await asyncio.sleep(cfg.interval_s)
 
     async def stop(self) -> None:
         self._running = False
+        self._paused = False
         for task in self._tasks:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
