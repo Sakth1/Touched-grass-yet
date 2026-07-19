@@ -6,6 +6,7 @@ from core.collectors.android.usage_stats import (
     _EVENT_TYPE_RESUMED,
     check_usage_stats_permission,
     get_current_time_ms,
+    is_screen_on,
     query_usage_events,
     query_usage_stats,
 )
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 _MS_PER_S = 1000
 _EVENT_WINDOW_OVERLAP_MS = 120_000
-_EVENT_END_BUFFER_MS = 15_000
+_EVENT_END_BUFFER_MS = 2_000
 
 
 class AndroidForegroundWatcher:
@@ -29,6 +30,7 @@ class AndroidForegroundWatcher:
         self._previous_app: str | None = None
         self._last_foreground_ms: dict[str, int] = {}
         self._active_events: dict[str, int] = {}
+        self._session_reported: dict[tuple[str, int], int] = {}
         self._permission_lost = False
 
     async def tick(self) -> Tick | None:
@@ -40,6 +42,7 @@ class AndroidForegroundWatcher:
                 self._permission_lost = True
                 self._last_foreground_ms.clear()
                 self._active_events.clear()
+                self._session_reported.clear()
                 self._last_tick_ms = None
                 self._previous_app = None
             return None
@@ -77,7 +80,13 @@ class AndroidForegroundWatcher:
             )
 
         if stats:
-            logger.info("foreground [baseline]: initialized %d packages", len(stats))
+            top_pkg = max(stats, key=lambda p: stats[p]["total_time_foreground_ms"])
+            self._previous_app = top_pkg
+            logger.info(
+                "foreground [baseline]: initialized %d packages, previous=%s",
+                len(stats),
+                stats[top_pkg]["app_name"],
+            )
             return None
 
         logger.debug("No usage stats or events on first tick")
@@ -88,12 +97,19 @@ class AndroidForegroundWatcher:
 
         if current_pkg is None:
             durations, current_pkg, source = self._try_stats(now_ms)
+        else:
+            self._sync_stats(now_ms)
 
         self._last_tick_ms = now_ms
 
         if current_pkg is None:
-            logger.info("foreground [idle]: no app activity this interval")
-            return None
+            if is_screen_on() and self._previous_app is not None:
+                current_pkg = self._previous_app
+                source = "stale"
+                logger.debug("foreground [stale]: %s (screen on, no events)", current_pkg)
+            else:
+                logger.info("foreground [idle]: no app activity this interval")
+                return None
 
         self._previous_app = current_pkg
         app_name = resolve_package(current_pkg)
@@ -115,14 +131,28 @@ class AndroidForegroundWatcher:
             },
         )
 
+    def _sync_stats(self, now_ms: int) -> None:
+        day_start_ms = _day_start_ms(now_ms)
+        stats = query_usage_stats(day_start_ms, now_ms)
+        if not stats:
+            return
+        stale = self._last_foreground_ms.keys() - stats.keys()
+        for pkg in stale:
+            del self._last_foreground_ms[pkg]
+        for pkg, stat in stats.items():
+            self._last_foreground_ms[pkg] = stat["total_time_foreground_ms"]
+
     def _try_events(self, now_ms: int) -> tuple[dict, str | None, str]:
         begin_ms = self._last_tick_ms - _EVENT_WINDOW_OVERLAP_MS
         end_ms = now_ms - _EVENT_END_BUFFER_MS
         if end_ms <= begin_ms:
+            self._cleanup_session_reported({})
             return {}, None, "events"
 
         raw_events = query_usage_events(begin_ms, end_ms)
         if not raw_events:
+            self._cleanup_session_reported(self._active_events)
+            self._sync_stats(now_ms)
             return {}, None, "events"
 
         active_start: dict[str, int] = dict(self._active_events)
@@ -135,18 +165,31 @@ class AndroidForegroundWatcher:
 
             if ev_type == _EVENT_TYPE_RESUMED:
                 if pkg in active_start:
-                    _accumulate_clipped(durations, pkg, active_start[pkg], ts, self._last_tick_ms)
+                    seg_key = (pkg, active_start[pkg])
+                    added = _accumulate_clipped(durations, pkg, active_start[pkg], ts, self._last_tick_ms)
+                    self._session_reported[seg_key] = self._session_reported.get(seg_key, 0) + added
                 active_start[pkg] = ts
 
             elif ev_type == _EVENT_TYPE_PAUSED:
                 if pkg in active_start:
-                    _accumulate_clipped(durations, pkg, active_start[pkg], ts, self._last_tick_ms)
+                    seg_key = (pkg, active_start[pkg])
+                    total = ts - active_start[pkg]
+                    already = self._session_reported.get(seg_key, 0)
+                    remaining = total - already
+                    if remaining > 0:
+                        durations[pkg] = durations.get(pkg, 0) + remaining
                     del active_start[pkg]
+                    self._session_reported.pop(seg_key, None)
 
         self._active_events = dict(active_start)
 
         for pkg, start_ms in list(active_start.items()):
-            _accumulate_clipped(durations, pkg, start_ms, end_ms, self._last_tick_ms)
+            seg_key = (pkg, start_ms)
+            added = _accumulate_clipped(durations, pkg, start_ms, end_ms, self._last_tick_ms)
+            self._session_reported[seg_key] = self._session_reported.get(seg_key, 0) + added
+
+        self._cleanup_session_reported(active_start)
+        self._sync_stats(now_ms)
 
         current_pkg = None
         for ev in reversed(raw_events):
@@ -160,6 +203,11 @@ class AndroidForegroundWatcher:
 
         result = _build_result(durations)
         return result, current_pkg, "events"
+
+    def _cleanup_session_reported(self, active_start: dict[str, int]) -> None:
+        for key in list(self._session_reported):
+            if key[0] not in active_start or active_start[key[0]] != key[1]:
+                del self._session_reported[key]
 
     def _try_stats(self, now_ms: int) -> tuple[dict, str | None, str]:
         day_start_ms = _day_start_ms(now_ms)
@@ -232,11 +280,12 @@ def _accumulate_clipped(
     start_ms: int,
     end_ms: int,
     clip_from_ms: int,
-) -> None:
+) -> int:
     seg_start = max(start_ms, clip_from_ms)
     delta = max(end_ms, seg_start) - seg_start
     if delta > 0:
         durations[pkg] = durations.get(pkg, 0) + delta
+    return delta
 
 
 def _build_result(durations: dict[str, int]) -> dict[str, dict]:
