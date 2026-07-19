@@ -190,9 +190,13 @@ class AndroidForegroundWatcher:
 
 def _day_start_ms(now_ms: int) -> int:
     import datetime
-    local_dt = datetime.datetime.fromtimestamp(now_ms / _MS_PER_S)
-    local_midnight = local_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    return int(local_midnight.timestamp() * _MS_PER_S)
+    try:
+        local_dt = datetime.datetime.fromtimestamp(now_ms / _MS_PER_S)
+        local_midnight = local_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        return int(local_midnight.timestamp() * _MS_PER_S)
+    except (OSError, OverflowError, ValueError):
+        logger.debug("Failed to compute day start for %d, defaulting to now", now_ms)
+        return now_ms
 
 
 def _init_baseline(

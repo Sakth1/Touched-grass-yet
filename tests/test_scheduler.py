@@ -293,3 +293,131 @@ class TestSchedulerPauseResume:
         assert count_while_running > 0
 
         await scheduler.stop()
+
+
+class TestCircuitBreaker:
+    async def test_pauses_after_threshold_failures(self, scheduler):
+        class _AlwaysCrash:
+            def __init__(self):
+                self.config = WatcherConfig(name="crashy", interval_s=0.01)
+
+            async def tick(self):
+                raise RuntimeError("boom")
+
+        w = _AlwaysCrash()
+        scheduler.register(w)
+        await scheduler.start()
+        await asyncio.sleep(0.3)
+
+        assert "crashy" in scheduler.paused_watchers
+
+        await scheduler.stop()
+
+    async def test_does_not_pause_before_threshold(self, scheduler):
+        class _CrashFew:
+            def __init__(self):
+                self.count = 0
+                self.config = WatcherConfig(name="few", interval_s=0.01)
+
+            async def tick(self):
+                self.count += 1
+                if self.count <= 3:
+                    raise RuntimeError("transient")
+                return Tick(watcher="few")
+
+        w = _CrashFew()
+        scheduler.register(w)
+        await scheduler.start()
+        await asyncio.sleep(0.15)
+        await scheduler.stop()
+
+        assert "few" not in scheduler.paused_watchers
+        assert scheduler.failure_counts.get("few", 0) == 0
+
+    async def test_other_watchers_unaffected(self, scheduler):
+        class _AlwaysCrash:
+            def __init__(self):
+                self.config = WatcherConfig(name="crashy", interval_s=0.01)
+
+            async def tick(self):
+                raise RuntimeError("boom")
+
+        crashing = _AlwaysCrash()
+        working = _CountingWatcher(WatcherConfig(name="working", interval_s=0.01))
+        scheduler.register(crashing)
+        scheduler.register(working)
+        await scheduler.start()
+        await asyncio.sleep(0.3)
+
+        assert "crashy" in scheduler.paused_watchers
+        assert "working" not in scheduler.paused_watchers
+        assert working.tick_count > 0
+
+        await scheduler.stop()
+
+    async def test_resume_watcher_manually(self, scheduler):
+        class _AlwaysCrash:
+            def __init__(self):
+                self.config = WatcherConfig(name="crashy", interval_s=0.01)
+
+            async def tick(self):
+                raise RuntimeError("boom")
+
+        w = _AlwaysCrash()
+        scheduler.register(w)
+        await scheduler.start()
+        await asyncio.sleep(0.25)
+        assert "crashy" in scheduler.paused_watchers
+
+        scheduler.resume_watcher("crashy")
+        assert "crashy" not in scheduler.paused_watchers
+        assert "crashy" not in scheduler.failure_counts
+
+        await scheduler.stop()
+
+    async def test_failure_counter_resets_on_success(self, scheduler):
+        class _CrashThenSucceed:
+            def __init__(self):
+                self.count = 0
+                self.config = WatcherConfig(name="recover", interval_s=0.01)
+
+            async def tick(self):
+                self.count += 1
+                if self.count <= 5:
+                    raise RuntimeError("transient")
+                return Tick(watcher="recover")
+
+        w = _CrashThenSucceed()
+        scheduler.register(w)
+        await scheduler.start()
+        await asyncio.sleep(0.2)
+        await scheduler.stop()
+
+        assert scheduler.failure_counts.get("recover", 0) == 0
+        assert "recover" not in scheduler.paused_watchers
+        assert w.count > 5
+
+    async def test_log_escalation(self, scheduler, caplog):
+        caplog.set_level(10)
+
+        class _AlwaysCrash:
+            def __init__(self):
+                self.config = WatcherConfig(name="noisy", interval_s=0.01)
+
+            async def tick(self):
+                raise RuntimeError("boom")
+
+        w = _AlwaysCrash()
+        scheduler.register(w)
+        await scheduler.start()
+        await asyncio.sleep(0.3)
+        await scheduler.stop()
+
+        records = [r for r in caplog.records if r.name.startswith("core.scheduler")]
+        noisy_records = [r for r in records if "noisy" in r.getMessage()]
+
+        levels = {r.levelno for r in noisy_records}
+        assert 10 in levels  # DEBUG
+        assert 30 in levels  # WARNING
+        assert 40 in levels  # ERROR
+        assert 50 in levels  # CRITICAL
