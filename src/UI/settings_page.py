@@ -95,33 +95,45 @@ class SettingsPanel:
         return self._view
 
     def _load_log(self, e=None):
-        lines = read_log_lines(MAX_VISIBLE_LINES)
-        self._log_scroll.controls.clear()
-        if not lines:
+        try:
+            lines = read_log_lines(MAX_VISIBLE_LINES)
+            self._log_scroll.controls.clear()
+            if not lines:
+                self._log_scroll.controls.append(
+                    ft.Text("No log file found.", size=11, font_family="monospace"),
+                )
+                self._status_text.value = ""
+            else:
+                joined = "".join(lines).rstrip("\n")
+                self._log_scroll.controls.append(
+                    ft.TextField(
+                        value=joined,
+                        multiline=True,
+                        read_only=True,
+                        text_style=ft.TextStyle(size=11, font_family="monospace"),
+                        bgcolor=ft.Colors.TRANSPARENT,
+                        border=ft.InputBorder.NONE,
+                    ),
+                )
+                self._status_text.value = f"Showing last {len(lines)} lines"
+        except Exception:
+            logger.exception("Failed to load log")
+            self._log_scroll.controls.clear()
             self._log_scroll.controls.append(
-                ft.Text("No log file found.", size=11, font_family="monospace"),
+                ft.Text("Error loading log.", size=11, color=ft.Colors.RED_400),
             )
-            self._status_text.value = ""
-        else:
-            joined = "".join(lines).rstrip("\n")
-            self._log_scroll.controls.append(
-                ft.TextField(
-                    value=joined,
-                    multiline=True,
-                    read_only=True,
-                    text_size=11,
-                    font_family="monospace",
-                    bgcolor=ft.Colors.TRANSPARENT,
-                    border=ft.InputBorder.NONE,
-                ),
-            )
-            self._status_text.value = f"Showing last {len(lines)} lines"
+            self._status_text.value = "Failed to load log"
         self._page.update()
 
     def _copy_log(self, e=None):
         lines = read_log_lines(MAX_VISIBLE_LINES)
         text = "".join(lines)
         if text:
-            self._page.set_clipboard(text)
-            self._status_text.value = "Copied to clipboard"
+            try:
+                ft.Clipboard().set(text)
+            except Exception:
+                logger.exception("Failed to copy to clipboard")
+                self._status_text.value = "Failed to copy"
+            else:
+                self._status_text.value = "Copied to clipboard"
             self._page.update()
