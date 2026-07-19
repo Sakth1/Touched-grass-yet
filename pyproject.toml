@@ -20,7 +20,14 @@ dev = [
     "flet-cli>=0.85.3",
     "flet-desktop>=0.85.3",
     "flet-web>=0.85.3",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [tool.flet]
 org = "com.mycompany"
