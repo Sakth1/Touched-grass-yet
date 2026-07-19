@@ -2,10 +2,9 @@ import json
 import logging
 import os
 import platform
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-
-import sqlite3
 
 from core.device_identity import get_device_id
 from core.paths import get_data_dir
@@ -19,6 +18,10 @@ MERGE_CONFIG: dict[str, dict] = {
     "android_foreground": {
         "merge_keys": None,
         "pulsetime": 60.0,
+    },
+    "android_afk": {
+        "merge_keys": ["status"],
+        "pulsetime": 10.0,
     },
     "foreground": {
         "merge_keys": None,
@@ -60,7 +63,7 @@ class Storage:
         if parent:
             os.makedirs(parent, exist_ok=True)
 
-        self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")
 

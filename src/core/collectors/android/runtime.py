@@ -1,13 +1,17 @@
 import logging
 
-from utils.models import WatcherConfig
-from core.config_manager import ConfigManager
-from core.collectors.base import Watcher
+from core.collectors.android.afk import AndroidAfkWatcher
 from core.collectors.android.foreground import AndroidForegroundWatcher
+from core.collectors.base import Watcher
+from core.config_manager import ConfigManager
+from utils.models import WatcherConfig
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_POLL_INTERVAL = 60.0
+_DEFAULT_INTERVALS: dict[str, float] = {
+    "android_foreground": 60.0,
+    "android_afk": 5.0,
+}
 
 
 class AndroidRuntime:
@@ -16,8 +20,9 @@ class AndroidRuntime:
 
     def create_watchers(self) -> list[Watcher]:
         enabled = self._config.watchers_enabled
-        all_watchers = {
+        all_watchers: dict[str, type[Watcher]] = {
             "android_foreground": AndroidForegroundWatcher,
+            "android_afk": AndroidAfkWatcher,
         }
 
         if not any(name in enabled for name in all_watchers):
@@ -27,7 +32,7 @@ class AndroidRuntime:
         watchers: list[Watcher] = []
         for name, cls in all_watchers.items():
             if name in enabled:
-                interval = self._config.get_interval(name, _DEFAULT_POLL_INTERVAL)
+                interval = self._config.get_interval(name, _DEFAULT_INTERVALS.get(name, 60.0))
                 wc = WatcherConfig(name=name, interval_s=interval, enabled=True)
                 watchers.append(cls(wc))
         logger.info("Created %d Android watchers", len(watchers))

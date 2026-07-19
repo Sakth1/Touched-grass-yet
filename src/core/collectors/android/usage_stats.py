@@ -5,6 +5,9 @@ from core.collectors.android.package_resolver import resolve as resolve_package
 
 logger = logging.getLogger(__name__)
 
+_EVENT_TYPE_RESUMED = 1
+_EVENT_TYPE_PAUSED = 2
+
 _Context = None
 _UsageStatsManager = None
 _UsageEvents = None
@@ -129,6 +132,18 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
         else:
             logger.exception("queryUsageEvents failed")
         return []
+
+
+def is_screen_on() -> bool:
+    try:
+        activity = _get_activity()
+        if activity is None:
+            return True
+        power_manager = activity.getSystemService("power")
+        return power_manager.isInteractive()
+    except Exception:
+        logger.debug("Failed to check screen state, defaulting to on")
+        return True
 
 
 def get_current_time_ms() -> int:
