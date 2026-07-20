@@ -3,6 +3,7 @@ import logging
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
+from UI.db_viewer import DbViewer
 from UI.settings_page import SettingsPanel
 from utils.models import SystemType, Tick
 
@@ -17,6 +18,7 @@ class HomePage:
         self._manager = manager
 
         self._settings = SettingsPanel(page)
+        self._db_viewer = DbViewer(page, manager.storage)
         self._status_text = ft.Text("Status: Stopped", size=16)
         self._platform_text = ft.Text(f"Platform: {manager.system_type.name}", size=14)
         self._current_title = ft.Text("-", size=14, weight=ft.FontWeight.BOLD)
@@ -61,13 +63,18 @@ class HomePage:
                                     ft.Row(
                                         controls=[
                                             self._platform_text,
+                                            ft.TextButton(
+                                                "DB",
+                                                style=ft.ButtonStyle(padding=8),
+                                                on_click=lambda e: self._db_viewer.show(),
+                                            ),
                                             ft.IconButton(
                                                 ft.Icons.SETTINGS,
                                                 icon_size=20,
                                                 on_click=lambda e: self._settings.show(),
                                             ),
                                         ],
-                                        spacing=4,
+                                        spacing=2,
                                     ),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -107,6 +114,7 @@ class HomePage:
                         spacing=3,
                     ),
                     self._settings.overlay,
+                    self._db_viewer.overlay,
                 ],
                 expand=True,
             )
