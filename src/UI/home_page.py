@@ -18,7 +18,7 @@ class HomePage:
         self._manager = manager
 
         self._settings = SettingsPanel(page)
-        self._db_viewer = DbViewer(page, manager.storage)
+        self._db_viewer = DbViewer(page, manager)
         self._status_text = ft.Text("Status: Stopped", size=16)
         self._platform_text = ft.Text(f"Platform: {manager.system_type.name}", size=14)
         self._current_title = ft.Text("-", size=14, weight=ft.FontWeight.BOLD)
@@ -63,9 +63,10 @@ class HomePage:
                                     ft.Row(
                                         controls=[
                                             self._platform_text,
-                                            ft.TextButton(
-                                                "DB",
-                                                style=ft.ButtonStyle(padding=8),
+                                            ft.IconButton(
+                                                ft.Icons.STORAGE,
+                                                icon_size=20,
+                                                tooltip="DB Viewer (dev)",
                                                 on_click=lambda e: self._db_viewer.show(),
                                             ),
                                             ft.IconButton(
@@ -74,7 +75,7 @@ class HomePage:
                                                 on_click=lambda e: self._settings.show(),
                                             ),
                                         ],
-                                        spacing=2,
+                                        spacing=4,
                                     ),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,

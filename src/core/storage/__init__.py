@@ -163,6 +163,8 @@ class Storage:
         since: float | None = None,
         until: float | None = None,
         device_id: str | None = None,
+        limit: int | None = None,
+        desc: bool = False,
     ) -> list[dict]:
         tbl = f"events_{device_id[:8]}" if device_id else self._table_name()
         filters = []
@@ -181,7 +183,9 @@ class Storage:
         sql = f"SELECT id, watcher, timestamp, duration, data FROM {tbl}"
         if filters:
             sql += " WHERE " + " AND ".join(filters)
-        sql += " ORDER BY timestamp ASC"
+        sql += " ORDER BY timestamp DESC" if desc else " ORDER BY timestamp ASC"
+        if limit is not None:
+            sql += f" LIMIT {limit}"
 
         return [
             {
