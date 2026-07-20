@@ -1,14 +1,13 @@
-import json
+import datetime
 import logging
-import time
 
 import flet as ft
 
-from core.storage import Storage
+from core.application.collection_manager import CollectionManager
 
 logger = logging.getLogger(__name__)
 
-WATCHER_OPTIONS = [
+_WATCHERS = [
     "All",
     "foreground",
     "afk",
@@ -20,146 +19,185 @@ WATCHER_OPTIONS = [
 
 
 class DbViewer:
-    def __init__(self, page: ft.Page, storage: Storage):
-        self.page = page
-        self._storage = storage
-
+    def __init__(self, page: ft.Page, manager: CollectionManager):
+        self._page = page
+        self._manager = manager
+        self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._watcher_dd = ft.Dropdown(
-            options=[ft.dropdown.Option(w) for w in WATCHER_OPTIONS],
+            width=180,
+            height=48,
+            text_size=13,
+            label="Watcher",
+            label_style=ft.TextStyle(size=11),
+            options=[ft.dropdown.Option("All")],
             value="All",
-            width=140,
-            dense=True,
         )
-        self._limit_field = ft.TextField(value="500", width=70, dense=True, text_align=ft.TextAlign.RIGHT)
-        self._refresh_btn = ft.Button("Refresh", on_click=self._load, icon=ft.Icons.REFRESH)
-        self._summary_text = ft.Text("", size=11, color=ft.Colors.GREY)
+        self._limit_tf = ft.TextField(
+            width=80,
+            height=48,
+            value="500",
+            text_size=13,
+            label="Max",
+            label_style=ft.TextStyle(size=11),
+            keyboard_type=ft.KeyboardType.NUMBER,
+        )
+        self._rows_lv = ft.ListView(expand=True, auto_scroll=False, spacing=4, padding=4)
+        self._build()
 
-        self._list_view = ft.ListView(expand=True, spacing=2, auto_scroll=False, divide=ft.Divider(height=1))
-
+    def _build(self):
         self._view = ft.Container(
             visible=False,
             expand=True,
-            bgcolor=ft.Colors.with_opacity(0.95, ft.Colors.BACKGROUND),
-            padding=10,
+            bgcolor=ft.Colors.with_opacity(0.95, ft.Colors.BLACK),
+            padding=20,
             content=ft.Column(
-                expand=True,
-                spacing=6,
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Text("DB Viewer (dev)", size=16, weight=ft.FontWeight.BOLD),
-                            ft.Row(
-                                controls=[
-                                    self._watcher_dd,
-                                    ft.Text("Max:", size=12),
-                                    self._limit_field,
-                                    self._refresh_btn,
-                                ],
-                                spacing=6,
+                            ft.Text("DB Viewer (dev)", size=22, weight=ft.FontWeight.BOLD),
+                            ft.IconButton(
+                                ft.Icons.CLOSE,
+                                on_click=lambda e: self.hide(),
                             ),
-                            ft.IconButton(ft.Icons.CLOSE, icon_size=20, on_click=lambda e: self.hide()),
                         ],
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    self._summary_text,
+                    ft.Divider(height=8),
+                    ft.Row(
+                        controls=[
+                            self._watcher_dd,
+                            self._limit_tf,
+                            ft.Button(
+                                "Refresh",
+                                icon=ft.Icons.REFRESH,
+                                on_click=self._load_data,
+                            ),
+                        ],
+                        spacing=10,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    self._status_text,
                     ft.Container(
-                        expand=True,
-                        border=ft.border.all(1, ft.Colors.OUTLINE),
+                        content=self._rows_lv,
+                        border=ft.Border(
+                            left=ft.BorderSide(1, ft.Colors.GREY_700),
+                            top=ft.BorderSide(1, ft.Colors.GREY_700),
+                            right=ft.BorderSide(1, ft.Colors.GREY_700),
+                            bottom=ft.BorderSide(1, ft.Colors.GREY_700),
+                        ),
                         border_radius=6,
                         padding=4,
-                        content=self._list_view,
+                        expand=True,
+                        bgcolor=ft.Colors.with_opacity(0.3, ft.Colors.GREY_900),
                     ),
                 ],
+                expand=True,
+                spacing=6,
             ),
         )
+
+    def show(self):
+        self._populate_watcher_filter()
+        self._load_data()
+        self._view.visible = True
+        self._page.update()
+
+    def hide(self):
+        self._view.visible = False
+        self._page.update()
 
     @property
     def overlay(self) -> ft.Container:
         return self._view
 
-    def show(self) -> None:
-        self._view.visible = True
-        self._view.update()
+    def _populate_watcher_filter(self):
+        current = self._watcher_dd.value
+        self._watcher_dd.options = [ft.dropdown.Option(w) for w in _WATCHERS]
+        self._watcher_dd.value = current if current in _WATCHERS else "All"
 
-    def hide(self) -> None:
-        self._view.visible = False
-        self._view.update()
-
-    async def _load(self, e=None) -> None:
-        watcher = self._watcher_dd.value
+    def _load_data(self, e=None):
         try:
-            max_rows = int(self._limit_field.value or "500")
-        except ValueError:
-            max_rows = 500
+            watcher = self._watcher_dd.value
+            limit = 500
+            try:
+                limit = int(self._limit_tf.value or "500")
+            except ValueError:
+                pass
 
-        t0 = time.time()
-        rows = self._storage.get_events()
-        t1 = time.time()
+            kw: dict = {"desc": True, "limit": limit}
+            if watcher and watcher != "All":
+                kw["watcher"] = watcher
 
-        if watcher != "All":
-            rows = [r for r in rows if r["watcher"] == watcher]
+            rows = self._manager.storage.get_events(**kw)
+            self._render_rows(rows)
+            self._status_text.value = f"{len(rows)} rows"
+        except Exception as ex:
+            logger.exception("Failed to load DB data")
+            self._rows_lv.controls.clear()
+            self._rows_lv.controls.append(
+                ft.Text(f"Error: {ex}", size=11, color=ft.Colors.RED_400),
+            )
+            self._status_text.value = "Failed to load"
+        self._page.update()
 
-        total = len(rows)
-        rows = rows[-max_rows:]
-
-        self._summary_text.value = f"{total} rows · {len(rows)} shown · {t1 - t0:.2f}s"
-
-        self._list_view.controls.clear()
+    def _render_rows(self, rows: list[dict]):
+        self._rows_lv.controls.clear()
 
         if not rows:
-            self._list_view.controls.append(ft.Text("No data in DB yet.", size=12, color=ft.Colors.GREY))
-        else:
-            for r in rows:
-                ts = self._format_ts(r["timestamp"])
-                dur = self._format_dur(r["duration"])
-                data_str = self._format_data(r["data"])
+            self._rows_lv.controls.append(
+                ft.Text("No data", size=13, color=ft.Colors.GREY_500),
+            )
+            return
 
-                card = ft.Container(
-                    padding=ft.padding.only(left=6, right=6, top=4, bottom=4),
-                    content=ft.Column(
-                        spacing=2,
-                        controls=[
-                            ft.Row(
-                                controls=[
-                                    ft.Text(f"#{r['id']}", size=10, color=ft.Colors.GREY, font_family="monospace"),
-                                    ft.Text(r["watcher"], size=11, weight=ft.FontWeight.BOLD),
-                                    ft.Text(ts, size=11, color=ft.Colors.GREY),
-                                    ft.Text(dur, size=11, color=ft.Colors.GREY),
-                                ],
-                                spacing=10,
+        for r in rows:
+            ts = datetime.datetime.fromtimestamp(r["timestamp"], tz=datetime.timezone.utc).strftime("%H:%M:%S")
+            dur = r["duration"]
+            dur_str = f"{dur}s" if dur else "-"
+            data = r["data"]
+            data_str = _fmt_data(data)
+
+            card = ft.Container(
+                padding=ft.padding.Padding.only(left=8, right=8, top=6, bottom=6),
+                bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.GREY_800),
+                border_radius=6,
+                content=ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.Text(f"#{r['id']}", size=11, color=ft.Colors.GREY_500, width=50),
+                                ft.Text(r["watcher"], size=11, weight=ft.FontWeight.W_600, width=140),
+                                ft.Text(ts, size=11, color=ft.Colors.GREY_400, width=70),
+                                ft.Text(dur_str, size=11, color=ft.Colors.GREY_400, width=60),
+                            ],
+                            spacing=4,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                data_str,
+                                size=11,
+                                font_family="monospace",
+                                selectable=True,
+                                no_wrap=False,
                             ),
-                            ft.Text(data_str, size=10, selectable=True, font_family="monospace"),
-                        ],
-                    ),
-                )
-                self._list_view.controls.append(card)
+                            padding=ft.padding.Padding.only(top=2),
+                        ),
+                    ],
+                    spacing=0,
+                    tight=True,
+                ),
+            )
+            self._rows_lv.controls.append(card)
 
-        self.page.update()
 
-    @staticmethod
-    def _format_ts(epoch_s: float) -> str:
-        import datetime
-        try:
-            dt = datetime.datetime.fromtimestamp(epoch_s)
-            return dt.strftime("%H:%M:%S")
-        except (OSError, OverflowError, ValueError):
-            return str(epoch_s)
-
-    @staticmethod
-    def _format_dur(dur_s: float) -> str:
-        if dur_s >= 3600:
-            return f"{dur_s / 3600:.1f}h"
-        if dur_s >= 60:
-            return f"{dur_s / 60:.1f}m"
-        if dur_s >= 1:
-            return f"{dur_s:.0f}s"
-        if dur_s > 0:
-            return f"{dur_s * 1000:.0f}ms"
-        return "-"
-
-    @staticmethod
-    def _format_data(data: dict) -> str:
-        try:
-            return json.dumps(data, indent=2, ensure_ascii=False)
-        except (TypeError, ValueError):
-            return str(data)
+def _fmt_data(data: dict) -> str:
+    parts = []
+    for k, v in data.items():
+        if isinstance(v, dict):
+            inner = "; ".join(f"{ik}={iv}" for ik, iv in v.items())
+            parts.append(f"{k}: {inner}")
+        elif isinstance(v, list):
+            parts.append(f"{k}: [{len(v)} items]")
+        else:
+            parts.append(f"{k}: {v}")
+    return " | ".join(parts) if parts else "{}"
