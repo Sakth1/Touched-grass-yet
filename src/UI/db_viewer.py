@@ -244,7 +244,10 @@ class DbViewer:
         except Exception as ex:
             logger.exception("Export failed")
             self._status_text.value = "Export failed"
-            self._page.show_dialog(ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True))
+            msg = f"Export failed: {ex}"
+            if "Permission denied" in str(ex) or "denied" in str(ex).lower():
+                msg += " — enable storage permission in system settings"
+            self._page.show_dialog(ft.SnackBar(content=ft.Text(msg, size=12), open=True))
         self._page.update()
 
 

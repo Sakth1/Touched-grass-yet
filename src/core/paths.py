@@ -30,28 +30,51 @@ def get_data_dir() -> str:
 def get_export_dir() -> str:
     system = platform.system()
     if system == "Android":
-        docs = _android_documents_dir()
+        path = _android_export_dir()
     else:
         docs = os.path.join(os.path.expanduser("~"), "Documents")
-    if not docs:
-        docs = os.path.expanduser("~")
-    path = os.path.join(docs, _DATA_DIR_NAME, "exports")
+        path = os.path.join(docs, _DATA_DIR_NAME, "exports")
     os.makedirs(path, exist_ok=True)
     return path
 
 
-def _android_documents_dir() -> str | None:
+def _android_export_dir() -> str:
+    path = _android_public_downloads_dir()
+    if path:
+        return os.path.join(path, _DATA_DIR_NAME, "exports")
+    path = _android_app_external_dir()
+    if path:
+        return os.path.join(path, _DATA_DIR_NAME, "exports")
+    fallback = os.path.join(os.path.expanduser("~"), "Documents")
+    return os.path.join(fallback, _DATA_DIR_NAME, "exports")
+
+
+def _android_public_downloads_dir() -> str | None:
     try:
         from jnius import autoclass
         Environment = autoclass("android.os.Environment")
         dir_obj = Environment.getExternalStoragePublicDirectory(
-            Environment.DIRECTORY_DOCUMENTS
+            Environment.DIRECTORY_DOWNLOADS
         )
         if dir_obj:
-            return str(dir_obj)
+            return dir_obj.getAbsolutePath()
     except Exception:
-        logger.warning("Failed to get Android Documents dir via jnius", exc_info=True)
-    fallback = "/storage/emulated/0/Documents"
+        logger.warning("Failed to get public Downloads dir via jnius", exc_info=True)
+    fallback = os.path.join("/storage", "emulated", "0", "Download")
     if os.path.isdir(fallback):
         return fallback
+    return None
+
+
+def _android_app_external_dir() -> str | None:
+    try:
+        from jnius import autoclass, cast
+        Environment = autoclass("android.os.Environment")
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        activity = cast("android.app.Activity", PythonActivity.mActivity)
+        dir_obj = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+        if dir_obj:
+            return dir_obj.getAbsolutePath()
+    except Exception:
+        logger.warning("Failed to get app external Downloads dir via jnius", exc_info=True)
     return None
