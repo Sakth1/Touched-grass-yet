@@ -28,7 +28,7 @@ class DbViewer:
         self._manager = manager
         self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._watcher_dd = ft.Dropdown(
-            width=180,
+            width=140,
             height=48,
             text_size=13,
             label="Watcher",
@@ -37,7 +37,7 @@ class DbViewer:
             value="All",
         )
         self._limit_tf = ft.TextField(
-            width=80,
+            width=70,
             height=48,
             value="500",
             text_size=13,
@@ -68,6 +68,7 @@ class DbViewer:
                     ),
                     ft.Divider(height=8),
                     ft.Row(
+                        wrap=True,
                         controls=[
                             self._watcher_dd,
                             self._limit_tf,
