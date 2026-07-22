@@ -240,11 +240,11 @@ class DbViewer:
                     json.dump(out, f, indent=2, ensure_ascii=False)
 
             self._status_text.value = os.path.basename(path)
-            self._page.show_snack_bar(ft.SnackBar(content=ft.Text(path, size=12, selectable=True), open=True))
+            self._page.show_dialog(ft.SnackBar(content=ft.Text(path, size=12, selectable=True), open=True))
         except Exception as ex:
             logger.exception("Export failed")
             self._status_text.value = "Export failed"
-            self._page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True))
+            self._page.show_dialog(ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True))
         self._page.update()
 
 
