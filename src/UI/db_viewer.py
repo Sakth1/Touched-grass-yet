@@ -1,12 +1,12 @@
-import csv
 import datetime
-import json
 import logging
 import os
+import platform
 
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
+from core.application.export_service import ExportService
 from core.paths import get_export_dir
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,8 @@ class DbViewer:
             keyboard_type=ft.KeyboardType.NUMBER,
         )
         self._rows_lv = ft.ListView(expand=True, auto_scroll=False, spacing=4, padding=4)
+        self._file_picker = ft.FilePicker()
+        page.overlay.append(self._file_picker)
         self._build()
 
     def _build(self):
@@ -80,12 +82,12 @@ class DbViewer:
                             ft.Button(
                                 "CSV",
                                 icon=ft.Icons.FILE_DOWNLOAD,
-                                on_click=lambda e: self._export_csv(),
+                                on_click=self._export_csv,
                             ),
                             ft.Button(
                                 "JSON",
                                 icon=ft.Icons.FILE_DOWNLOAD_DONE,
-                                on_click=lambda e: self._export_json(),
+                                on_click=self._export_json,
                             ),
                         ],
                         spacing=6,
@@ -205,39 +207,55 @@ class DbViewer:
             self._rows_lv.controls.append(card)
 
 
-    def _export_csv(self, e=None):
-        self._do_export("csv")
+    async def _export_csv(self, e=None):
+        if platform.system() == "Android":
+            await self._export_via_saf("csv")
+        else:
+            self._export_direct("csv")
 
-    def _export_json(self, e=None):
-        self._do_export("json")
+    async def _export_json(self, e=None):
+        if platform.system() == "Android":
+            await self._export_via_saf("json")
+        else:
+            self._export_direct("json")
 
-    def _do_export(self, fmt: str):
+    async def _export_via_saf(self, fmt: str):
+        try:
+            rows = self._manager.storage.get_events()
+            if fmt == "csv":
+                filename, data = ExportService.prepare_csv(rows)
+            else:
+                filename, data = ExportService.prepare_json(rows)
+            result = await self._file_picker.save_file(
+                file_name=filename,
+                src_bytes=data,
+                allowed_extensions=(["csv"] if fmt == "csv" else ["json"]),
+            )
+            if result is None:
+                self._status_text.value = "Export cancelled"
+            else:
+                self._status_text.value = result
+                self._page.show_dialog(
+                    ft.SnackBar(content=ft.Text(f"Saved: {result}", size=12, selectable=True), open=True)
+                )
+        except Exception as ex:
+            logger.exception("Export failed")
+            self._status_text.value = "Export failed"
+            self._page.show_dialog(ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True))
+        self._page.update()
+
+    def _export_direct(self, fmt: str):
         try:
             rows = self._manager.storage.get_events()
             export_dir = get_export_dir()
-            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            ext = "csv" if fmt == "csv" else "json"
-            path = os.path.join(export_dir, f"events_{ts}.{ext}")
 
             if fmt == "csv":
-                with open(path, "w", newline="", encoding="utf-8") as f:
-                    w = csv.writer(f)
-                    w.writerow(["id", "watcher", "timestamp", "duration", "data"])
-                    for r in rows:
-                        data_raw = json.dumps(r["data"], ensure_ascii=False)
-                        w.writerow([r["id"], r["watcher"], _fmt_timestamp(r["timestamp"]), r["duration"], data_raw])
+                filename, data = ExportService.prepare_csv(rows)
             else:
-                out = []
-                for r in rows:
-                    out.append({
-                        "id": r["id"],
-                        "watcher": r["watcher"],
-                        "timestamp": _fmt_timestamp(r["timestamp"]),
-                        "duration": r["duration"],
-                        "data": r["data"],
-                    })
-                with open(path, "w", encoding="utf-8") as f:
-                    json.dump(out, f, indent=2, ensure_ascii=False)
+                filename, data = ExportService.prepare_json(rows)
+            path = os.path.join(export_dir, filename)
+            with open(path, "wb") as f:
+                f.write(data)
 
             self._status_text.value = os.path.basename(path)
             self._page.show_dialog(ft.SnackBar(content=ft.Text(path, size=12, selectable=True), open=True))
@@ -249,10 +267,6 @@ class DbViewer:
                 msg += " — enable storage permission in system settings"
             self._page.show_dialog(ft.SnackBar(content=ft.Text(msg, size=12), open=True))
         self._page.update()
-
-
-def _fmt_timestamp(ts: float) -> str:
-    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _fmt_data(data: dict) -> str:
