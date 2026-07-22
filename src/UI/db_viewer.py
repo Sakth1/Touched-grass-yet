@@ -47,7 +47,6 @@ class DbViewer:
         )
         self._rows_lv = ft.ListView(expand=True, auto_scroll=False, spacing=4, padding=4)
         self._file_picker = ft.FilePicker()
-        page.overlay.append(self._file_picker)
         self._build()
 
     def _build(self):
