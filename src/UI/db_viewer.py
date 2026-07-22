@@ -7,7 +7,7 @@ import os
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
-from core.paths import get_data_dir
+from core.paths import get_export_dir
 
 logger = logging.getLogger(__name__)
 
@@ -214,8 +214,7 @@ class DbViewer:
     def _do_export(self, fmt: str):
         try:
             rows = self._manager.storage.get_events()
-            export_dir = os.path.join(get_data_dir(), "exports")
-            os.makedirs(export_dir, exist_ok=True)
+            export_dir = get_export_dir()
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             ext = "csv" if fmt == "csv" else "json"
             path = os.path.join(export_dir, f"events_{ts}.{ext}")
