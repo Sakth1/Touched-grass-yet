@@ -1,9 +1,13 @@
+import csv
 import datetime
+import json
 import logging
+import os
 
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
+from core.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +76,18 @@ class DbViewer:
                                 icon=ft.Icons.REFRESH,
                                 on_click=self._load_data,
                             ),
+                            ft.Button(
+                                "CSV",
+                                icon=ft.Icons.FILE_DOWNLOAD,
+                                on_click=lambda e: self._export_csv(),
+                            ),
+                            ft.Button(
+                                "JSON",
+                                icon=ft.Icons.FILE_DOWNLOAD_DONE,
+                                on_click=lambda e: self._export_json(),
+                            ),
                         ],
-                        spacing=10,
+                        spacing=6,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                     self._status_text,
@@ -188,6 +202,54 @@ class DbViewer:
                 ),
             )
             self._rows_lv.controls.append(card)
+
+
+    def _export_csv(self, e=None):
+        self._do_export("csv")
+
+    def _export_json(self, e=None):
+        self._do_export("json")
+
+    def _do_export(self, fmt: str):
+        try:
+            rows = self._manager.storage.get_events()
+            export_dir = os.path.join(get_data_dir(), "exports")
+            os.makedirs(export_dir, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            ext = "csv" if fmt == "csv" else "json"
+            path = os.path.join(export_dir, f"events_{ts}.{ext}")
+
+            if fmt == "csv":
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    w = csv.writer(f)
+                    w.writerow(["id", "watcher", "timestamp", "duration", "data"])
+                    for r in rows:
+                        data_raw = json.dumps(r["data"], ensure_ascii=False)
+                        w.writerow([r["id"], r["watcher"], _fmt_timestamp(r["timestamp"]), r["duration"], data_raw])
+            else:
+                out = []
+                for r in rows:
+                    out.append({
+                        "id": r["id"],
+                        "watcher": r["watcher"],
+                        "timestamp": _fmt_timestamp(r["timestamp"]),
+                        "duration": r["duration"],
+                        "data": r["data"],
+                    })
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(out, f, indent=2, ensure_ascii=False)
+
+            self._status_text.value = os.path.basename(path)
+            self._page.show_snack_bar(ft.SnackBar(content=ft.Text(path, size=12, selectable=True), open=True))
+        except Exception as ex:
+            logger.exception("Export failed")
+            self._status_text.value = "Export failed"
+            self._page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True))
+        self._page.update()
+
+
+def _fmt_timestamp(ts: float) -> str:
+    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _fmt_data(data: dict) -> str:
