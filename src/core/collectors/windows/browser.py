@@ -12,8 +12,16 @@ BROWSER_PROCESSES = {
 }
 
 BROWSER_SUFFIXES = {
-    "Brave", "Chrome", "Google Chrome", "Microsoft Edge", "Edge",
-    "Mozilla Firefox", "Firefox", "Opera", "Vivaldi", "Internet Explorer",
+    "Brave",
+    "Chrome",
+    "Google Chrome",
+    "Microsoft Edge",
+    "Edge",
+    "Mozilla Firefox",
+    "Firefox",
+    "Opera",
+    "Vivaldi",
+    "Internet Explorer",
 }
 
 DOMAIN_KEYWORDS = [

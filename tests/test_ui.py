@@ -70,11 +70,7 @@ class TestSettingsPanelErrorHandling:
         ):
             panel._load_log()
         assert "Failed to load log" in caplog.text
-        assert any(
-            "Error loading log" in c.value
-            for c in panel._log_scroll.controls
-            if isinstance(c, ft.Text)
-        )
+        assert any("Error loading log" in c.value for c in panel._log_scroll.controls if isinstance(c, ft.Text))
         assert panel._status_text.value == "Failed to load log"
 
     def test_load_log_despite_corrupt_log_data(self, panel):

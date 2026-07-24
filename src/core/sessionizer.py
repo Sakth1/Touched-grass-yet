@@ -1,225 +1,196 @@
 import logging
-from datetime import datetime, timezone
 
 from core.storage import Storage
-from utils.models import Observation
 
 logger = logging.getLogger(__name__)
 
 MAX_IDLE_GAP_S = 300.0
-DEFAULT_POLL_INTERVAL_S = 5.0
-
-SESSION_SOURCE_PULSE = "pulse"
-SESSION_SOURCE_EVENTS = "events"
-SESSION_SOURCE_DELTA = "delta"
-SESSION_SOURCE_STALE = "stale"
+WINDOWS_POLL_INTERVAL_S = 2.0
+ANDROID_POLL_INTERVAL_S = 10.0
 
 
-def _app_key_fn_windows(obs: Observation) -> str:
-    return obs.data.get("app", "unknown")
-
-
-def _app_key_fn_android(obs: Observation) -> str:
-    return obs.data.get("package", "unknown")
-
-
-def _source_from_obs(obs: Observation) -> str:
-    return obs.data.get("source", SESSION_SOURCE_EVENTS)
-
-
-_WATCHER_CONFIG: dict[str, dict] = {
-    "foreground": {
-        "app_key_fn": _app_key_fn_windows,
-        "poll_interval_s": 2.0,
-        "merge_title_changes": True,
-    },
-    "android_foreground": {
-        "app_key_fn": _app_key_fn_android,
-        "poll_interval_s": 60.0,
-        "merge_title_changes": True,
-    },
-}
-
-
-def sessionize_observations(
-    observations: list[Observation],
-    watcher: str,
-    max_idle_gap: float = MAX_IDLE_GAP_S,
+def sessionize_from_events(
+    storage: Storage,
+    platform: str | None = None,
+    device_id: str | None = None,
 ) -> list[dict]:
-    if not observations:
+    events = storage.get_raw_events(
+        event_type="foreground_transition",
+    )
+    if not events:
         return []
 
-    cfg = _WATCHER_CONFIG.get(watcher)
-    if cfg is None:
-        logger.warning("No sessionizer config for watcher %s", watcher)
-        return []
+    if platform:
+        events = [e for e in events if e["platform"] == platform]
+        if not events:
+            return []
 
-    app_key_fn = cfg["app_key_fn"]
-    poll_interval = cfg["poll_interval_s"]
+    interval_index = _build_interval_index(
+        storage.get_raw_events(event_type="app_usage_interval"),
+    )
 
-    sorted_obs = sorted(observations, key=lambda o: o.timestamp)
     sessions: list[dict] = []
-    current_start: datetime | None = None
-    current_app_key: str | None = None
-    current_obs: list[Observation] = []
-    current_sources: set[str] = set()
+    current = None
 
-    for obs in sorted_obs:
-        app_key = app_key_fn(obs)
+    for ev in events:
+        ts = ev["timestamp"]
+        p = ev["payload"]
+        app_key = p.get("package") or p.get("app", "unknown")
 
-        if current_start is None:
-            current_start = obs.timestamp
-            current_app_key = app_key
-            current_obs = [obs]
-            current_sources = {_source_from_obs(obs)}
-            continue
-
-        if app_key == current_app_key:
-            gap_from_last = (obs.timestamp - current_obs[-1].timestamp).total_seconds()
-            if gap_from_last <= max_idle_gap:
-                current_obs.append(obs)
-                current_sources.add(_source_from_obs(obs))
+        if current is not None:
+            gap = ts - current.last_ts
+            if app_key != current.app_key or gap > MAX_IDLE_GAP_S:
+                end_ts = current.last_ts + MAX_IDLE_GAP_S if gap > MAX_IDLE_GAP_S else ts
+                _finalize_session(current, end_ts, interval_index, sessions)
+                current = _start_session(ev, app_key)
                 continue
-            else:
-                pass
 
-        end_ts_float = _to_epoch(current_obs[-1].timestamp) + poll_interval
-        start_ts_float = _to_epoch(current_start)
-        duration_s = end_ts_float - start_ts_float
+            if app_key == current.app_key:
+                current.last_ts = ts
+                _merge_event(current, ev)
+                continue
 
-        sessions.append(_build_session(
-            watcher=watcher,
-            start_ts=start_ts_float,
-            end_ts=end_ts_float,
-            duration_s=max(0.0, duration_s),
-            app_key=current_app_key,
-            observations=current_obs,
-            sources=current_sources,
-        ))
+        current = _start_session(ev, app_key)
 
-        current_start = obs.timestamp
-        current_app_key = app_key
-        current_obs = [obs]
-        current_sources = {_source_from_obs(obs)}
-
-    if current_start is not None and current_obs:
-        end_ts_float = _to_epoch(current_obs[-1].timestamp) + poll_interval
-        start_ts_float = _to_epoch(current_start)
-        duration_s = end_ts_float - start_ts_float
-
-        sessions.append(_build_session(
-            watcher=watcher,
-            start_ts=start_ts_float,
-            end_ts=end_ts_float,
-            duration_s=max(0.0, duration_s),
-            app_key=current_app_key,
-            observations=current_obs,
-            sources=current_sources,
-        ))
+    if current is not None:
+        poll_interval = ANDROID_POLL_INTERVAL_S if current.platform == "android" else WINDOWS_POLL_INTERVAL_S
+        end_ts = current.last_ts + poll_interval
+        _finalize_session(current, end_ts, interval_index, sessions)
 
     return sessions
 
 
-def _build_session(
-    watcher: str,
+class _SessionAccum:
+    __slots__ = (
+        "device_id",
+        "platform",
+        "start_ts",
+        "last_ts",
+        "app_key",
+        "payload",
+        "session_type",
+    )
+
+    def __init__(self, device_id: str, platform: str, start_ts: float, app_key: str):
+        self.device_id = device_id
+        self.platform = platform
+        self.start_ts = start_ts
+        self.last_ts = start_ts
+        self.app_key = app_key
+        self.payload: dict = {}
+        self.session_type = "foreground"
+
+
+def _start_session(ev: dict, app_key: str) -> _SessionAccum:
+    sess = _SessionAccum(
+        device_id=ev["device_id"],
+        platform=ev["platform"],
+        start_ts=ev["timestamp"],
+        app_key=app_key,
+    )
+    _merge_event(sess, ev)
+    return sess
+
+
+def _merge_event(sess: _SessionAccum, ev: dict) -> None:
+    p = ev["payload"]
+    if sess.platform == "android":
+        sess.payload["package"] = p.get("package", app_key_from_sess(sess))
+        sess.payload["app_name"] = p.get("app_name", sess.payload.get("app_name", "unknown"))
+    else:
+        sess.payload["app"] = p.get("app", app_key_from_sess(sess))
+        title = p.get("title")
+        if title:
+            sess.payload["title"] = title
+        browser = p.get("browser")
+        if browser:
+            sess.payload["browser"] = browser
+        page_title = p.get("page_title")
+        if page_title:
+            sess.payload["page_title"] = page_title
+        domain = p.get("inferred_domain")
+        if domain:
+            sess.payload["inferred_domain"] = domain
+
+
+def app_key_from_sess(sess: _SessionAccum) -> str:
+    return sess.app_key
+
+
+def _build_interval_index(interval_events: list[dict]) -> dict[str, list[dict]]:
+    index: dict[str, list[dict]] = {}
+    for ev in interval_events:
+        intervals = ev["payload"].get("intervals", [])
+        ev_ts = ev["timestamp"]
+        for interval in intervals:
+            pkg = interval.get("package", "unknown")
+            index.setdefault(pkg, []).append(
+                {
+                    "ts": ev_ts,
+                    "duration_ms": interval.get("duration_ms", 0),
+                }
+            )
+    return index
+
+
+def _sum_interval_duration(
+    interval_index: dict[str, list[dict]],
+    app_key: str,
     start_ts: float,
     end_ts: float,
-    duration_s: float,
-    app_key: str,
-    observations: list[Observation],
-    sources: set[str],
-) -> dict:
-    source_list = sorted(sources)
-    source_tag = source_list[0] if source_list else SESSION_SOURCE_PULSE
-
-    if watcher == "android_foreground":
-        total_duration_ms = 0
-        for obs in observations:
-            durs = obs.data.get("durations", {})
-            for pkg, info in durs.items():
-                if pkg == app_key or info.get("app_name") == app_key:
-                    total_duration_ms += info.get("duration_ms", 0)
-        if total_duration_ms > 0:
-            duration_s = round(total_duration_ms / 1000.0, 2)
-
-    merged_title = None
-    for obs in observations:
-        title = obs.data.get("title")
-        if title:
-            merged_title = title
-
-    merged_data: dict = {"observation_count": len(observations)}
-    if watcher == "foreground":
-        merged_data["title"] = merged_title
-        merged_data["app"] = app_key
-        browser_info = None
-        for obs in observations:
-            bi = obs.data.get("browser")
-            if bi:
-                browser_info = bi
-        if browser_info:
-            merged_data["browser"] = browser_info
-        for obs in observations:
-            pt = obs.data.get("page_title")
-            if pt:
-                merged_data["page_title"] = pt
-            dom = obs.data.get("inferred_domain")
-            if dom:
-                merged_data["inferred_domain"] = dom
-    elif watcher == "android_foreground":
-        merged_data["package"] = app_key
-        merged_data["app_name"] = observations[-1].data.get("app_name", app_key)
-        merged_data["source"] = source_tag
-        last_durs = observations[-1].data.get("durations", {})
-        if last_durs:
-            merged_data["durations"] = last_durs
-
-    return {
-        "id": None,
-        "watcher": watcher,
-        "start_ts": round(start_ts, 2),
-        "end_ts": round(end_ts, 2),
-        "duration_s": round(duration_s, 2),
-        "app_key": app_key,
-        "data": merged_data,
-        "source": source_tag,
-    }
+) -> float | None:
+    entries = interval_index.get(app_key)
+    if not entries:
+        return None
+    total_ms = sum(e["duration_ms"] for e in entries if start_ts <= e["ts"] <= end_ts)
+    if total_ms <= 0:
+        return None
+    return round(total_ms / 1000.0, 2)
 
 
-def _to_epoch(dt: datetime) -> float:
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
+def _finalize_session(
+    sess: _SessionAccum,
+    end_ts: float,
+    interval_index: dict[str, list[dict]],
+    sessions: list[dict],
+) -> None:
+    start = sess.start_ts
+    duration_s = None
+
+    if sess.platform == "android":
+        interval_dur = _sum_interval_duration(interval_index, sess.app_key, start, end_ts)
+        if interval_dur is not None:
+            duration_s = interval_dur
+
+    if duration_s is None:
+        duration_s = max(0.0, end_ts - start)
+
+    sessions.append(
+        {
+            "device_id": sess.device_id,
+            "platform": sess.platform,
+            "start_ts": round(start, 2),
+            "end_ts": round(end_ts, 2),
+            "duration_s": round(duration_s, 2),
+            "app_key": sess.app_key,
+            "payload": dict(sess.payload),
+            "session_type": sess.session_type,
+        }
+    )
 
 
-def run_sessionization(storage: Storage, watchers: list[str] | None = None) -> int:
-    target_watchers = watchers or ["foreground", "android_foreground"]
-    total_sessions = 0
-
-    for watcher in target_watchers:
-        raw = storage.get_observations(watcher=watcher)
-        if not raw:
-            continue
-
-        observations = [
-            Observation(
-                timestamp=datetime.fromtimestamp(r["timestamp"], tz=timezone.utc),
-                watcher=r["watcher"],
-                data=r["data"],
-            )
-            for r in raw
-        ]
-
-        sessions = sessionize_observations(observations, watcher)
-        for session in sessions:
-            existing = storage.get_sessions(
-                watcher=watcher,
-                since=session["start_ts"],
-                until=session["start_ts"] + 1.0,
-                app_key=session["app_key"],
-            )
-            if not existing:
-                storage.write_session(session)
-                total_sessions += 1
-
-    return total_sessions
+def run_sessionization(storage: Storage, platform: str | None = None) -> int:
+    sessions = sessionize_from_events(storage, platform=platform)
+    count = 0
+    for session in sessions:
+        existing = storage.get_canonical_sessions(
+            app_key=session["app_key"],
+            since=session["start_ts"],
+            until=session["start_ts"] + 1.0,
+        )
+        if not existing:
+            storage.write_canonical_session(session)
+            count += 1
+    if count:
+        logger.info("Sessionization wrote %d new sessions", count)
+    return count

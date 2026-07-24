@@ -1,6 +1,7 @@
 import logging
 
 from core.collectors.android.afk import AndroidAfkWatcher
+from core.collectors.android.app_usage import AndroidAppUsageWatcher
 from core.collectors.android.foreground import AndroidForegroundWatcher
 from core.collectors.android.power import AndroidPowerWatcher
 from core.collectors.base import Watcher
@@ -10,7 +11,8 @@ from utils.models import WatcherConfig
 logger = logging.getLogger(__name__)
 
 _DEFAULT_INTERVALS: dict[str, float] = {
-    "android_foreground": 60.0,
+    "android_foreground": 10.0,
+    "android_app_usage": 60.0,
     "android_afk": 5.0,
     "android_power": 60.0,
 }
@@ -24,6 +26,7 @@ class AndroidRuntime:
         enabled = self._config.watchers_enabled
         all_watchers: dict[str, type[Watcher]] = {
             "android_foreground": AndroidForegroundWatcher,
+            "android_app_usage": AndroidAppUsageWatcher,
             "android_afk": AndroidAfkWatcher,
             "android_power": AndroidPowerWatcher,
         }

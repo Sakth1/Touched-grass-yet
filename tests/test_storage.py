@@ -1,166 +1,207 @@
-import os
-import sqlite3
-import tempfile
 from datetime import datetime, timezone
 
-import pytest
-
-T0 = datetime(2026, 7, 19, 0, 0, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 7, 19, tzinfo=timezone.utc)
 
 
-@pytest.fixture
-def tmp_db_path():
-    fd, path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    yield path
-    try:
-        os.unlink(path)
-    except OSError:
-        pass
+class TestWriteEvent:
+    def test_writes_event_to_raw_events(self, in_memory_db, make_tick):
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=T0.timestamp(),
+            payload={"app": "Code.exe"},
+            source="foreground",
+        )
+        rows = in_memory_db._conn.execute("SELECT * FROM raw_events").fetchall()
+        assert len(rows) == 1
+        assert rows[0][3] == "foreground_transition"
 
+    def test_get_raw_events_returns_event(self, in_memory_db, make_tick):
+        ts = T0.timestamp()
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=ts,
+            payload={"app": "Code.exe"},
+            source="foreground",
+        )
+        results = in_memory_db.get_raw_events()
+        assert len(results) == 1
+        assert results[0]["event_type"] == "foreground_transition"
+        assert results[0]["payload"]["app"] == "Code.exe"
 
-class TestPulseMerge:
-    def test_same_data_extends_duration(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        t2 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0.replace(second=1))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        events = in_memory_db.get_events()
-        assert len(events) == 1
-        assert events[0]["duration"] == 1.0
-        assert events[0]["data"] == {"app": "Code.exe"}
-
-    def test_different_data_creates_new_row(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        t2 = make_tick(watcher="foreground", data={"app": "Terminal.exe"}, timestamp=T0.replace(second=1))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        events = in_memory_db.get_events()
-        assert len(events) == 2
-        assert events[0]["data"]["app"] == "Code.exe"
-        assert events[1]["data"]["app"] == "Terminal.exe"
-
-    def test_merge_at_exact_pulsetime_boundary(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        t2 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0.replace(second=3))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        events = in_memory_db.get_events()
-        assert len(events) == 1
-        assert events[0]["duration"] == 3.0
-
-    def test_past_pulsetime_creates_new_row(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        t2 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0.replace(second=4))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        events = in_memory_db.get_events()
-        assert len(events) == 2
-        assert events[0]["duration"] == 0.0
-        assert events[1]["duration"] == 0.0
-
-    def test_merge_afk_by_status_only(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="afk", data={"status": "active", "idle_seconds": 10.0}, timestamp=T0)
-        t2 = make_tick(watcher="afk", data={"status": "active", "idle_seconds": 12.0}, timestamp=T0.replace(second=5))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        events = in_memory_db.get_events()
-        assert len(events) == 1
-        assert events[0]["duration"] == 5.0
-
-    def test_afk_status_change_creates_new_row(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="afk", data={"status": "active", "idle_seconds": 10.0}, timestamp=T0)
-        t2 = make_tick(watcher="afk", data={"status": "idle", "idle_seconds": 65.0}, timestamp=T0.replace(second=5))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        events = in_memory_db.get_events()
-        assert len(events) == 2
-        assert events[0]["data"]["status"] == "active"
-        assert events[1]["data"]["status"] == "idle"
-
-
-class TestMultiWatcher:
-    def test_different_watchers_dont_interfere(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        t2 = make_tick(watcher="afk", data={"status": "active"}, timestamp=T0.replace(second=1))
-        t3 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0.replace(second=2))
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        in_memory_db.on_tick(t3)
-        events = in_memory_db.get_events()
-        assert len(events) == 2
-        fg_events = [e for e in events if e["watcher"] == "foreground"]
-        afk_events = [e for e in events if e["watcher"] == "afk"]
+    def test_get_raw_events_filtered(self, in_memory_db):
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1000.0,
+            payload={},
+            source="fg",
+        )
+        in_memory_db.write_event(
+            event_type="power_change",
+            timestamp=1100.0,
+            payload={},
+            source="pwr",
+        )
+        fg_events = in_memory_db.get_raw_events(event_type="foreground_transition")
         assert len(fg_events) == 1
-        assert len(afk_events) == 1
-        assert fg_events[0]["duration"] == 2.0
+        assert fg_events[0]["event_type"] == "foreground_transition"
 
-    def test_watchers_maintain_independent_merge_state(self, in_memory_db, make_tick):
-        fg1 = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        afk1 = make_tick(watcher="afk", data={"status": "active"}, timestamp=T0.replace(second=1))
-        pwr1 = make_tick(watcher="power", data={"battery_pct": 85, "charging": True}, timestamp=T0.replace(second=2))
-        fg2 = make_tick(watcher="foreground", data={"app": "Terminal.exe"}, timestamp=T0.replace(second=3))
-        in_memory_db.on_tick(fg1)
-        in_memory_db.on_tick(afk1)
-        in_memory_db.on_tick(pwr1)
-        in_memory_db.on_tick(fg2)
-        events = in_memory_db.get_events()
-        assert len(events) == 4
+    def test_get_raw_events_since_until(self, in_memory_db):
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1000.0,
+            payload={},
+            source="fg",
+        )
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1100.0,
+            payload={},
+            source="fg",
+        )
+        results = in_memory_db.get_raw_events(since=1050.0, until=1150.0)
+        assert len(results) == 1
+        assert results[0]["timestamp"] == 1100.0
+
+    def test_get_raw_events_desc(self, in_memory_db):
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1000.0,
+            payload={},
+            source="fg",
+        )
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1100.0,
+            payload={},
+            source="fg",
+        )
+        results = in_memory_db.get_raw_events(desc=True)
+        assert results[0]["timestamp"] > results[1]["timestamp"]
+
+    def test_get_raw_events_limit(self, in_memory_db):
+        for i in range(10):
+            in_memory_db.write_event(
+                event_type="foreground_transition",
+                timestamp=float(1000 + i),
+                payload={},
+                source="fg",
+            )
+        results = in_memory_db.get_raw_events(limit=3)
+        assert len(results) == 3
+
+    def test_clear_all_data_clears_raw_events(self, in_memory_db):
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1000.0,
+            payload={},
+            source="fg",
+        )
+        in_memory_db.clear_all_data()
+        assert len(in_memory_db.get_raw_events()) == 0
+
+    def test_clear_all_data_clears_sessions(self, in_memory_db):
+        in_memory_db.write_canonical_session(
+            {
+                "device_id": "test",
+                "platform": "windows",
+                "start_ts": 1000.0,
+                "end_ts": 1100.0,
+                "duration_s": 100.0,
+                "app_key": "Code.exe",
+                "payload": {},
+                "session_type": "foreground",
+            }
+        )
+        in_memory_db.clear_all_data()
+        assert len(in_memory_db.get_canonical_sessions()) == 0
+
+
+class TestCanonicalSessions:
+    def test_write_and_read_session(self, in_memory_db):
+        in_memory_db.write_canonical_session(
+            {
+                "device_id": "test",
+                "platform": "windows",
+                "start_ts": 1000.0,
+                "end_ts": 1100.0,
+                "duration_s": 100.0,
+                "app_key": "Code.exe",
+                "payload": {"title": "main.py"},
+                "session_type": "foreground",
+            }
+        )
+        results = in_memory_db.get_canonical_sessions()
+        assert len(results) == 1
+        assert results[0]["app_key"] == "Code.exe"
+        assert results[0]["payload"]["title"] == "main.py"
+
+    def test_get_canonical_sessions_filtered(self, in_memory_db):
+        for app in ["Code.exe", "brave.exe"]:
+            in_memory_db.write_canonical_session(
+                {
+                    "device_id": "test",
+                    "platform": "windows",
+                    "start_ts": 1000.0,
+                    "end_ts": 1100.0,
+                    "duration_s": 100.0,
+                    "app_key": app,
+                    "payload": {},
+                    "session_type": "foreground",
+                }
+            )
+        results = in_memory_db.get_canonical_sessions(app_key="Code.exe")
+        assert len(results) == 1
 
 
 class TestSchemaMigration:
-    def test_migration_preserves_existing_data(self, tmp_db_path):
-        conn = sqlite3.connect(tmp_db_path, isolation_level=None)
-        conn.execute("CREATE TABLE custom_data (id INTEGER PRIMARY KEY, name TEXT)")
-        conn.execute("INSERT INTO custom_data VALUES (1, 'survived')")
-        conn.execute("PRAGMA user_version = 0")
-        conn.close()
-
+    def test_migration_sets_version(self, tmp_path, make_tick):
         from core.storage import Storage
 
-        storage = Storage(db_path=tmp_db_path)
-
-        tables = storage._conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        ).fetchall()
-        table_names = [r[0] for r in tables]
-        assert "devices" in table_names
-        assert any(t.startswith("events_") for t in table_names)
-        assert "custom_data" in table_names
-
-        row = storage._conn.execute("SELECT name FROM custom_data WHERE id=1").fetchone()
-        assert row[0] == "survived"
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 5
         storage.close()
 
-    def test_migration_skipped_when_up_to_date(self, tmp_db_path, make_tick):
+    def test_migration_skipped_when_up_to_date(self, tmp_path, make_tick):
         from core.storage import Storage
 
-        storage1 = Storage(db_path=tmp_db_path)
-        assert storage1._conn.execute("PRAGMA user_version").fetchone()[0] == 2
+        db = str(tmp_path / "test.db")
+        storage1 = Storage(db_path=db)
+        assert storage1._conn.execute("PRAGMA user_version").fetchone()[0] == 5
 
-        tick = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
-        storage1.on_tick(tick)
-        assert len(storage1.get_events()) == 1
+        storage1.write_event(
+            event_type="foreground_transition",
+            timestamp=1000.0,
+            payload={"app": "Code.exe"},
+            source="foreground",
+        )
+        assert len(storage1.get_raw_events()) == 1
         storage1.close()
 
-        storage2 = Storage(db_path=tmp_db_path)
-        assert storage2._conn.execute("PRAGMA user_version").fetchone()[0] == 2
-        events = storage2.get_events()
+        storage2 = Storage(db_path=db)
+        assert storage2._conn.execute("PRAGMA user_version").fetchone()[0] == 5
+        events = storage2.get_raw_events()
         assert len(events) == 1
-        assert events[0]["data"]["app"] == "Code.exe"
+        assert events[0]["payload"]["app"] == "Code.exe"
         storage2.close()
 
-    def test_migration_is_idempotent(self, tmp_db_path, make_tick):
+    def test_migration_is_idempotent(self, tmp_path, make_tick):
         from core.storage import Storage
 
+        db = str(tmp_path / "test.db")
         for i in range(5):
-            storage = Storage(db_path=tmp_db_path)
-            assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 2
+            storage = Storage(db_path=db)
+            assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 5
             if i == 0:
-                storage.on_tick(make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0))
+                storage.write_event(
+                    event_type="foreground_transition",
+                    timestamp=1000.0,
+                    payload={"app": "Code.exe"},
+                    source="foreground",
+                )
             storage.close()
 
-        final = Storage(db_path=tmp_db_path)
-        events = final.get_events()
+        final = Storage(db_path=db)
+        events = final.get_raw_events()
         assert len(events) == 1
         final.close()

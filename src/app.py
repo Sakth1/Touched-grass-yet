@@ -29,5 +29,6 @@ async def entrypoint(page: ft.Page):
 
     if manager.detect_platform() == SystemType.ANDROID:
         from core.collectors.android.usage_stats import check_usage_stats_permission
+
         if not check_usage_stats_permission():
             await home.show_permission_dialog()

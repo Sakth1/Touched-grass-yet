@@ -1,23 +1,19 @@
 from unittest.mock import patch
 
-from core.collectors.android.afk import _ACTIVE_THRESHOLD, _IDLE_THRESHOLD, AndroidAfkWatcher
+from core.collectors.android.afk import AndroidAfkWatcher
 from core.collectors.windows.afk import AfkWatcher
 from utils.models import WatcherConfig
 
 
 class TestAfkParity:
     async def test_schema_keys_match(self):
-        w = AfkWatcher(WatcherConfig(name="afk"))
+        w = AfkWatcher()
         a = AndroidAfkWatcher(WatcherConfig(name="android_afk"))
 
         assert "afk" in w.config.name
         assert "afk" in a.config.name
 
-    async def test_thresholds_match(self):
-        assert _ACTIVE_THRESHOLD == 60
-        assert _IDLE_THRESHOLD == 300
-
-    async def test_android_afk_tick_returns_correct_schema(self):
+    async def test_android_afk_tick_returns_present_key(self):
         mock_time = 1_000_000_000
 
         with (
@@ -30,12 +26,10 @@ class TestAfkParity:
 
         assert tick is not None
         assert tick.watcher == "android_afk"
-        assert "status" in tick.data
-        assert "idle_seconds" in tick.data
-        assert tick.data["status"] in ("active", "idle", "away")
-        assert isinstance(tick.data["idle_seconds"], float)
+        assert "present" in tick.data
+        assert isinstance(tick.data["present"], bool)
 
-    async def test_android_afk_screen_off_returns_away(self):
+    async def test_android_afk_screen_off_returns_not_present(self):
         mock_time = 1_000_000_000
 
         with (
@@ -47,9 +41,32 @@ class TestAfkParity:
             w = AndroidAfkWatcher()
             tick = await w.tick()
 
-        assert tick.data["status"] == "away"
+        assert tick.data["present"] is False
 
-    async def test_android_afk_idle_detection(self):
+    async def test_android_afk_no_recent_events_returns_not_present(self):
+        mock_time = 1_000_000_000
+
+        with (
+            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=True),
+            patch("core.collectors.android.afk.get_current_time_ms", return_value=mock_time),
+            patch("core.collectors.android.afk.is_screen_on", return_value=True),
+            patch(
+                "core.collectors.android.afk.query_usage_events",
+                return_value=[
+                    {
+                        "package_name": "com.test",
+                        "event_type": 2,
+                        "time_stamp_ms": mock_time - 120_000,
+                    }
+                ],
+            ),
+        ):
+            w = AndroidAfkWatcher()
+            tick = await w.tick()
+
+        assert tick.data["present"] is False
+
+    async def test_android_afk_recent_event_returns_present(self):
         mock_time = 1_000_000_000
 
         with (
@@ -70,8 +87,7 @@ class TestAfkParity:
             w = AndroidAfkWatcher()
             tick = await w.tick()
 
-        assert tick.data["status"] == "idle"
-        assert 119.0 <= tick.data["idle_seconds"] <= 121.0
+        assert tick.data["present"] is True
 
     async def test_windows_afk_tick_returns_correct_schema(self):
         w = AfkWatcher()
@@ -83,24 +99,12 @@ class TestAfkParity:
         assert "idle_seconds" in tick.data
         assert tick.data["status"] in ("active", "idle", "away")
 
-    async def test_afk_data_keys_and_types_match(self):
-        from core.collectors.android.afk import AndroidAfkWatcher
+    async def test_afk_schemas_diverge(self):
+        win_keys = {"status", "idle_seconds"}
+        and_keys = {"present"}
 
-        win = AfkWatcher()
-        win_tick = await win.tick()
-
-        and_w = AndroidAfkWatcher(WatcherConfig(name="android_afk"))
-        with (
-            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.afk.is_screen_on", return_value=True),
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=1_000_000),
-            patch("core.collectors.android.afk.query_usage_events", return_value=[]),
-        ):
-            and_tick = await and_w.tick()
-
-        assert win_tick.data.keys() == and_tick.data.keys()
-        for key in win_tick.data:
-            assert type(win_tick.data[key]) is type(and_tick.data[key])
+        assert win_keys != and_keys
+        assert "status" not in and_keys
 
 
 class TestPowerParity:
@@ -151,9 +155,6 @@ class TestPowerParity:
         assert "battery_pct" in tick.data
         assert "charging" in tick.data
 
-    async def test_power_watcher_keys_match(self):
-        assert {"battery_pct", "charging"} == {"battery_pct", "charging"}
-
     async def test_windows_power_data_types(self):
         from core.collectors.windows.power import PowerWatcher
 
@@ -187,7 +188,7 @@ class TestForegroundParity:
         assert "app" in tick.data
         assert "title" in tick.data
 
-    async def test_android_foreground_schema_keys(self):
+    async def test_android_foreground_initializes_without_tick(self):
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         MOCK_TIME = 1_700_000_000_000
@@ -203,7 +204,7 @@ class TestForegroundParity:
 
         assert tick is None
 
-    async def test_android_foreground_active_schema_keys(self):
+    async def test_android_foreground_transition_has_package_key(self):
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         MOCK_TIME = 1_700_000_000_000
@@ -212,24 +213,42 @@ class TestForegroundParity:
             patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
             patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME),
             patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[
-                {"package_name": "com.test.app", "event_type": 1, "time_stamp_ms": MOCK_TIME - 5000},
-            ]),
+            patch(
+                "core.collectors.android.foreground.query_usage_events",
+                return_value=[
+                    {"package_name": "com.test.app", "event_type": 1, "time_stamp_ms": MOCK_TIME - 5000},
+                ],
+            ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
         ):
             w = AndroidForegroundWatcher()
             tick = await w.tick()
 
-        assert tick is not None
-        assert tick.watcher == "android_foreground"
-        assert "package" in tick.data
-        assert "app_name" in tick.data
-        assert "durations" in tick.data
-        assert "source" in tick.data
+        assert tick is None
+
+        with (
+            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
+            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME + 10_000),
+            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.query_usage_events",
+                return_value=[
+                    {"package_name": "com.other.app", "event_type": 1, "time_stamp_ms": MOCK_TIME + 5000},
+                ],
+            ),
+            patch("core.collectors.android.foreground.is_screen_on", return_value=True),
+        ):
+            tick2 = await w.tick()
+
+        assert tick2 is not None
+        assert tick2.watcher == "android_foreground"
+        assert "package" in tick2.data
+        assert "app_name" in tick2.data
+        assert tick2.data["package"] == "com.other.app"
 
     async def test_foreground_schemas_diverge(self):
         win_keys = {"app", "title"}
-        and_keys = {"package", "app_name", "durations", "source"}
+        and_keys = {"package", "app_name"}
 
         assert win_keys != and_keys
 
@@ -275,9 +294,7 @@ class TestPermissionDegradation:
             assert not w._permission_lost
             assert tick is None
 
-    async def test_afk_reports_away_on_permission_loss_screen_off(self):
-        from core.collectors.android.afk import AndroidAfkWatcher
-
+    async def test_afk_screen_off_returns_not_present(self):
         with (
             patch("core.collectors.android.afk.check_usage_stats_permission", return_value=False),
             patch("core.collectors.android.afk.is_screen_on", return_value=False),
@@ -287,11 +304,9 @@ class TestPermissionDegradation:
             tick = await w.tick()
 
         assert tick is not None
-        assert tick.data["status"] == "away"
+        assert tick.data["present"] is False
 
-    async def test_afk_reports_active_on_permission_loss_screen_on(self):
-        from core.collectors.android.afk import AndroidAfkWatcher
-
+    async def test_afk_screen_on_no_permission_returns_present(self):
         with (
             patch("core.collectors.android.afk.check_usage_stats_permission", return_value=False),
             patch("core.collectors.android.afk.is_screen_on", return_value=True),
@@ -301,4 +316,4 @@ class TestPermissionDegradation:
             tick = await w.tick()
 
         assert tick is not None
-        assert tick.data["status"] == "active"
+        assert tick.data["present"] is True

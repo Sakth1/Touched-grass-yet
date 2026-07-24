@@ -9,9 +9,7 @@ LOG_FILE = "app.log"
 MAX_BYTES = 5 * 1024 * 1024
 BACKUP_COUNT = 3
 
-_formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 
 def setup_file_logging() -> str | None:

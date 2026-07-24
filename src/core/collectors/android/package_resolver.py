@@ -61,6 +61,7 @@ def _get_activity():
         return None
     try:
         from jnius import autoclass
+
         activity_host = autoclass(activity_host_class)
         _activity = activity_host.mActivity
         return _activity

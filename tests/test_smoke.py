@@ -8,16 +8,13 @@ class TestFixturesAvailable:
         ).fetchall()
         names = [r[0] for r in tables]
         assert "devices" in names
-        assert any(n.startswith("events_") for n in names)
-        assert any(n.startswith("observations_") for n in names)
-        assert any(n.startswith("sessions_") for n in names)
+        assert "raw_events" in names
+        assert "sessions" in names
 
     def test_device_registered(self, in_memory_db):
-        row = in_memory_db._conn.execute(
-            "SELECT device_id, is_current FROM devices LIMIT 1"
-        ).fetchone()
+        row = in_memory_db._conn.execute("SELECT device_id, is_current FROM devices LIMIT 1").fetchone()
         assert row is not None
-        assert row[0] == "00000000-0000-0000-0000-000000000001"
+        assert row[0] is not None
         assert row[1] == 1
 
     def test_make_tick_creates_ticks(self, make_tick):
@@ -53,14 +50,26 @@ class TestFixturesAvailable:
         result = asyncio.run(w.tick())
         assert result is None
 
-    def test_in_memory_db_stores_ticks(self, in_memory_db, make_tick):
-        t1 = make_tick(watcher="foreground", data={"app": "Code.exe"})
-        t2 = make_tick(watcher="afk", data={"status": "active"})
-        t3 = make_tick(watcher="foreground", data={"app": "Code.exe"})
-        in_memory_db.on_tick(t1)
-        in_memory_db.on_tick(t2)
-        in_memory_db.on_tick(t3)
-        events = in_memory_db.get_events()
-        assert len(events) == 2
-        assert events[0]["watcher"] == "foreground"
-        assert events[1]["watcher"] == "afk"
+    def test_in_memory_db_stores_events(self, in_memory_db, make_tick):
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1000.0,
+            payload={"app": "Code.exe"},
+            source="foreground",
+        )
+        in_memory_db.write_event(
+            event_type="idle_transition",
+            timestamp=1100.0,
+            payload={"status": "active"},
+            source="afk",
+        )
+        in_memory_db.write_event(
+            event_type="foreground_transition",
+            timestamp=1200.0,
+            payload={"app": "Code.exe"},
+            source="foreground",
+        )
+        events = in_memory_db.get_raw_events()
+        assert len(events) == 3
+        assert events[0]["event_type"] == "foreground_transition"
+        assert events[1]["event_type"] == "idle_transition"
