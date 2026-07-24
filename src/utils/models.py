@@ -11,19 +11,6 @@ class SystemType(Enum):
     ANDROID = 2
 
 
-OBSERVATION_TYPE_SNAPSHOT = "snapshot"
-OBSERVATION_TYPE_EVENT = "event"
-OBSERVATION_TYPE_STATE = "state"
-
-
-@dataclass
-class Observation:
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    watcher: str = ""
-    data: dict[str, Any] = field(default_factory=dict)
-    observation_type: str = OBSERVATION_TYPE_SNAPSHOT
-
-
 @dataclass
 class Tick:
     id: UUID = field(default_factory=uuid4)
@@ -37,3 +24,15 @@ class WatcherConfig:
     name: str = ""
     interval_s: float = 1.0
     enabled: bool = True
+
+
+@dataclass
+class RawEvent:
+    id: int = 0
+    device_id: str = ""
+    platform: str = ""
+    event_type: str = ""
+    timestamp: float = 0.0
+    collected_at: float = 0.0
+    payload: dict[str, Any] = field(default_factory=dict)
+    source: str = ""

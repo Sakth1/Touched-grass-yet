@@ -42,10 +42,13 @@ def _file_device_id() -> str:
     new_id = str(uuid.uuid4())
     try:
         with open(device_file, "w") as f:
-            json.dump({
-                "device_id": new_id,
-                "hostname": os.environ.get("COMPUTERNAME", ""),
-            }, f)
+            json.dump(
+                {
+                    "device_id": new_id,
+                    "hostname": os.environ.get("COMPUTERNAME", ""),
+                },
+                f,
+            )
     except Exception:
         pass
     return new_id

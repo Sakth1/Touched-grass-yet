@@ -7,32 +7,51 @@ from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
 from core.storage import Storage
 from core.tick_bus import TickBus
-from utils.models import Observation, SystemType, Tick
+from utils.models import SystemType, Tick
 
 logger = logging.getLogger(__name__)
 
-_OBSERVATION_TYPES: dict[str, str] = {
-    "foreground": "event",
-    "android_foreground": "event",
-    "afk": "snapshot",
-    "android_afk": "snapshot",
-    "power": "state",
-    "android_power": "state",
-}
 
-
-class _ObservationBridge:
-    def __init__(self, storage: Storage):
+class _EventBridge:
+    def __init__(self, storage: Storage, platform: str):
         self._storage = storage
+        self._platform = platform
+        self._last_app: dict[str, str | None] = {}
 
     def __call__(self, tick: Tick) -> None:
-        obs = Observation(
-            timestamp=tick.timestamp,
-            watcher=tick.watcher,
-            data=tick.data,
-            observation_type=_OBSERVATION_TYPES.get(tick.watcher, "snapshot"),
+        ts = tick.timestamp.timestamp()
+        watcher = tick.watcher
+        data = tick.data
+
+        event_type = _watcher_to_event_type(watcher)
+        if event_type is None:
+            return
+
+        if event_type == "foreground_transition":
+            app_key = data.get("app") or data.get("package", "unknown")
+            if app_key == self._last_app.get(watcher):
+                return
+            self._last_app[watcher] = app_key
+
+        self._storage.write_event(
+            event_type=event_type,
+            timestamp=ts,
+            payload=data,
+            source=watcher,
         )
-        self._storage.on_observation(obs)
+
+
+def _watcher_to_event_type(watcher: str) -> str | None:
+    mapping = {
+        "foreground": "foreground_transition",
+        "android_foreground": "foreground_transition",
+        "android_app_usage": "app_usage_interval",
+        "afk": "idle_transition",
+        "android_afk": "user_presence",
+        "power": "power_change",
+        "android_power": "power_change",
+    }
+    return mapping.get(watcher)
 
 
 class CollectionManager:
@@ -48,7 +67,7 @@ class CollectionManager:
         self._auto_paused = False
         self._screen_monitor_task: asyncio.Task | None = None
         self._on_pause_changed = None
-        self._obs_bridge = _ObservationBridge(self._storage)
+        self._event_bridge = _EventBridge(self._storage, "")
 
     def detect_platform(self) -> SystemType:
         system = platform.system()
@@ -75,8 +94,7 @@ class CollectionManager:
         self._system_type = self.detect_platform()
         logger.info("Detected platform: %s", self._system_type)
 
-        self._bus.subscribe(self._storage.on_tick)
-        self._bus.subscribe(self._obs_bridge)
+        self._bus.subscribe(self._event_bridge)
 
         self._runtime = self._create_runtime()
 
@@ -111,8 +129,7 @@ class CollectionManager:
         await self._scheduler.stop()
         if self._runtime:
             self._runtime.shutdown()
-        self._bus.unsubscribe(self._storage.on_tick)
-        self._bus.unsubscribe(self._obs_bridge)
+        self._bus.unsubscribe(self._event_bridge)
         logger.info("Collection stopped")
 
     def pause(self) -> None:
@@ -155,10 +172,12 @@ class CollectionManager:
             if was_on and not now_on:
                 self._auto_paused = True
                 self._set_paused(True)
+                self._storage.write_event("screen_state_change", {"screen_on": False}, source="screen_monitor")
                 logger.info("Screen turned off — collection auto-paused")
             elif not was_on and now_on and self._auto_paused:
                 self._auto_paused = False
                 self._set_paused(False)
+                self._storage.write_event("screen_state_change", {"screen_on": True}, source="screen_monitor")
                 logger.info("Screen turned on — collection auto-resumed")
             was_on = now_on
 

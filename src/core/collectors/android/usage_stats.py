@@ -26,6 +26,7 @@ def _get_activity():
         return None
     try:
         from jnius import autoclass
+
         activity_host = autoclass(activity_host_class)
         _activity = activity_host.mActivity
         return _activity
@@ -40,6 +41,7 @@ def _ensure_jnius():
         return True
     try:
         from jnius import autoclass
+
         _Context = autoclass("android.content.Context")
         _UsageStatsManager = autoclass("android.app.usage.UsageStatsManager")
         _UsageEvents = autoclass("android.app.usage.UsageEvents")
@@ -61,6 +63,7 @@ def check_usage_stats_permission() -> bool:
         if activity is None:
             return False
         from jnius import autoclass
+
         AppOpsManager = autoclass("android.app.AppOpsManager")
         Process = autoclass("android.os.Process")
         Context = autoclass("android.content.Context")
@@ -120,11 +123,13 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
         event = _UsageEventClass()
         while events.hasNextEvent():
             events.getNextEvent(event)
-            result.append({
-                "package_name": event.getPackageName(),
-                "event_type": event.getEventType(),
-                "time_stamp_ms": event.getTimeStamp(),
-            })
+            result.append(
+                {
+                    "package_name": event.getPackageName(),
+                    "event_type": event.getEventType(),
+                    "time_stamp_ms": event.getTimeStamp(),
+                }
+            )
         return result
     except Exception as e:
         if "SecurityException" in type(e).__name__:
@@ -178,6 +183,7 @@ def get_battery_info() -> dict:
 
 def get_current_time_ms() -> int:
     import time
+
     return int(time.time() * 1000)
 
 
@@ -187,6 +193,7 @@ def open_usage_access_settings() -> bool:
         if activity is None:
             return False
         from jnius import autoclass
+
         Intent = autoclass("android.content.Intent")
         Settings = autoclass("android.provider.Settings")
         intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
@@ -196,10 +203,13 @@ def open_usage_access_settings() -> bool:
     except Exception:
         logger.exception("Failed to open usage access settings via jnius")
         import subprocess
+
         try:
             subprocess.run(
                 ["am", "start", "-a", "android.settings.USAGE_ACCESS_SETTINGS", "--user", "0"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             return True
         except Exception as e2:

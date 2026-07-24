@@ -8,38 +8,10 @@ from pathlib import Path
 
 from core.device_identity import get_device_id
 from core.paths import get_data_dir
-from utils.models import Observation, Tick
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 2
-
-MERGE_CONFIG: dict[str, dict] = {
-    "android_foreground": {
-        "merge_keys": None,
-        "pulsetime": 60.0,
-    },
-    "android_afk": {
-        "merge_keys": ["status"],
-        "pulsetime": 10.0,
-    },
-    "android_power": {
-        "merge_keys": None,
-        "pulsetime": 120.0,
-    },
-    "foreground": {
-        "merge_keys": None,
-        "pulsetime": 3.0,
-    },
-    "afk": {
-        "merge_keys": ["status"],
-        "pulsetime": 10.0,
-    },
-    "power": {
-        "merge_keys": None,
-        "pulsetime": 120.0,
-    },
-}
+SCHEMA_VERSION = 5
 
 
 def _db_path() -> str:
@@ -48,12 +20,6 @@ def _db_path() -> str:
 
 def _schema_dir() -> str:
     return os.path.join(os.path.dirname(__file__), "schemas")
-
-
-def _epoch(dt: datetime) -> float:
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
 
 
 class Storage:
@@ -66,10 +32,7 @@ class Storage:
 
         path = db_path or _db_path()
         if self._device_id == self._TEST_DEVICE_ID and path != ":memory:":
-            logger.warning(
-                "Test device ID used with file-based DB at %s — "
-                "this may contaminate production data", path
-            )
+            logger.warning("Test device ID used with file-based DB at %s — this may contaminate production data", path)
 
         parent = os.path.dirname(path)
         if parent:
@@ -118,127 +81,47 @@ class Storage:
             (now, self._device_id),
         )
 
-    def _table_name(self) -> str:
-        return f"events_{self._short_id}"
-
-    def _data_matches(self, tick: Tick, last_data: str | None) -> bool:
-        if last_data is None:
-            return False
-        cfg = MERGE_CONFIG.get(tick.watcher, {"merge_keys": None})
-        keys = cfg["merge_keys"]
-        last = json.loads(last_data)
-        if keys is None:
-            return tick.data == last
-        return all(tick.data.get(k) == last.get(k) for k in keys)
-
-    def on_tick(self, tick: Tick) -> None:
-        try:
-            ts = _epoch(tick.timestamp)
-
-            last = self._conn.execute(
-                f"""SELECT id, timestamp, duration, data
-                    FROM {self._table_name()}
-                    WHERE watcher = ? ORDER BY timestamp DESC LIMIT 1""",
-                (tick.watcher,),
-            ).fetchall()
-
-            if last:
-                last_id, last_ts, last_dur, last_data = last[0]
-                if self._data_matches(tick, last_data):
-                    pulse_end = last_ts + last_dur + MERGE_CONFIG.get(
-                        tick.watcher, {}
-                    ).get("pulsetime", 3.0)
-                    if ts <= pulse_end:
-                        new_dur = round(max(last_dur, ts - last_ts), 2)
-                        self._conn.execute(
-                            f"UPDATE {self._table_name()} SET duration = ? WHERE id = ?",
-                            (new_dur, last_id),
-                        )
-                        return
-
-            self._conn.execute(
-                f"""INSERT INTO {self._table_name()}
-                    (watcher, timestamp, duration, data)
-                    VALUES (?, ?, ?, ?)""",
-                (tick.watcher, ts, 0.0, json.dumps(tick.data)),
-            )
-        except Exception:
-            logger.exception("Storage write failed for watcher %s", tick.watcher)
-
-    def get_events(
+    def write_event(
         self,
-        watcher: str | None = None,
-        since: float | None = None,
-        until: float | None = None,
-        device_id: str | None = None,
-        limit: int | None = None,
-        desc: bool = False,
-    ) -> list[dict]:
-        tbl = f"events_{device_id[:8]}" if device_id else self._table_name()
-        filters = []
-        params = []
+        event_type: str,
+        timestamp: float,
+        payload: dict,
+        source: str,
+    ) -> int:
+        self._conn.execute(
+            """INSERT INTO raw_events
+               (device_id, platform, event_type, timestamp, collected_at, payload, source)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                self._device_id,
+                self._platform,
+                event_type,
+                timestamp,
+                datetime.now(timezone.utc).timestamp(),
+                json.dumps(payload),
+                source,
+            ),
+        )
+        return self._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
-        if watcher:
-            filters.append("watcher = ?")
-            params.append(watcher)
-        if since is not None:
-            filters.append("timestamp >= ?")
-            params.append(since)
-        if until is not None:
-            filters.append("timestamp <= ?")
-            params.append(until)
-
-        sql = f"SELECT id, watcher, timestamp, duration, data FROM {tbl}"
-        if filters:
-            sql += " WHERE " + " AND ".join(filters)
-        sql += " ORDER BY timestamp DESC" if desc else " ORDER BY timestamp ASC"
-        if limit is not None:
-            sql += f" LIMIT {limit}"
-
-        return [
-            {
-                "id": r[0],
-                "watcher": r[1],
-                "timestamp": r[2],
-                "duration": r[3],
-                "data": json.loads(r[4]),
-            }
-            for r in self._conn.execute(sql, params).fetchall()
-        ]
-
-    def _observations_table(self) -> str:
-        return f"observations_{self._short_id}"
-
-    def _sessions_table(self) -> str:
-        return f"sessions_{self._short_id}"
-
-    def on_observation(self, obs: Observation) -> None:
-        try:
-            ts = _epoch(obs.timestamp)
-            self._conn.execute(
-                f"""INSERT INTO {self._observations_table()}
-                    (watcher, timestamp, data, obs_type)
-                    VALUES (?, ?, ?, ?)""",
-                (obs.watcher, ts, json.dumps(obs.data), obs.observation_type),
-            )
-        except Exception:
-            logger.exception("Storage write failed for watcher %s", obs.watcher)
-
-    def get_observations(
+    def get_raw_events(
         self,
-        watcher: str | None = None,
+        event_type: str | None = None,
+        source: str | None = None,
         since: float | None = None,
         until: float | None = None,
         limit: int | None = None,
         desc: bool = False,
     ) -> list[dict]:
-        tbl = self._observations_table()
         filters: list[str] = []
         params: list = []
 
-        if watcher:
-            filters.append("watcher = ?")
-            params.append(watcher)
+        if event_type:
+            filters.append("event_type = ?")
+            params.append(event_type)
+        if source:
+            filters.append("source = ?")
+            params.append(source)
         if since is not None:
             filters.append("timestamp >= ?")
             params.append(since)
@@ -246,7 +129,7 @@ class Storage:
             filters.append("timestamp <= ?")
             params.append(until)
 
-        sql = f"SELECT id, watcher, timestamp, data, obs_type FROM {tbl}"
+        sql = "SELECT id, device_id, platform, event_type, timestamp, collected_at, payload, source FROM raw_events"
         if filters:
             sql += " WHERE " + " AND ".join(filters)
         sql += " ORDER BY timestamp DESC" if desc else " ORDER BY timestamp ASC"
@@ -256,40 +139,66 @@ class Storage:
         return [
             {
                 "id": r[0],
-                "watcher": r[1],
-                "timestamp": r[2],
-                "data": json.loads(r[3]),
-                "obs_type": r[4],
+                "device_id": r[1],
+                "platform": r[2],
+                "event_type": r[3],
+                "timestamp": r[4],
+                "collected_at": r[5],
+                "payload": json.loads(r[6]),
+                "source": r[7],
             }
             for r in self._conn.execute(sql, params).fetchall()
         ]
 
-    def get_sessions(
+    def write_canonical_session(self, session: dict) -> int:
+        self._conn.execute(
+            """INSERT INTO sessions
+               (device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                session["device_id"],
+                session["platform"],
+                session["start_ts"],
+                session.get("end_ts"),
+                session.get("duration_s"),
+                session["app_key"],
+                json.dumps(session["payload"]),
+                session.get("session_type", "foreground"),
+            ),
+        )
+        return self._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def get_canonical_sessions(
         self,
-        watcher: str | None = None,
-        since: float | None = None,
-        until: float | None = None,
         app_key: str | None = None,
+        device_id: str | None = None,
+        since: float | None = None,
+        until: float | None = None,
+        platform: str | None = None,
         limit: int | None = None,
     ) -> list[dict]:
-        tbl = self._sessions_table()
         filters: list[str] = []
         params: list = []
 
-        if watcher:
-            filters.append("watcher = ?")
-            params.append(watcher)
+        if app_key:
+            filters.append("app_key = ?")
+            params.append(app_key)
+        if device_id:
+            filters.append("device_id = ?")
+            params.append(device_id)
         if since is not None:
             filters.append("start_ts >= ?")
             params.append(since)
         if until is not None:
             filters.append("COALESCE(end_ts, start_ts) <= ?")
             params.append(until)
-        if app_key:
-            filters.append("app_key = ?")
-            params.append(app_key)
+        if platform:
+            filters.append("platform = ?")
+            params.append(platform)
 
-        sql = f"SELECT id, watcher, start_ts, end_ts, duration_s, app_key, data, source FROM {tbl}"
+        sql = (
+            "SELECT id, device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type FROM sessions"
+        )
         if filters:
             sql += " WHERE " + " AND ".join(filters)
         sql += " ORDER BY start_ts ASC"
@@ -299,39 +208,31 @@ class Storage:
         return [
             {
                 "id": r[0],
-                "watcher": r[1],
-                "start_ts": r[2],
-                "end_ts": r[3],
-                "duration_s": r[4],
-                "app_key": r[5],
-                "data": json.loads(r[6]),
-                "source": r[7],
+                "device_id": r[1],
+                "platform": r[2],
+                "start_ts": r[3],
+                "end_ts": r[4],
+                "duration_s": r[5],
+                "app_key": r[6],
+                "payload": json.loads(r[7]),
+                "session_type": r[8],
             }
             for r in self._conn.execute(sql, params).fetchall()
         ]
 
-    def write_session(self, session: dict) -> int:
+    def clear_all_data(self) -> None:
+        self._conn.execute("DELETE FROM raw_events")
+        self._conn.execute("DELETE FROM sessions")
+        for suffix in ("events_", "observations_", "sessions_"):
+            legacy = f"{suffix}{self._short_id}"
+            self._conn.execute(f"DROP TABLE IF EXISTS {legacy}")
         self._conn.execute(
-            f"""INSERT INTO {self._sessions_table()}
-                (watcher, start_ts, end_ts, duration_s, app_key, data, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (
-                session["watcher"],
-                session["start_ts"],
-                session.get("end_ts"),
-                session.get("duration_s"),
-                session["app_key"],
-                json.dumps(session["data"]),
-                session.get("source"),
-            ),
+            "UPDATE devices SET first_seen = ? WHERE device_id = ?",
+            (datetime.now(timezone.utc).isoformat(), self._device_id),
         )
-        return self._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-    def update_session_end(self, session_id: int, end_ts: float, duration_s: float) -> None:
-        self._conn.execute(
-            f"UPDATE {self._sessions_table()} SET end_ts = ?, duration_s = ? WHERE id = ?",
-            (end_ts, duration_s, session_id),
-        )
+        self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        self._conn.execute("VACUUM")
+        logger.warning("All data cleared for device %s", self._short_id)
 
     def close(self) -> None:
         self._conn.close()

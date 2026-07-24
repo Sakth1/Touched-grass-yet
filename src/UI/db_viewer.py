@@ -11,13 +11,14 @@ from core.paths import get_export_dir
 
 logger = logging.getLogger(__name__)
 
-_WATCHERS = [
+_SOURCES = [
     "All",
     "foreground",
-    "afk",
-    "power",
     "android_foreground",
+    "android_app_usage",
+    "afk",
     "android_afk",
+    "power",
     "android_power",
 ]
 
@@ -128,8 +129,8 @@ class DbViewer:
 
     def _populate_watcher_filter(self):
         current = self._watcher_dd.value
-        self._watcher_dd.options = [ft.dropdown.Option(w) for w in _WATCHERS]
-        self._watcher_dd.value = current if current in _WATCHERS else "All"
+        self._watcher_dd.options = [ft.dropdown.Option(w) for w in _SOURCES]
+        self._watcher_dd.value = current if current in _SOURCES else "All"
 
     def _load_data(self, e=None):
         try:
@@ -142,9 +143,9 @@ class DbViewer:
 
             kw: dict = {"desc": True, "limit": limit}
             if watcher and watcher != "All":
-                kw["watcher"] = watcher
+                kw["source"] = watcher
 
-            rows = self._manager.storage.get_events(**kw)
+            rows = self._manager.storage.get_raw_events(**kw)
             self._render_rows(rows)
             self._status_text.value = f"{len(rows)} rows"
         except Exception as ex:
@@ -167,10 +168,7 @@ class DbViewer:
 
         for r in rows:
             ts = datetime.datetime.fromtimestamp(r["timestamp"], tz=datetime.timezone.utc).strftime("%H:%M:%S")
-            dur = r["duration"]
-            dur_str = f"{dur}s" if dur else "-"
-            data = r["data"]
-            data_str = _fmt_data(data)
+            payload_str = _fmt_data(r["payload"])
 
             card = ft.Container(
                 padding=ft.padding.Padding.only(left=8, right=8, top=6, bottom=6),
@@ -181,16 +179,16 @@ class DbViewer:
                         ft.Row(
                             controls=[
                                 ft.Text(f"#{r['id']}", size=11, color=ft.Colors.GREY_500, width=50),
-                                ft.Text(r["watcher"], size=11, weight=ft.FontWeight.W_600, width=140),
+                                ft.Text(r["source"], size=11, weight=ft.FontWeight.W_600, width=130),
+                                ft.Text(r["event_type"], size=11, color=ft.Colors.GREY_400, width=170),
                                 ft.Text(ts, size=11, color=ft.Colors.GREY_400, width=70),
-                                ft.Text(dur_str, size=11, color=ft.Colors.GREY_400, width=60),
                             ],
                             spacing=4,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
                         ),
                         ft.Container(
                             content=ft.Text(
-                                data_str,
+                                payload_str,
                                 size=11,
                                 font_family="monospace",
                                 selectable=True,
@@ -204,7 +202,6 @@ class DbViewer:
                 ),
             )
             self._rows_lv.controls.append(card)
-
 
     async def _export_csv(self, e=None):
         if platform.system() == "Android":
@@ -220,11 +217,11 @@ class DbViewer:
 
     async def _export_via_saf(self, fmt: str):
         try:
-            rows = self._manager.storage.get_events()
+            rows = self._manager.storage.get_raw_events()
             if fmt == "csv":
-                filename, data = ExportService.prepare_csv(rows)
+                filename, data = ExportService.prepare_raw_events_csv(rows)
             else:
-                filename, data = ExportService.prepare_json(rows)
+                filename, data = ExportService.prepare_raw_events(rows)
             result = await self._file_picker.save_file(
                 file_name=filename,
                 src_bytes=data,
@@ -245,13 +242,13 @@ class DbViewer:
 
     def _export_direct(self, fmt: str):
         try:
-            rows = self._manager.storage.get_events()
+            rows = self._manager.storage.get_raw_events()
             export_dir = get_export_dir()
 
             if fmt == "csv":
-                filename, data = ExportService.prepare_csv(rows)
+                filename, data = ExportService.prepare_raw_events_csv(rows)
             else:
-                filename, data = ExportService.prepare_json(rows)
+                filename, data = ExportService.prepare_raw_events(rows)
             path = os.path.join(export_dir, filename)
             with open(path, "wb") as f:
                 f.write(data)
