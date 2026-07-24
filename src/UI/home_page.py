@@ -17,7 +17,7 @@ class HomePage:
         self.page = page
         self._manager = manager
 
-        self._settings = SettingsPanel(page)
+        self._settings = SettingsPanel(page, manager)
         self._db_viewer = DbViewer(page, manager)
         self._status_text = ft.Text("Status: Stopped", size=16)
         self._platform_text = ft.Text(f"Platform: {manager.system_type.name}", size=14)
@@ -207,6 +207,7 @@ class HomePage:
     async def _handle_start(self, e):
         if self._manager.system_type == SystemType.ANDROID:
             from core.collectors.android.usage_stats import check_usage_stats_permission
+
             if not check_usage_stats_permission():
                 await self.show_permission_dialog()
                 return
@@ -261,4 +262,5 @@ class HomePage:
         dlg.open = False
         self.page.update()
         from core.collectors.android.usage_stats import open_usage_access_settings
+
         open_usage_access_settings()

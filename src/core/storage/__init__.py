@@ -66,10 +66,7 @@ class Storage:
 
         path = db_path or _db_path()
         if self._device_id == self._TEST_DEVICE_ID and path != ":memory:":
-            logger.warning(
-                "Test device ID used with file-based DB at %s — "
-                "this may contaminate production data", path
-            )
+            logger.warning("Test device ID used with file-based DB at %s — this may contaminate production data", path)
 
         parent = os.path.dirname(path)
         if parent:
@@ -145,9 +142,7 @@ class Storage:
             if last:
                 last_id, last_ts, last_dur, last_data = last[0]
                 if self._data_matches(tick, last_data):
-                    pulse_end = last_ts + last_dur + MERGE_CONFIG.get(
-                        tick.watcher, {}
-                    ).get("pulsetime", 3.0)
+                    pulse_end = last_ts + last_dur + MERGE_CONFIG.get(tick.watcher, {}).get("pulsetime", 3.0)
                     if ts <= pulse_end:
                         new_dur = round(max(last_dur, ts - last_ts), 2)
                         self._conn.execute(
@@ -332,6 +327,15 @@ class Storage:
             f"UPDATE {self._sessions_table()} SET end_ts = ?, duration_s = ? WHERE id = ?",
             (end_ts, duration_s, session_id),
         )
+
+    def clear_all_data(self) -> None:
+        for tbl in [self._table_name(), self._observations_table(), self._sessions_table()]:
+            self._conn.execute(f"DELETE FROM {tbl}")
+        self._conn.execute(
+            "UPDATE devices SET first_seen = ? WHERE device_id = ?",
+            (datetime.now(timezone.utc).isoformat(), self._device_id),
+        )
+        logger.warning("All data cleared for device %s", self._short_id)
 
     def close(self) -> None:
         self._conn.close()

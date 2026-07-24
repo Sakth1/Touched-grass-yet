@@ -64,9 +64,11 @@ class CollectionManager:
         match self._system_type:
             case SystemType.WINDOWS:
                 from core.collectors.windows.runtime import WindowsRuntime
+
                 return WindowsRuntime(self._config)
             case SystemType.ANDROID:
                 from core.collectors.android.runtime import AndroidRuntime
+
                 return AndroidRuntime(self._config)
             case _:
                 raise RuntimeError(f"Unsupported platform: {self._system_type}")
@@ -173,6 +175,17 @@ class CollectionManager:
     @property
     def system_type(self) -> SystemType:
         return self._system_type
+
+    def clear_all_data(self) -> None:
+        was_paused = self._scheduler.is_paused if self._running else True
+        if not was_paused:
+            self._scheduler.pause()
+        self._storage.clear_all_data()
+        self._config.collection_enabled = False
+        self._config.save()
+        logger.warning("All data cleared and config reset")
+        if self._on_pause_changed:
+            self._on_pause_changed(True)
 
     @property
     def storage(self) -> Storage:

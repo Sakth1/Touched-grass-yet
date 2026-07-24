@@ -2,6 +2,7 @@ import logging
 
 import flet as ft
 
+from core.application.collection_manager import CollectionManager
 from core.logging_setup import read_log_lines
 
 logger = logging.getLogger(__name__)
@@ -10,8 +11,9 @@ MAX_VISIBLE_LINES = 500
 
 
 class SettingsPanel:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, manager: CollectionManager):
         self._page = page
+        self._manager = manager
         self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._log_scroll = ft.ListView(
             expand=True,
@@ -44,6 +46,13 @@ class SettingsPanel:
                         "View App Log",
                         icon=ft.Icons.DESCRIPTION,
                         on_click=self._load_log,
+                    ),
+                    ft.Divider(height=5),
+                    ft.Button(
+                        "Clear All Data",
+                        icon=ft.Icons.DELETE_FOREVER,
+                        on_click=self._confirm_clear_data,
+                        color=ft.Colors.RED_400,
                     ),
                     ft.Row(
                         controls=[
@@ -93,6 +102,41 @@ class SettingsPanel:
     @property
     def overlay(self) -> ft.Container:
         return self._view
+
+    def _confirm_clear_data(self, e=None):
+        dlg = ft.AlertDialog(
+            title=ft.Text("Clear All Data"),
+            content=ft.Text(
+                "This will permanently delete all collected data "
+                "(events, observations, sessions) and reset your device.\n\n"
+                "This action cannot be undone.",
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda e: self._dismiss_dialog(dlg)),
+                ft.ElevatedButton(
+                    "Delete Everything",
+                    on_click=lambda e: self._handle_clear_data(dlg),
+                    color=ft.Colors.RED_400,
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self._page.show_dialog(dlg)
+
+    def _dismiss_dialog(self, dlg):
+        dlg.open = False
+        self._page.update()
+
+    def _handle_clear_data(self, dlg):
+        dlg.open = False
+        self._page.update()
+        self._manager.clear_all_data()
+        self._log_scroll.controls.clear()
+        self._log_scroll.controls.append(
+            ft.Text("All data cleared.", size=11, color=ft.Colors.RED_400),
+        )
+        self._status_text.value = "Data cleared — collection paused"
+        self._page.update()
 
     def _load_log(self, e=None):
         try:

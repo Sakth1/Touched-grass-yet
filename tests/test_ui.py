@@ -44,7 +44,7 @@ class TestSettingsPanelErrorHandling:
     def panel(self, mock_page):
         from UI.settings_page import SettingsPanel
 
-        return SettingsPanel(mock_page)
+        return SettingsPanel(mock_page, MagicMock())
 
     def test_load_log_handles_empty_log(self, panel):
         with patch("UI.settings_page.read_log_lines", return_value=[]):
