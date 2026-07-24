@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timezone
-from typing import Callable
 
 from core.storage import Storage
 from utils.models import Observation
@@ -74,8 +73,6 @@ def sessionize_observations(
             current_obs = [obs]
             current_sources = {_source_from_obs(obs)}
             continue
-
-        gap = (obs.timestamp - current_start).total_seconds() if current_start else 0.0
 
         if app_key == current_app_key:
             gap_from_last = (obs.timestamp - current_obs[-1].timestamp).total_seconds()
