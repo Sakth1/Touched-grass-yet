@@ -136,7 +136,7 @@ class TestSchemaMigration:
         from core.storage import Storage
 
         storage1 = Storage(db_path=tmp_db_path)
-        assert storage1._conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert storage1._conn.execute("PRAGMA user_version").fetchone()[0] == 2
 
         tick = make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0)
         storage1.on_tick(tick)
@@ -144,7 +144,7 @@ class TestSchemaMigration:
         storage1.close()
 
         storage2 = Storage(db_path=tmp_db_path)
-        assert storage2._conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert storage2._conn.execute("PRAGMA user_version").fetchone()[0] == 2
         events = storage2.get_events()
         assert len(events) == 1
         assert events[0]["data"]["app"] == "Code.exe"
@@ -155,7 +155,7 @@ class TestSchemaMigration:
 
         for i in range(5):
             storage = Storage(db_path=tmp_db_path)
-            assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 1
+            assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 2
             if i == 0:
                 storage.on_tick(make_tick(watcher="foreground", data={"app": "Code.exe"}, timestamp=T0))
             storage.close()

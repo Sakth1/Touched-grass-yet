@@ -1,9 +1,18 @@
 import asyncio
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
 from core.tick_bus import TickBus
+
+
+@pytest.fixture(autouse=True)
+def _mock_storage():
+    with patch("core.application.collection_manager.Storage") as mock:
+        mock.return_value = MagicMock()
+        yield
 
 
 class TestPauseResume:

@@ -8,11 +8,11 @@ from pathlib import Path
 
 from core.device_identity import get_device_id
 from core.paths import get_data_dir
-from utils.models import Tick
+from utils.models import Observation, Tick
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 MERGE_CONFIG: dict[str, dict] = {
     "android_foreground": {
@@ -57,12 +57,20 @@ def _epoch(dt: datetime) -> float:
 
 
 class Storage:
+    _TEST_DEVICE_ID = "00000000-0000-0000-0000-000000000001"
+
     def __init__(self, db_path: str | None = None):
         self._device_id = get_device_id()
         self._short_id = self._device_id[:8]
         self._platform = platform.system().lower()
 
         path = db_path or _db_path()
+        if self._device_id == self._TEST_DEVICE_ID and path != ":memory:":
+            logger.warning(
+                "Test device ID used with file-based DB at %s — "
+                "this may contaminate production data", path
+            )
+
         parent = os.path.dirname(path)
         if parent:
             os.makedirs(parent, exist_ok=True)
@@ -197,6 +205,133 @@ class Storage:
             }
             for r in self._conn.execute(sql, params).fetchall()
         ]
+
+    def _observations_table(self) -> str:
+        return f"observations_{self._short_id}"
+
+    def _sessions_table(self) -> str:
+        return f"sessions_{self._short_id}"
+
+    def on_observation(self, obs: Observation) -> None:
+        try:
+            ts = _epoch(obs.timestamp)
+            self._conn.execute(
+                f"""INSERT INTO {self._observations_table()}
+                    (watcher, timestamp, data, obs_type)
+                    VALUES (?, ?, ?, ?)""",
+                (obs.watcher, ts, json.dumps(obs.data), obs.observation_type),
+            )
+        except Exception:
+            logger.exception("Storage write failed for watcher %s", obs.watcher)
+
+    def get_observations(
+        self,
+        watcher: str | None = None,
+        since: float | None = None,
+        until: float | None = None,
+        limit: int | None = None,
+        desc: bool = False,
+    ) -> list[dict]:
+        tbl = self._observations_table()
+        filters: list[str] = []
+        params: list = []
+
+        if watcher:
+            filters.append("watcher = ?")
+            params.append(watcher)
+        if since is not None:
+            filters.append("timestamp >= ?")
+            params.append(since)
+        if until is not None:
+            filters.append("timestamp <= ?")
+            params.append(until)
+
+        sql = f"SELECT id, watcher, timestamp, data, obs_type FROM {tbl}"
+        if filters:
+            sql += " WHERE " + " AND ".join(filters)
+        sql += " ORDER BY timestamp DESC" if desc else " ORDER BY timestamp ASC"
+        if limit is not None:
+            sql += f" LIMIT {limit}"
+
+        return [
+            {
+                "id": r[0],
+                "watcher": r[1],
+                "timestamp": r[2],
+                "data": json.loads(r[3]),
+                "obs_type": r[4],
+            }
+            for r in self._conn.execute(sql, params).fetchall()
+        ]
+
+    def get_sessions(
+        self,
+        watcher: str | None = None,
+        since: float | None = None,
+        until: float | None = None,
+        app_key: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict]:
+        tbl = self._sessions_table()
+        filters: list[str] = []
+        params: list = []
+
+        if watcher:
+            filters.append("watcher = ?")
+            params.append(watcher)
+        if since is not None:
+            filters.append("start_ts >= ?")
+            params.append(since)
+        if until is not None:
+            filters.append("COALESCE(end_ts, start_ts) <= ?")
+            params.append(until)
+        if app_key:
+            filters.append("app_key = ?")
+            params.append(app_key)
+
+        sql = f"SELECT id, watcher, start_ts, end_ts, duration_s, app_key, data, source FROM {tbl}"
+        if filters:
+            sql += " WHERE " + " AND ".join(filters)
+        sql += " ORDER BY start_ts ASC"
+        if limit is not None:
+            sql += f" LIMIT {limit}"
+
+        return [
+            {
+                "id": r[0],
+                "watcher": r[1],
+                "start_ts": r[2],
+                "end_ts": r[3],
+                "duration_s": r[4],
+                "app_key": r[5],
+                "data": json.loads(r[6]),
+                "source": r[7],
+            }
+            for r in self._conn.execute(sql, params).fetchall()
+        ]
+
+    def write_session(self, session: dict) -> int:
+        self._conn.execute(
+            f"""INSERT INTO {self._sessions_table()}
+                (watcher, start_ts, end_ts, duration_s, app_key, data, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                session["watcher"],
+                session["start_ts"],
+                session.get("end_ts"),
+                session.get("duration_s"),
+                session["app_key"],
+                json.dumps(session["data"]),
+                session.get("source"),
+            ),
+        )
+        return self._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def update_session_end(self, session_id: int, end_ts: float, duration_s: float) -> None:
+        self._conn.execute(
+            f"UPDATE {self._sessions_table()} SET end_ts = ?, duration_s = ? WHERE id = ?",
+            (end_ts, duration_s, session_id),
+        )
 
     def close(self) -> None:
         self._conn.close()

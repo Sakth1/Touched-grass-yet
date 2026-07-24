@@ -11,6 +11,19 @@ class SystemType(Enum):
     ANDROID = 2
 
 
+OBSERVATION_TYPE_SNAPSHOT = "snapshot"
+OBSERVATION_TYPE_EVENT = "event"
+OBSERVATION_TYPE_STATE = "state"
+
+
+@dataclass
+class Observation:
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    watcher: str = ""
+    data: dict[str, Any] = field(default_factory=dict)
+    observation_type: str = OBSERVATION_TYPE_SNAPSHOT
+
+
 @dataclass
 class Tick:
     id: UUID = field(default_factory=uuid4)

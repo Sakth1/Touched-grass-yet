@@ -7,9 +7,32 @@ from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
 from core.storage import Storage
 from core.tick_bus import TickBus
-from utils.models import SystemType
+from utils.models import Observation, SystemType, Tick
 
 logger = logging.getLogger(__name__)
+
+_OBSERVATION_TYPES: dict[str, str] = {
+    "foreground": "event",
+    "android_foreground": "event",
+    "afk": "snapshot",
+    "android_afk": "snapshot",
+    "power": "state",
+    "android_power": "state",
+}
+
+
+class _ObservationBridge:
+    def __init__(self, storage: Storage):
+        self._storage = storage
+
+    def __call__(self, tick: Tick) -> None:
+        obs = Observation(
+            timestamp=tick.timestamp,
+            watcher=tick.watcher,
+            data=tick.data,
+            observation_type=_OBSERVATION_TYPES.get(tick.watcher, "snapshot"),
+        )
+        self._storage.on_observation(obs)
 
 
 class CollectionManager:
@@ -25,6 +48,7 @@ class CollectionManager:
         self._auto_paused = False
         self._screen_monitor_task: asyncio.Task | None = None
         self._on_pause_changed = None
+        self._obs_bridge = _ObservationBridge(self._storage)
 
     def detect_platform(self) -> SystemType:
         system = platform.system()
@@ -52,6 +76,7 @@ class CollectionManager:
         logger.info("Detected platform: %s", self._system_type)
 
         self._bus.subscribe(self._storage.on_tick)
+        self._bus.subscribe(self._obs_bridge)
 
         self._runtime = self._create_runtime()
 
@@ -87,6 +112,7 @@ class CollectionManager:
         if self._runtime:
             self._runtime.shutdown()
         self._bus.unsubscribe(self._storage.on_tick)
+        self._bus.unsubscribe(self._obs_bridge)
         logger.info("Collection stopped")
 
     def pause(self) -> None:

@@ -10,7 +10,7 @@ from utils.models import Tick, WatcherConfig
 
 @pytest.fixture(autouse=True, scope="session")
 def patch_device_id():
-    with patch("core.storage.get_device_id") as mock:
+    with patch("core.device_identity.get_device_id") as mock:
         mock.return_value = "00000000-0000-0000-0000-000000000001"
         yield
 
