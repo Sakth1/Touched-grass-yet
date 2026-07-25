@@ -15,6 +15,10 @@ dependencies = [
     "rich>=15.0.0",
 ]
 
+[project.optional-dependencies]
+url = ["pywinauto"]
+firefox = ["lz4"]
+
 [dependency-groups]
 dev = [
     "flet-cli>=0.85.3",

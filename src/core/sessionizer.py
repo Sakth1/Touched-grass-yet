@@ -111,6 +111,9 @@ def _merge_event(sess: _SessionAccum, ev: dict) -> None:
         domain = p.get("inferred_domain")
         if domain:
             sess.payload["inferred_domain"] = domain
+        url = p.get("url")
+        if url:
+            sess.payload["url"] = url
 
 
 def app_key_from_sess(sess: _SessionAccum) -> str:
