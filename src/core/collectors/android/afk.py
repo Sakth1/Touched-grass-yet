@@ -1,5 +1,4 @@
 import logging
-import time as _time
 
 from core.collectors.android.usage_stats import (
     _EVENT_TYPE_RESUMED,

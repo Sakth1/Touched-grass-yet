@@ -141,7 +141,10 @@ class Storage:
             filters.append("timestamp <= ?")
             params.append(until)
 
-        sql = "SELECT id, device_id, platform, event_type, timestamp, collected_at, tick_uuid, payload, source FROM raw_events"
+        sql = (
+            "SELECT id, device_id, platform, event_type, timestamp, collected_at,"
+            " tick_uuid, payload, source FROM raw_events"
+        )
         if filters:
             sql += " WHERE " + " AND ".join(filters)
         sql += " ORDER BY timestamp DESC" if desc else " ORDER BY timestamp ASC"
