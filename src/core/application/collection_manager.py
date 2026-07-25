@@ -198,6 +198,9 @@ class CollectionManager:
     def storage(self) -> Storage:
         return self._storage
 
+    def clear_all_data(self) -> None:
+        self._storage.clear_all_data()
+
     @property
     def on_pause_changed(self) -> Callable[[bool], None] | None:
         return self._on_pause_changed
