@@ -1337,7 +1337,7 @@ wheels = [
 
 [[package]]
 name = "touched-grass-yet"
-version = "0.3.10"
+version = "0.3.11"
 source = { virtual = "." }
 dependencies = [
     { name = "duckdb" },
