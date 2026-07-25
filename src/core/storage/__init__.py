@@ -11,7 +11,7 @@ from core.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 6
 
 
 def _db_path() -> str:
@@ -71,13 +71,6 @@ class Storage:
             self._migrate_v7()
             self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
-    def _migrate_v7(self) -> None:
-        try:
-            self._conn.execute("ALTER TABLE raw_events ADD COLUMN tick_uuid TEXT")
-            logger.info("Schema v7: added tick_uuid column to raw_events")
-        except sqlite3.OperationalError:
-            pass
-
     def _register_device(self) -> None:
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
@@ -99,17 +92,18 @@ class Storage:
         source: str,
         tick_uuid: str | None = None,
     ) -> int:
+        if tick_uuid is not None:
+            payload = {**payload, "_tick_uuid": tick_uuid}
         self._conn.execute(
             """INSERT INTO raw_events
-               (device_id, platform, event_type, timestamp, collected_at, tick_uuid, payload, source)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+               (device_id, platform, event_type, timestamp, collected_at, payload, source)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 self._device_id,
                 self._platform,
                 event_type,
                 timestamp,
                 datetime.now(timezone.utc).timestamp(),
-                tick_uuid,
                 json.dumps(payload),
                 source,
             ),
@@ -141,10 +135,7 @@ class Storage:
             filters.append("timestamp <= ?")
             params.append(until)
 
-        sql = (
-            "SELECT id, device_id, platform, event_type, timestamp, collected_at,"
-            " tick_uuid, payload, source FROM raw_events"
-        )
+        sql = "SELECT id, device_id, platform, event_type, timestamp, collected_at, payload, source FROM raw_events"
         if filters:
             sql += " WHERE " + " AND ".join(filters)
         sql += " ORDER BY timestamp DESC" if desc else " ORDER BY timestamp ASC"
@@ -159,9 +150,8 @@ class Storage:
                 "event_type": r[3],
                 "timestamp": r[4],
                 "collected_at": r[5],
-                "tick_uuid": r[6],
-                "payload": json.loads(r[7]),
-                "source": r[8],
+                "payload": json.loads(r[6]),
+                "source": r[7],
             }
             for r in self._conn.execute(sql, params).fetchall()
         ]
