@@ -45,6 +45,26 @@ def get_log_path() -> str | None:
     return None
 
 
+def clear_logs() -> None:
+    log_dir = os.path.join(get_data_dir(), LOG_DIR)
+    if not os.path.isdir(log_dir):
+        return
+    for handler in logging.getLogger().handlers[:]:
+        if isinstance(handler, RotatingFileHandler):
+            logging.getLogger().removeHandler(handler)
+            handler.close()
+    for i in range(BACKUP_COUNT + 1):
+        name = LOG_FILE if i == 0 else f"{LOG_FILE}.{i}"
+        path = os.path.join(log_dir, name)
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            logging.warning("Failed to remove log file: %s", path)
+    setup_file_logging()
+
+
 def read_log_lines(max_lines: int = 500) -> list[str]:
     path = get_log_path()
     if not path:

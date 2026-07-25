@@ -3,7 +3,7 @@ import logging
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
-from core.logging_setup import read_log_lines
+from core.logging_setup import clear_logs, read_log_lines
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class SettingsPanel:
             title=ft.Text("Clear All Data"),
             content=ft.Text(
                 "This will permanently delete all collected data "
-                "(events, observations, sessions) and reset your device.\n\n"
+                "(events, observations, sessions), logs, and reset your device.\n\n"
                 "This action cannot be undone.",
             ),
             actions=[
@@ -131,9 +131,10 @@ class SettingsPanel:
         dlg.open = False
         self._page.update()
         self._manager.clear_all_data()
+        clear_logs()
         self._log_scroll.controls.clear()
         self._log_scroll.controls.append(
-            ft.Text("All data cleared.", size=11, color=ft.Colors.RED_400),
+            ft.Text("All data and logs cleared.", size=11, color=ft.Colors.RED_400),
         )
         self._status_text.value = "Data cleared — collection paused"
         self._page.update()
