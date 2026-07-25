@@ -52,7 +52,7 @@ class Tick:
 | `afk` | 5s | `{status: "active"\|"idle"\|"away", idle_seconds}` | `status` only |
 | `power` | 60s | `{battery_pct, charging}` | all fields |
 
-Browser info (`browser`, `page_title`, `inferred_domain`) is populated when the foreground window is a known browser (Chrome, Firefox, Edge, Brave, Opera, Vivaldi). Domain inference is best-effort keyword matching (no real URL access without a browser extension).
+Browser info (`browser`, `page_title`, `inferred_domain`, `url`) is populated when the foreground window is a known browser (Chrome, Firefox, Edge, Brave, Opera, Vivaldi). When `url_extraction_enabled` (default: on), the actual active tab URL is captured via UIA (Windows accessibility API). Falls back to browser session files if UIA is unavailable. Non-trackable URLs (about:blank, chrome://newtab, etc.) are filtered out. When a real URL is present, `inferred_domain` is omitted as redundant.
 
 ## Database Schema
 
@@ -152,3 +152,18 @@ duckdb, flet, orjson, psutil, rich
 ## Sync (Planned)
 
 Each device writes to its own `events_{id}` table. Sync copies remote tables as read-only replicas. No ID conflict — UUIDs and per-device table names are the namespace. `UNION ALL` across tables for cross-device timeline queries.
+
+## Browser URL Extraction (prototype)
+
+`prototypes/browser_url_extractor/` — experimental pure-Python browser URL extractor. **The core logic has been integrated into the app** (`src/core/collectors/windows/url_extractor.py`). The prototype directory holds the standalone CLI for testing.
+
+| Platform | Status | Method |
+|---|---|---|
+| Windows | Tested | UIA (pywinauto) + SNSS session files |
+| macOS | Stub only, untested | AppleScript + JSONLZ4 session files |
+| Linux | Stub only, untested | AT-SPI2 / xdotool + SNSS/JSONLZ4 session files |
+
+**App deps:** `pip install touched-grass-yet[url]` for UIA (Windows), `[firefox]` for JSONLZ4.  
+**Prototype deps:** `pywinauto` (Windows UIA), `lz4` (Firefox JSONLZ4).
+
+Usage: `python prototypes/browser_url_extractor/cli.py --help`

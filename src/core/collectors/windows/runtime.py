@@ -32,7 +32,10 @@ class WindowsRuntime:
             if name in enabled:
                 interval = self._config.get_interval(name, _DEFAULT_INTERVALS[name])
                 wc = WatcherConfig(name=name, interval_s=interval, enabled=True)
-                watchers.append(cls(wc))
+                if name == "foreground":
+                    watchers.append(cls(wc, app_config=self._config))
+                else:
+                    watchers.append(cls(wc))
         logger.info("Created %d Windows watchers: %s", len(watchers), enabled)
         return watchers
 

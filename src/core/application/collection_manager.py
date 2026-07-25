@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import platform
+import time
 from collections.abc import Callable
 
 from core.config_manager import ConfigManager
@@ -174,12 +175,12 @@ class CollectionManager:
             if was_on and not now_on:
                 self._auto_paused = True
                 self._set_paused(True)
-                self._storage.write_event("screen_state_change", {"screen_on": False}, source="screen_monitor")
+                self._storage.write_event("screen_state_change", time.time(), {"screen_on": False}, "screen_monitor")
                 logger.info("Screen turned off — collection auto-paused")
             elif not was_on and now_on and self._auto_paused:
                 self._auto_paused = False
                 self._set_paused(False)
-                self._storage.write_event("screen_state_change", {"screen_on": True}, source="screen_monitor")
+                self._storage.write_event("screen_state_change", time.time(), {"screen_on": True}, "screen_monitor")
                 logger.info("Screen turned on — collection auto-resumed")
             was_on = now_on
 

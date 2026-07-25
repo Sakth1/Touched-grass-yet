@@ -1,6 +1,6 @@
 [project]
 name = "touched-grass-yet"
-version = "0.3.5"
+version = "0.3.6"
 description = "Cross-device app usage timeline tracker"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,6 +14,10 @@ dependencies = [
     "psutil>=7.2.2",
     "rich>=15.0.0",
 ]
+
+[project.optional-dependencies]
+url = ["pywinauto"]
+firefox = ["lz4"]
 
 [dependency-groups]
 dev = [

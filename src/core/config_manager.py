@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG = {
     "collection_enabled": True,
+    "url_extraction_enabled": True,
     "tick_interval_overrides": {},
     "watchers_enabled": ["foreground", "afk"],
     "log_level": "INFO",
@@ -57,6 +58,14 @@ class ConfigManager:
     @property
     def watchers_enabled(self) -> list[str]:
         return self._data.get("watchers_enabled", ["foreground", "afk"])
+
+    @property
+    def url_extraction_enabled(self) -> bool:
+        return self._data.get("url_extraction_enabled", True)
+
+    @url_extraction_enabled.setter
+    def url_extraction_enabled(self, value: bool) -> None:
+        self._data["url_extraction_enabled"] = value
 
     @property
     def log_level(self) -> str:
