@@ -10,16 +10,15 @@ authors = [
 dependencies = [
     "duckdb>=1.5.4",
     "flet>=0.85.3",
-    "lz4>=4.3",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
     "publicsuffixlist>=1.0",
-    "pywinauto>=0.6.8",
     "rich>=15.0.0",
 ]
 
 [project.optional-dependencies]
-firefox = []
+url = ["pywinauto>=0.6.8"]
+firefox = ["lz4>=4.3"]
 
 [dependency-groups]
 dev = [

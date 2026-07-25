@@ -1335,17 +1335,23 @@ wheels = [
 
 [[package]]
 name = "touched-grass-yet"
-version = "0.3.8"
+version = "0.3.9"
 source = { virtual = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "flet" },
-    { name = "lz4" },
     { name = "orjson" },
     { name = "psutil" },
     { name = "publicsuffixlist" },
-    { name = "pywinauto" },
     { name = "rich" },
+]
+
+[package.optional-dependencies]
+firefox = [
+    { name = "lz4" },
+]
+url = [
+    { name = "pywinauto" },
 ]
 
 [package.dev-dependencies]
@@ -1362,14 +1368,14 @@ dev = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.5.4" },
     { name = "flet", specifier = ">=0.85.3" },
-    { name = "lz4", specifier = ">=4.3" },
+    { name = "lz4", marker = "extra == 'firefox'", specifier = ">=4.3" },
     { name = "orjson", specifier = ">=3.11.9" },
     { name = "psutil", specifier = ">=7.2.2" },
     { name = "publicsuffixlist", specifier = ">=1.0" },
-    { name = "pywinauto", specifier = ">=0.6.8" },
+    { name = "pywinauto", marker = "extra == 'url'", specifier = ">=0.6.8" },
     { name = "rich", specifier = ">=15.0.0" },
 ]
-provides-extras = ["firefox"]
+provides-extras = ["url", "firefox"]
 
 [package.metadata.requires-dev]
 dev = [
