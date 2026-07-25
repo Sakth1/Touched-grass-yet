@@ -19,13 +19,7 @@ class PowerWatcher:
         try:
             battery = psutil.sensors_battery()
             if battery is None:
-                return Tick(
-                    watcher="power",
-                    data={
-                        "battery_pct": None,
-                        "charging": None,
-                    },
-                )
+                return None
             return Tick(
                 watcher="power",
                 data={
@@ -35,7 +29,4 @@ class PowerWatcher:
             )
         except Exception:
             logger.exception("PowerWatcher tick failed")
-            return Tick(
-                watcher="power",
-                data={"battery_pct": None, "charging": None},
-            )
+            return None

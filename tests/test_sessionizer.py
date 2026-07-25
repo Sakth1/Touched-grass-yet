@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from core.sessionizer import MAX_IDLE_GAP_S, run_sessionization, sessionize_from_events
+from core.sessionizer import ANDROID_MAX_IDLE_GAP_S, run_sessionization, sessionize_from_events
 from core.storage import Storage
 
 
@@ -121,12 +121,12 @@ class TestIdleGap:
             [],
         ]
 
-        assert (2000.0 - 1000.0) > MAX_IDLE_GAP_S
+        assert (2000.0 - 1000.0) > ANDROID_MAX_IDLE_GAP_S
 
         result = sessionize_from_events(storage)
         assert len(result) == 2
         assert result[0]["app_key"] == "com.instagram"
-        assert result[0]["end_ts"] == 1000.0 + MAX_IDLE_GAP_S
+        assert result[0]["end_ts"] == 1000.0 + ANDROID_MAX_IDLE_GAP_S
 
 
 class TestAndroidDuration:

@@ -93,8 +93,8 @@ class TestPrepareRawEvents:
         rows = [_RAW_ROW]
         _, data = ExportService.prepare_raw_events(rows)
         parsed = json.loads(data.decode("utf-8"))
-        assert parsed[0]["timestamp"] == "2023-11-14 22:13:20"
-        assert parsed[0]["collected_at"] == "2023-11-14 22:13:30"
+        assert parsed[0]["timestamp"] == "2023-11-14 22:13:20.000000"
+        assert parsed[0]["collected_at"] == "2023-11-14 22:13:30.000000"
 
     def test_unicode(self):
         rows = [{**_RAW_ROW, "payload": {"name": "José café"}}]

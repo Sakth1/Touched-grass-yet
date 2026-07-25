@@ -1,4 +1,5 @@
 import logging
+import time as _time
 
 from core.collectors.android.usage_stats import (
     _EVENT_TYPE_RESUMED,
@@ -22,6 +23,7 @@ class AndroidAfkWatcher:
             enabled=True,
         )
         self._permission_lost = False
+        self._last_event_time_ms: int | None = None
 
     async def tick(self) -> Tick | None:
         now_ms = get_current_time_ms()
@@ -30,7 +32,7 @@ class AndroidAfkWatcher:
         if not screen_on:
             return Tick(
                 watcher="android_afk",
-                data={"present": False},
+                data={"present": False, "screen_on": False, "seconds_since_last_event": None},
             )
 
         if not check_usage_stats_permission():
@@ -39,24 +41,35 @@ class AndroidAfkWatcher:
                 self._permission_lost = True
             return Tick(
                 watcher="android_afk",
-                data={"present": True},
+                data={"present": True, "screen_on": True, "seconds_since_last_event": None},
             )
 
         if self._permission_lost:
             logger.info("Usage Stats permission restored — user presence watcher resumed")
             self._permission_lost = False
 
-        present = self._check_presence(now_ms)
+        present, seconds_since = self._check_presence(now_ms)
 
         return Tick(
             watcher="android_afk",
-            data={"present": present},
+            data={
+                "present": present,
+                "screen_on": True,
+                "seconds_since_last_event": seconds_since,
+            },
         )
 
-    def _check_presence(self, now_ms: int) -> bool:
+    def _check_presence(self, now_ms: int) -> tuple[bool, float | None]:
         lookback_ms = _EVENT_LOOKBACK_SECONDS * 1000
         events = query_usage_events(now_ms - lookback_ms, now_ms)
         for ev in events:
             if ev["event_type"] == _EVENT_TYPE_RESUMED:
-                return True
-        return False
+                event_time_ms = ev.get("time_stamp_ms", now_ms)
+                self._last_event_time_ms = event_time_ms
+                seconds_since = round((now_ms - event_time_ms) / 1000.0, 1) if self._last_event_time_ms else None
+                return True, seconds_since
+
+        if self._last_event_time_ms is not None:
+            seconds_since = round((now_ms - self._last_event_time_ms) / 1000.0, 1)
+            return False, seconds_since
+        return False, None

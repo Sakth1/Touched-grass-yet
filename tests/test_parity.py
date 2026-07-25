@@ -101,7 +101,7 @@ class TestAfkParity:
 
     async def test_afk_schemas_diverge(self):
         win_keys = {"status", "idle_seconds"}
-        and_keys = {"present"}
+        and_keys = {"present", "screen_on", "seconds_since_last_event"}
 
         assert win_keys != and_keys
         assert "status" not in and_keys
@@ -145,10 +145,14 @@ class TestPowerParity:
         assert tick.data["charging"] is None
 
     async def test_windows_power_tick_returns_correct_schema(self):
+        from collections import namedtuple
+
         from core.collectors.windows.power import PowerWatcher
 
-        w = PowerWatcher()
-        tick = await w.tick()
+        Battery = namedtuple("Battery", ["percent", "secsleft", "power_plugged"])
+        with patch("psutil.sensors_battery", return_value=Battery(percent=50, secsleft=10000, power_plugged=True)):
+            w = PowerWatcher()
+            tick = await w.tick()
 
         assert tick is not None
         assert tick.watcher == "power"
@@ -156,10 +160,14 @@ class TestPowerParity:
         assert "charging" in tick.data
 
     async def test_windows_power_data_types(self):
+        from collections import namedtuple
+
         from core.collectors.windows.power import PowerWatcher
 
-        w = PowerWatcher()
-        tick = await w.tick()
+        Battery = namedtuple("Battery", ["percent", "secsleft", "power_plugged"])
+        with patch("psutil.sensors_battery", return_value=Battery(percent=50, secsleft=10000, power_plugged=True)):
+            w = PowerWatcher()
+            tick = await w.tick()
 
         assert isinstance(tick.data["battery_pct"], (int, float, type(None)))
         assert isinstance(tick.data["charging"], (bool, type(None)))

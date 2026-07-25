@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import platform
-import time
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
@@ -23,6 +23,7 @@ class _EventBridge:
         ts = tick.timestamp.timestamp()
         watcher = tick.watcher
         data = tick.data
+        tick_uuid = str(tick.id)
 
         event_type = _watcher_to_event_type(watcher)
         if event_type is None:
@@ -33,12 +34,34 @@ class _EventBridge:
             if app_key == self._last_app.get(watcher):
                 return
             self._last_app[watcher] = app_key
+            self._storage.write_event(
+                event_type=event_type,
+                timestamp=ts,
+                payload=data,
+                source=watcher,
+                tick_uuid=tick_uuid,
+            )
+            return
+
+        if event_type == "app_usage_interval":
+            intervals = data.get("intervals")
+            if intervals:
+                for interval in intervals:
+                    self._storage.write_event(
+                        event_type=event_type,
+                        timestamp=ts,
+                        payload=interval,
+                        source=watcher,
+                        tick_uuid=tick_uuid,
+                    )
+            return
 
         self._storage.write_event(
             event_type=event_type,
             timestamp=ts,
             payload=data,
             source=watcher,
+            tick_uuid=tick_uuid,
         )
 
 
@@ -173,12 +196,12 @@ class CollectionManager:
             if was_on and not now_on:
                 self._auto_paused = True
                 self._set_paused(True)
-                self._storage.write_event("screen_state_change", time.time(), {"screen_on": False}, "screen_monitor")
+                self._storage.write_event("screen_state_change", datetime.now(timezone.utc).timestamp(), {"screen_on": False}, "screen_monitor")
                 logger.info("Screen turned off — collection auto-paused")
             elif not was_on and now_on and self._auto_paused:
                 self._auto_paused = False
                 self._set_paused(False)
-                self._storage.write_event("screen_state_change", time.time(), {"screen_on": True}, "screen_monitor")
+                self._storage.write_event("screen_state_change", datetime.now(timezone.utc).timestamp(), {"screen_on": True}, "screen_monitor")
                 logger.info("Screen turned on — collection auto-resumed")
             was_on = now_on
 

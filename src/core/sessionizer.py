@@ -4,9 +4,18 @@ from core.storage import Storage
 
 logger = logging.getLogger(__name__)
 
-MAX_IDLE_GAP_S = 300.0
+WINDOWS_MAX_IDLE_GAP_S = 120.0
+ANDROID_MAX_IDLE_GAP_S = 300.0
 WINDOWS_POLL_INTERVAL_S = 2.0
 ANDROID_POLL_INTERVAL_S = 10.0
+
+
+def _idle_gap_for_platform(platform: str) -> float:
+    return WINDOWS_MAX_IDLE_GAP_S if platform == "windows" else ANDROID_MAX_IDLE_GAP_S
+
+
+def _poll_interval_for_platform(platform: str) -> float:
+    return WINDOWS_POLL_INTERVAL_S if platform == "windows" else ANDROID_POLL_INTERVAL_S
 
 
 def sessionize_from_events(
@@ -39,8 +48,9 @@ def sessionize_from_events(
 
         if current is not None:
             gap = ts - current.last_ts
-            if app_key != current.app_key or gap > MAX_IDLE_GAP_S:
-                end_ts = current.last_ts + MAX_IDLE_GAP_S if gap > MAX_IDLE_GAP_S else ts
+            idle_gap = _idle_gap_for_platform(current.platform)
+            if app_key != current.app_key or gap > idle_gap:
+                end_ts = current.last_ts + idle_gap if gap > idle_gap else ts
                 _finalize_session(current, end_ts, interval_index, sessions)
                 current = _start_session(ev, app_key)
                 continue
@@ -53,8 +63,7 @@ def sessionize_from_events(
         current = _start_session(ev, app_key)
 
     if current is not None:
-        poll_interval = ANDROID_POLL_INTERVAL_S if current.platform == "android" else WINDOWS_POLL_INTERVAL_S
-        end_ts = current.last_ts + poll_interval
+        end_ts = current.last_ts + _poll_interval_for_platform(current.platform)
         _finalize_session(current, end_ts, interval_index, sessions)
 
     return sessions

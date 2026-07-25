@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS raw_events (
     event_type    TEXT NOT NULL,          -- "foreground_transition" | "app_usage_interval" | etc.
     timestamp     REAL NOT NULL,          -- Unix epoch (UTC) — when the event occurred
     collected_at  REAL NOT NULL,          -- Unix epoch (UTC) — when we observed it
+    tick_uuid     TEXT,                   -- UUID of the originating Tick (for traceability)
     payload       TEXT NOT NULL,          -- JSON payload, type-specific
     source        TEXT NOT NULL           -- API provenance (e.g., "usage_events", "getforegroundwindow")
 );

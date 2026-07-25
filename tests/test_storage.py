@@ -244,7 +244,7 @@ class TestSchemaMigration:
 
         db = str(tmp_path / "test.db")
         storage = Storage(db_path=db)
-        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 7
         storage.close()
 
     def test_migration_skipped_when_up_to_date(self, tmp_path, make_tick):
@@ -252,7 +252,7 @@ class TestSchemaMigration:
 
         db = str(tmp_path / "test.db")
         storage1 = Storage(db_path=db)
-        assert storage1._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert storage1._conn.execute("PRAGMA user_version").fetchone()[0] == 7
 
         storage1.write_event(
             event_type="foreground_transition",
@@ -264,7 +264,7 @@ class TestSchemaMigration:
         storage1.close()
 
         storage2 = Storage(db_path=db)
-        assert storage2._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert storage2._conn.execute("PRAGMA user_version").fetchone()[0] == 7
         events = storage2.get_raw_events()
         assert len(events) == 1
         assert events[0]["payload"]["app"] == "Code.exe"
@@ -276,7 +276,7 @@ class TestSchemaMigration:
         db = str(tmp_path / "test.db")
         for i in range(5):
             storage = Storage(db_path=db)
-            assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+            assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 7
             if i == 0:
                 storage.write_event(
                     event_type="foreground_transition",

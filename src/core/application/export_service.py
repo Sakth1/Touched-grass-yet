@@ -62,4 +62,4 @@ def _make_filename(prefix: str = "events", ext: str = "json") -> str:
 
 
 def _fmt_timestamp(ts: float) -> str:
-    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")

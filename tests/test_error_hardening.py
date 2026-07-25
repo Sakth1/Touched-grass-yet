@@ -64,10 +64,7 @@ class TestWindowsPowerHardening:
             w = PowerWatcher()
             tick = await w.tick()
 
-        assert tick is not None
-        assert tick.watcher == "power"
-        assert tick.data["battery_pct"] is None
-        assert tick.data["charging"] is None
+        assert tick is None
 
     async def test_tick_returns_none_when_no_battery(self):
         from core.collectors.windows.power import PowerWatcher
@@ -76,10 +73,7 @@ class TestWindowsPowerHardening:
             w = PowerWatcher()
             tick = await w.tick()
 
-        assert tick is not None
-        assert tick.watcher == "power"
-        assert tick.data["battery_pct"] is None
-        assert tick.data["charging"] is None
+        assert tick is None
 
     async def test_tick_returns_battery_data(self):
         from collections import namedtuple
