@@ -2,9 +2,18 @@ import logging
 import os
 import struct
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ExtractionResult:
+    url: str | None
+    method: str | None  # "uia", "snss", or None
+    confidence: str = "high"
+
 
 SKIP_PREFIXES = [
     "about:",
@@ -203,20 +212,22 @@ class UrlExtractor:
     def __init__(self, max_stale_s: float = 300):
         self._max_stale_s = max_stale_s
 
-    def extract(self, browser_name: str) -> str | None:
-        url = self._try_uia(browser_name)
+    def extract(
+        self, browser_name: str, window_title: str | None = None, window_pid: int | None = None,
+    ) -> ExtractionResult:
+        url = self._try_uia(browser_name, window_title, window_pid)
         if url:
             logger.debug("URL extracted via UIA: %s", url)
-            return url
+            return ExtractionResult(url=url, method="uia")
 
         url = self._try_session_files(browser_name)
         if url:
             logger.debug("URL extracted via session files: %s", url)
-            return url
+            return ExtractionResult(url=url, method="snss")
 
-        return None
+        return ExtractionResult(url=None, method=None, confidence="low")
 
-    def _try_uia(self, browser_name: str) -> str | None:
+    def _try_uia(self, browser_name: str, window_title: str | None = None, window_pid: int | None = None) -> str | None:
         try:
             from pywinauto import Application
         except ImportError:
@@ -233,12 +244,19 @@ class UrlExtractor:
         if addr_name is None:
             return None
 
-        fg = self._get_foreground_window()
-        if fg is None:
-            return None
-        fg_pid, fg_title = fg
+        if window_title is not None:
+            if browser_name.lower() not in window_title.lower():
+                return None
+            fg_pid = window_pid
+        else:
+            fg = self._get_foreground_window()
+            if fg is None:
+                return None
+            fg_pid, fg_title = fg
+            if browser_name.lower() not in fg_title.lower():
+                return None
 
-        if browser_name.lower() not in fg_title.lower():
+        if fg_pid is None:
             return None
 
         try:

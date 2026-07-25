@@ -257,3 +257,146 @@ class TestRunSessionization:
         count = run_sessionization(storage)
         assert count == 0
         storage.write_canonical_session.assert_not_called()
+
+
+class TestRunUrlEnrichment:
+    def test_enriches_session_with_url_aggregates(self):
+        storage = MagicMock(spec=Storage)
+        storage._conn = MagicMock()
+        storage.get_canonical_sessions.return_value = [
+            {
+                "id": 1,
+                "device_id": "test-device",
+                "platform": "windows",
+                "start_ts": 1000.0,
+                "end_ts": 1200.0,
+                "duration_s": 200.0,
+                "app_key": "brave.exe",
+                "payload": {"title": "GitHub"},
+                "session_type": "foreground",
+            }
+        ]
+        storage.get_url_visits.return_value = [
+            {
+                "id": 10,
+                "device_id": "test-device",
+                "event_id": None,
+                "session_id": None,
+                "url": "https://github.com/user",
+                "scheme": "https",
+                "host": "github.com",
+                "domain": "github.com",
+                "path": "/user",
+                "extraction_method": "uia",
+                "confidence": "high",
+                "is_trackable": True,
+                "seen_at": 1005.0,
+                "collected_at": 1005.0,
+            },
+            {
+                "id": 11,
+                "device_id": "test-device",
+                "event_id": None,
+                "session_id": None,
+                "url": "https://github.com/user/repo",
+                "scheme": "https",
+                "host": "github.com",
+                "domain": "github.com",
+                "path": "/user/repo",
+                "extraction_method": "uia",
+                "confidence": "high",
+                "is_trackable": True,
+                "seen_at": 1010.0,
+                "collected_at": 1010.0,
+            },
+        ]
+
+        from core.sessionizer import run_url_enrichment
+        count = run_url_enrichment(storage)
+
+        assert count == 1
+        import json
+        call_args = storage._conn.execute.call_args
+        assert call_args is not None
+        sql, params = call_args[0]
+        assert "UPDATE sessions" in sql
+        payload = json.loads(params[0])
+        assert payload["url_count"] == 2
+        assert payload["url_first"] == "https://github.com/user"
+        assert payload["url_last"] == "https://github.com/user/repo"
+        assert payload["domains"] == ["github.com"]
+        assert params[1] == 1
+
+    def test_skips_session_with_no_visits(self):
+        storage = MagicMock(spec=Storage)
+        storage._conn = MagicMock()
+        storage.get_canonical_sessions.return_value = [
+            {
+                "id": 1,
+                "device_id": "test-device",
+                "platform": "windows",
+                "start_ts": 1000.0,
+                "end_ts": 1200.0,
+                "duration_s": 200.0,
+                "app_key": "Code.exe",
+                "payload": {},
+                "session_type": "foreground",
+            }
+        ]
+        storage.get_url_visits.return_value = []
+
+        from core.sessionizer import run_url_enrichment
+        count = run_url_enrichment(storage)
+
+        assert count == 0
+
+    def test_multiple_domains(self):
+        storage = MagicMock(spec=Storage)
+        storage._conn = MagicMock()
+        storage.get_canonical_sessions.return_value = [
+            {
+                "id": 1,
+                "device_id": "test-device",
+                "platform": "windows",
+                "start_ts": 1000.0,
+                "end_ts": 1200.0,
+                "duration_s": 200.0,
+                "app_key": "brave.exe",
+                "payload": {},
+                "session_type": "foreground",
+            }
+        ]
+        storage.get_url_visits.return_value = [
+            {
+                "id": 10, "device_id": "test-device", "event_id": None, "session_id": None,
+                "url": "https://github.com/a", "scheme": "https", "host": "github.com",
+                "domain": "github.com", "path": "/a", "extraction_method": "uia",
+                "confidence": "high", "is_trackable": True, "seen_at": 1005.0, "collected_at": 1005.0,
+            },
+            {
+                "id": 11, "device_id": "test-device", "event_id": None, "session_id": None,
+                "url": "https://reddit.com/r/python", "scheme": "https", "host": "reddit.com",
+                "domain": "reddit.com", "path": "/r/python", "extraction_method": "uia",
+                "confidence": "high", "is_trackable": True, "seen_at": 1010.0, "collected_at": 1010.0,
+            },
+        ]
+
+        from core.sessionizer import run_url_enrichment
+        count = run_url_enrichment(storage)
+
+        assert count == 1
+        import json
+        sql, params = storage._conn.execute.call_args[0]
+        payload = json.loads(params[0])
+        assert payload["domains"] == ["github.com", "reddit.com"]
+
+        storage = MagicMock(spec=Storage)
+        storage.get_raw_events.side_effect = [
+            [_make_transition(1000.0, "com.instagram")],
+            [],
+        ]
+        storage.get_canonical_sessions.return_value = [{"id": 1}]
+
+        count = run_sessionization(storage)
+        assert count == 0
+        storage.write_canonical_session.assert_not_called()

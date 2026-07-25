@@ -51,3 +51,37 @@ CREATE INDEX IF NOT EXISTS idx_sessions_device_app
 
 CREATE INDEX IF NOT EXISTS idx_sessions_ts
     ON sessions(device_id, start_ts);
+
+-- Schema v0.6 — URL visit log (browser navigation events)
+
+CREATE TABLE IF NOT EXISTS url_visits (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id        TEXT    NOT NULL,
+    event_id         INTEGER REFERENCES raw_events(id),
+    session_id       INTEGER REFERENCES sessions(id),
+
+    url              TEXT    NOT NULL,
+    scheme           TEXT,
+    host             TEXT,
+    domain           TEXT,
+    path             TEXT,
+
+    extraction_method TEXT,
+    confidence        TEXT DEFAULT 'high',
+    is_trackable      INTEGER DEFAULT 1,
+
+    seen_at          REAL    NOT NULL,
+    collected_at     REAL    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_url_visits_device_seen
+    ON url_visits(device_id, seen_at);
+
+CREATE INDEX IF NOT EXISTS idx_url_visits_device_domain
+    ON url_visits(device_id, domain, seen_at);
+
+CREATE INDEX IF NOT EXISTS idx_url_visits_event
+    ON url_visits(event_id);
+
+CREATE INDEX IF NOT EXISTS idx_url_visits_session
+    ON url_visits(session_id);

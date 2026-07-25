@@ -842,6 +842,15 @@ wheels = [
 ]
 
 [[package]]
+name = "publicsuffixlist"
+version = "1.0.2.20260725"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/04/b347e32ee17ad3013d34a96e471b81ca1cf2efc6afb0e669b7d0c51f57c8/publicsuffixlist-1.0.2.20260725.tar.gz", hash = "sha256:de5d7ea689f3a77065957fdbfbd7aaeea49c00813401c00656d859dc2bfd29d1", size = 108825, upload-time = "2026-07-25T05:48:52.966Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/a4/efa854421a41c8f1061dbfa0b320f7077f3894282cfd6697cef469e257e9/publicsuffixlist-1.0.2.20260725-py2.py3-none-any.whl", hash = "sha256:a4b27fc853db83b12657d83fb7866c08c165450c21dc75a183bd089287e6a164", size = 108664, upload-time = "2026-07-25T05:48:51.676Z" },
+]
+
+[[package]]
 name = "pydantic"
 version = "2.13.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1326,22 +1335,17 @@ wheels = [
 
 [[package]]
 name = "touched-grass-yet"
-version = "0.3.5"
+version = "0.3.8"
 source = { virtual = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "flet" },
+    { name = "lz4" },
     { name = "orjson" },
     { name = "psutil" },
-    { name = "rich" },
-]
-
-[package.optional-dependencies]
-firefox = [
-    { name = "lz4" },
-]
-url = [
+    { name = "publicsuffixlist" },
     { name = "pywinauto" },
+    { name = "rich" },
 ]
 
 [package.dev-dependencies]
@@ -1358,13 +1362,14 @@ dev = [
 requires-dist = [
     { name = "duckdb", specifier = ">=1.5.4" },
     { name = "flet", specifier = ">=0.85.3" },
-    { name = "lz4", marker = "extra == 'firefox'" },
+    { name = "lz4", specifier = ">=4.3" },
     { name = "orjson", specifier = ">=3.11.9" },
     { name = "psutil", specifier = ">=7.2.2" },
-    { name = "pywinauto", marker = "extra == 'url'" },
+    { name = "publicsuffixlist", specifier = ">=1.0" },
+    { name = "pywinauto", specifier = ">=0.6.8" },
     { name = "rich", specifier = ">=15.0.0" },
 ]
-provides-extras = ["url", "firefox"]
+provides-extras = ["firefox"]
 
 [package.metadata.requires-dev]
 dev = [

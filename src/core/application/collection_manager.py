@@ -84,7 +84,7 @@ class CollectionManager:
         match self._system_type:
             case SystemType.WINDOWS:
                 from core.collectors.windows.runtime import WindowsRuntime
-                return WindowsRuntime(self._config)
+                return WindowsRuntime(self._config, storage=self._storage)
             case SystemType.ANDROID:
                 from core.collectors.android.runtime import AndroidRuntime
                 return AndroidRuntime(self._config)
