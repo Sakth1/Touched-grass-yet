@@ -11,7 +11,7 @@ from core.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 def _db_path() -> str:
@@ -220,7 +220,103 @@ class Storage:
             for r in self._conn.execute(sql, params).fetchall()
         ]
 
+    def write_url_visit(
+        self,
+        url: str,
+        seen_at: float,
+        extraction_method: str | None = None,
+        confidence: str = "high",
+        scheme: str | None = None,
+        host: str | None = None,
+        domain: str | None = None,
+        path: str | None = None,
+        is_trackable: bool = True,
+    ) -> int:
+        self._conn.execute(
+            """INSERT INTO url_visits
+               (device_id, url, seen_at, collected_at, extraction_method, confidence,
+                scheme, host, domain, path, is_trackable)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                self._device_id,
+                url,
+                seen_at,
+                datetime.now(timezone.utc).timestamp(),
+                extraction_method,
+                confidence,
+                scheme,
+                host,
+                domain,
+                path,
+                int(is_trackable),
+            ),
+        )
+        return self._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def get_url_visits(
+        self,
+        device_id: str | None = None,
+        since: float | None = None,
+        until: float | None = None,
+        limit: int | None = None,
+    ) -> list[dict]:
+        filters: list[str] = []
+        params: list = []
+
+        if device_id:
+            filters.append("device_id = ?")
+            params.append(device_id)
+        if since is not None:
+            filters.append("seen_at >= ?")
+            params.append(since)
+        if until is not None:
+            filters.append("seen_at <= ?")
+            params.append(until)
+
+        sql = (
+            "SELECT id, device_id, event_id, session_id, url, scheme, host, domain, path, "
+            "extraction_method, confidence, is_trackable, seen_at, collected_at FROM url_visits"
+        )
+        if filters:
+            sql += " WHERE " + " AND ".join(filters)
+        sql += " ORDER BY seen_at ASC"
+        if limit is not None:
+            sql += f" LIMIT {limit}"
+
+        return [
+            {
+                "id": r[0],
+                "device_id": r[1],
+                "event_id": r[2],
+                "session_id": r[3],
+                "url": r[4],
+                "scheme": r[5],
+                "host": r[6],
+                "domain": r[7],
+                "path": r[8],
+                "extraction_method": r[9],
+                "confidence": r[10],
+                "is_trackable": bool(r[11]),
+                "seen_at": r[12],
+                "collected_at": r[13],
+            }
+            for r in self._conn.execute(sql, params).fetchall()
+        ]
+
+    def backfill_url_event_id(self, url_visit_id: int, event_id: int) -> None:
+        self._conn.execute(
+            "UPDATE url_visits SET event_id = ? WHERE id = ?",
+            (event_id, url_visit_id),
+        )
+
+    def backfill_url_session_id(self, url_visit_id: int, session_id: int) -> None:
+        self._conn.execute(
+            "UPDATE url_visits SET session_id = ? WHERE id = ?",
+            (session_id, url_visit_id),
+        )
+
     def clear_all_data(self) -> None:
+        self._conn.execute("DELETE FROM url_visits")
         self._conn.execute("DELETE FROM raw_events")
         self._conn.execute("DELETE FROM sessions")
         for suffix in ("events_", "observations_", "sessions_"):

@@ -197,3 +197,43 @@ def run_sessionization(storage: Storage, platform: str | None = None) -> int:
     if count:
         logger.info("Sessionization wrote %d new sessions", count)
     return count
+
+
+def run_url_enrichment(storage: Storage) -> int:
+    sessions = storage.get_canonical_sessions()
+    enriched_count = 0
+    for session in sessions:
+        sid = session["id"]
+        start = session["start_ts"]
+        end = session.get("end_ts") or start
+
+        visits = storage.get_url_visits(device_id=session["device_id"], since=start, until=end)
+        if not visits:
+            continue
+
+        url_count = len(visits)
+        url_first = visits[0]["url"]
+        url_last = visits[-1]["url"]
+        domains = sorted({v["domain"] for v in visits if v["domain"]})
+
+        payload = dict(session["payload"])
+        payload["url_count"] = url_count
+        payload["url_first"] = url_first
+        payload["url_last"] = url_last
+        if domains:
+            payload["domains"] = domains
+
+        import json
+        storage._conn.execute(
+            "UPDATE sessions SET payload = ? WHERE id = ?",
+            (json.dumps(payload), sid),
+        )
+
+        for v in visits:
+            storage.backfill_url_session_id(v["id"], sid)
+
+        enriched_count += 1
+
+    if enriched_count:
+        logger.info("URL enrichment updated %d sessions", enriched_count)
+    return enriched_count

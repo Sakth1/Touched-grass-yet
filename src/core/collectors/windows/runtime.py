@@ -5,6 +5,7 @@ from core.collectors.windows.afk import AfkWatcher
 from core.collectors.windows.foreground import ForegroundWatcher
 from core.collectors.windows.power import PowerWatcher
 from core.config_manager import ConfigManager
+from core.storage import Storage
 from utils.models import WatcherConfig
 
 logger = logging.getLogger(__name__)
@@ -17,8 +18,9 @@ _DEFAULT_INTERVALS: dict[str, float] = {
 
 
 class WindowsRuntime:
-    def __init__(self, config: ConfigManager):
+    def __init__(self, config: ConfigManager, storage: Storage | None = None):
         self._config = config
+        self._storage = storage
 
     def create_watchers(self) -> list[Watcher]:
         enabled = self._config.watchers_enabled
@@ -33,7 +35,7 @@ class WindowsRuntime:
                 interval = self._config.get_interval(name, _DEFAULT_INTERVALS[name])
                 wc = WatcherConfig(name=name, interval_s=interval, enabled=True)
                 if name == "foreground":
-                    watchers.append(cls(wc, app_config=self._config))
+                    watchers.append(cls(wc, app_config=self._config, storage=self._storage))
                 else:
                     watchers.append(cls(wc))
         logger.info("Created %d Windows watchers: %s", len(watchers), enabled)
