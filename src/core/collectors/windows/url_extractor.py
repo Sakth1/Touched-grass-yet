@@ -203,8 +203,8 @@ class UrlExtractor:
     def __init__(self, max_stale_s: float = 300):
         self._max_stale_s = max_stale_s
 
-    def extract(self, browser_name: str) -> str | None:
-        url = self._try_uia(browser_name)
+    def extract(self, browser_name: str, window_title: str | None = None, window_pid: int | None = None) -> str | None:
+        url = self._try_uia(browser_name, window_title, window_pid)
         if url:
             logger.debug("URL extracted via UIA: %s", url)
             return url
@@ -216,7 +216,7 @@ class UrlExtractor:
 
         return None
 
-    def _try_uia(self, browser_name: str) -> str | None:
+    def _try_uia(self, browser_name: str, window_title: str | None = None, window_pid: int | None = None) -> str | None:
         try:
             from pywinauto import Application
         except ImportError:
@@ -233,12 +233,19 @@ class UrlExtractor:
         if addr_name is None:
             return None
 
-        fg = self._get_foreground_window()
-        if fg is None:
-            return None
-        fg_pid, fg_title = fg
+        if window_title is not None:
+            if browser_name.lower() not in window_title.lower():
+                return None
+            fg_pid = window_pid
+        else:
+            fg = self._get_foreground_window()
+            if fg is None:
+                return None
+            fg_pid, fg_title = fg
+            if browser_name.lower() not in fg_title.lower():
+                return None
 
-        if browser_name.lower() not in fg_title.lower():
+        if fg_pid is None:
             return None
 
         try:

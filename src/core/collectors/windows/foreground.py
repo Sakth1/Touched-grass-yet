@@ -33,7 +33,11 @@ class ForegroundWatcher:
         if browser_info is not None:
             window_data["browser"] = browser_info.browser
             if self._url_extractor:
-                url = self._url_extractor.extract(browser_info.browser)
+                url = self._url_extractor.extract(
+                    browser_info.browser,
+                    window_title=window_data.get("title"),
+                    window_pid=window_data.get("pid"),
+                )
                 if url:
                     window_data["url"] = url
             else:

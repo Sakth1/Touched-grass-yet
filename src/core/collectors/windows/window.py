@@ -42,7 +42,7 @@ class WindowAnalyzer:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 app = "unknown"
 
-            return {"app": app, "title": title}
+            return {"app": app, "title": title, "pid": pid.value}
         except Exception:
             logger.exception("Window analysis failed")
             return None
