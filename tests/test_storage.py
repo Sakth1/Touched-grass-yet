@@ -1,6 +1,71 @@
+import sqlite3
+import subprocess
 from datetime import datetime, timezone
 
+from core.device_identity import get_device_id
+from core.storage import Storage
+
 T0 = datetime(2026, 7, 19, tzinfo=timezone.utc)
+
+_SCHEMA_COMMITS = {1: "3b327cf", 2: "0c4f9ef", 5: "cd19ae4"}
+_SCHEMA_DIR = "src/core/storage/schemas"
+
+
+def _short_id() -> str:
+    return get_device_id()[:8]
+
+
+def _extract_sql(version: int, platform: str = "windows") -> tuple[str, str]:
+    commit = _SCHEMA_COMMITS[version]
+    core = subprocess.run(
+        ["git", "show", f"{commit}:{_SCHEMA_DIR}/core.sql"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    plat = subprocess.run(
+        ["git", "show", f"{commit}:{_SCHEMA_DIR}/{platform}.sql"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return core, plat
+
+
+def _exec_sql(conn, sql: str, sid: str) -> None:
+    for stmt in sql.replace("{short_id}", sid).split(";"):
+        stmt = stmt.strip()
+        if stmt:
+            conn.execute(stmt)
+
+
+def _seed_version(db_path: str, version: int, platform: str = "windows") -> None:
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    core_sql, plat_sql = _extract_sql(version, platform)
+    sid = _short_id()
+    _exec_sql(conn, core_sql, sid)
+    _exec_sql(conn, plat_sql, sid)
+    conn.execute(f"PRAGMA user_version = {version}")
+    conn.close()
+
+
+def _assert_schema_v6(conn) -> None:
+    tables = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    ).fetchall()}
+    for tbl in ("devices", "raw_events", "sessions", "url_visits"):
+        assert tbl in tables, f"Missing table {tbl}"
+    sid = _short_id()
+    for legacy in (f"events_{sid}", f"observations_{sid}", f"sessions_{sid}"):
+        assert legacy not in tables, f"Legacy table {legacy} should have been dropped"
+    indexes = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='index'"
+    ).fetchall() if not r[0].startswith("sqlite_")}
+    for idx in (
+        "idx_raw_events_type_ts", "idx_raw_events_device_ts",
+        "idx_sessions_device_app", "idx_sessions_ts",
+        "idx_url_visits_device_seen", "idx_url_visits_device_domain",
+        "idx_url_visits_event", "idx_url_visits_session",
+    ):
+        assert idx in indexes, f"Missing index {idx}"
 
 
 class TestWriteEvent:
@@ -290,3 +355,173 @@ class TestSchemaMigration:
         events = final.get_raw_events()
         assert len(events) == 1
         final.close()
+
+    def test_upgrade_from_v5_creates_url_visits(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        _seed_version(db, 5)
+        storage = Storage(db_path=db)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        _assert_schema_v6(storage._conn)
+        storage.close()
+
+    def test_upgrade_from_v5_preserves_data(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        _seed_version(db, 5)
+        conn = sqlite3.connect(db)
+        did = get_device_id()
+        conn.execute(
+            "INSERT INTO raw_events (device_id, platform, event_type, timestamp, collected_at, payload, source) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (did, "windows", "foreground_transition",
+             1000.0, 1000.0, '{"app":"Code.exe"}', "foreground"),
+        )
+        conn.execute(
+            "INSERT INTO sessions (device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (did, "windows", 1000.0, 1100.0, 100.0, "Code.exe", "{}", "foreground"),
+        )
+        conn.execute("PRAGMA user_version = 5")
+        conn.commit()
+        conn.close()
+
+        storage = Storage(db_path=db)
+        events = storage.get_raw_events()
+        assert len(events) == 1
+        assert events[0]["payload"]["app"] == "Code.exe"
+        sessions = storage.get_canonical_sessions()
+        assert len(sessions) == 1
+        assert sessions[0]["app_key"] == "Code.exe"
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        storage.close()
+
+    def test_upgrade_from_v2_drops_legacy_tables(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        _seed_version(db, 2)
+        conn = sqlite3.connect(db)
+        for legacy in (f"events_{_short_id()}", f"observations_{_short_id()}", f"sessions_{_short_id()}"):
+            assert legacy in {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()}, f"{legacy} should exist before migration"
+        conn.close()
+
+        storage = Storage(db_path=db)
+        _assert_schema_v6(storage._conn)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        storage.close()
+
+    def test_upgrade_from_v1_creates_all_tables(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        _seed_version(db, 1)
+        conn = sqlite3.connect(db)
+        assert f"events_{_short_id()}" in {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}, "events_{short_id} should exist before migration"
+        conn.close()
+
+        storage = Storage(db_path=db)
+        _assert_schema_v6(storage._conn)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        storage.close()
+
+    def test_schema_integrity_after_migration(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        _assert_schema_v6(storage._conn)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        storage.close()
+
+    def test_migration_on_memory_db(self):
+        storage = Storage(db_path=":memory:")
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        _assert_schema_v6(storage._conn)
+        storage.close()
+
+    def test_interrupted_migration_recovery(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        _seed_version(db, 5)
+        conn = sqlite3.connect(db)
+        # simulate crash after partial DDL: url_visits table created but indexes not yet built
+        conn.execute("""CREATE TABLE IF NOT EXISTS url_visits (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id        TEXT    NOT NULL,
+            event_id         INTEGER REFERENCES raw_events(id),
+            session_id       INTEGER REFERENCES sessions(id),
+            url              TEXT    NOT NULL,
+            scheme           TEXT,
+            host             TEXT,
+            domain           TEXT,
+            path             TEXT,
+            extraction_method TEXT,
+            confidence        TEXT DEFAULT 'high',
+            is_trackable      INTEGER DEFAULT 1,
+            seen_at          REAL    NOT NULL,
+            collected_at     REAL    NOT NULL
+        )""")
+        conn.execute("PRAGMA user_version = 5")
+        conn.close()
+
+        storage = Storage(db_path=db)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == 6
+        _assert_schema_v6(storage._conn)
+        storage.close()
+
+
+class TestStorageHealthCheck:
+    def test_integrity_ok_on_healthy_db(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        result = storage.check_integrity()
+        assert result["ok"] is True
+        storage.close()
+
+    def test_integrity_ok_on_memory_db(self, in_memory_db):
+        result = in_memory_db.check_integrity()
+        assert result["ok"] is True
+        assert "in-memory" in result["message"]
+
+    def test_auto_vacuum_skipped_on_memory_db(self, in_memory_db):
+        result = in_memory_db.auto_vacuum()
+        assert result["vacuumed"] is False
+        assert "in-memory" in result["message"]
+
+    def test_auto_vacuum_no_waste_on_fresh_db(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        result = storage.auto_vacuum()
+        assert result["vacuumed"] is False
+        assert result["waste_pct"] == 0.0
+        storage.close()
+
+    def test_auto_vacuum_clears_freelist_pages(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        storage._conn.execute("CREATE TABLE tmp_test (id INTEGER PRIMARY KEY, data TEXT)")
+        for i in range(100):
+            storage._conn.execute("INSERT INTO tmp_test (data) VALUES ('x')")
+        storage._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        freelist_before = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
+        assert freelist_before == 0, "Freelist should be empty before DROP"
+
+        storage._conn.execute("DROP TABLE tmp_test")
+        freelist_before = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
+        assert freelist_before > 0, "DROP TABLE should create freelist pages"
+
+        result = storage.auto_vacuum(waste_pct_threshold=0.0, min_size_mb=0.0)
+        assert result["vacuumed"] is True
+
+        after_freelist = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
+        assert after_freelist == 0
+        storage.close()
+
+    def test_auto_vacuum_skips_below_threshold(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        result = storage.auto_vacuum(waste_pct_threshold=99.0)
+        assert result["vacuumed"] is False
+        storage.close()
+
+    def test_startup_checks_do_not_crash(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        assert storage._conn is not None
+        storage.close()

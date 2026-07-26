@@ -23,7 +23,6 @@ class _EventBridge:
         ts = tick.timestamp.timestamp()
         watcher = tick.watcher
         data = tick.data
-        tick_uuid = str(tick.id)
 
         event_type = _watcher_to_event_type(watcher)
         if event_type is None:
@@ -39,7 +38,6 @@ class _EventBridge:
                 timestamp=ts,
                 payload=data,
                 source=watcher,
-                tick_uuid=tick_uuid,
             )
             return
 
@@ -52,7 +50,6 @@ class _EventBridge:
                         timestamp=ts,
                         payload=interval,
                         source=watcher,
-                        tick_uuid=tick_uuid,
                     )
             return
 
@@ -61,7 +58,6 @@ class _EventBridge:
             timestamp=ts,
             payload=data,
             source=watcher,
-            tick_uuid=tick_uuid,
         )
 
 
@@ -90,6 +86,7 @@ class CollectionManager:
         self._running = False
         self._auto_paused = False
         self._screen_monitor_task: asyncio.Task | None = None
+        self._health_monitor_task: asyncio.Task | None = None
         self._on_pause_changed = None
         self._event_bridge = _EventBridge(self._storage, "")
 
@@ -134,6 +131,9 @@ class CollectionManager:
             self._scheduler.pause()
             logger.info("Collection started in paused state (from saved config)")
 
+        self._health_monitor_task = asyncio.create_task(self._run_health_monitor())
+        logger.info("Health monitor started")
+
         if self._system_type == SystemType.ANDROID:
             self._screen_monitor_task = asyncio.create_task(self._monitor_screen_state())
             logger.info("Screen state monitor started")
@@ -143,6 +143,13 @@ class CollectionManager:
     async def stop(self) -> None:
         self._running = False
         self._auto_paused = False
+        if self._health_monitor_task:
+            self._health_monitor_task.cancel()
+            try:
+                await self._health_monitor_task
+            except asyncio.CancelledError:
+                pass
+            self._health_monitor_task = None
         if self._screen_monitor_task:
             self._screen_monitor_task.cancel()
             try:
@@ -215,6 +222,18 @@ class CollectionManager:
                 logger.info("Screen turned on — collection auto-resumed")
             was_on = now_on
 
+    async def _run_health_monitor(self, interval: float = 3600.0) -> None:
+        while self._running:
+            await asyncio.sleep(interval)
+            if not self._running:
+                break
+            result = self._storage.check_integrity()
+            if not result["ok"]:
+                logger.error("Periodic integrity check FAILED: %s", result["message"])
+            vac = self._storage.auto_vacuum()
+            if vac["vacuumed"]:
+                logger.info("Periodic auto-vacuum completed: %s", vac["message"])
+
     @property
     def bus(self) -> TickBus:
         return self._bus
@@ -230,6 +249,10 @@ class CollectionManager:
     @property
     def storage(self) -> Storage:
         return self._storage
+
+    @property
+    def config(self) -> ConfigManager:
+        return self._config
 
     def clear_all_data(self) -> None:
         self._storage.clear_all_data()

@@ -1,6 +1,6 @@
 [project]
 name = "touched-grass-yet"
-version = "0.3.12"
+version = "0.4.0"
 description = "Cross-device app usage timeline tracker"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -8,7 +8,6 @@ authors = [
     { name = "Sakth1", email = "sakthimurugankgm@gmail.com" }
 ]
 dependencies = [
-    "duckdb>=1.5.4",
     "flet>=0.85.3",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
@@ -56,7 +55,6 @@ path = "src"
 split_per_abi = true
 compile_packages = true
 dependencies = [
-    "duckdb>=1.5.4",
     "flet>=0.85.3",
     "orjson>=3.11.9",
     "psutil>=7.2.2",

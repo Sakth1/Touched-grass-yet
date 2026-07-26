@@ -38,12 +38,14 @@ class Storage:
         if parent:
             os.makedirs(parent, exist_ok=True)
 
+        self._path = path
         self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")
 
         self._run_migrations()
         self._register_device()
+        self._run_startup_health_checks()
 
     def _run_migrations(self) -> None:
         cursor = self._conn.execute("PRAGMA user_version")
@@ -71,6 +73,13 @@ class Storage:
             self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             logger.info("Schema migration complete")
 
+            cols = {r[1] for r in self._conn.execute(
+                "PRAGMA table_info(raw_events)"
+            ).fetchall()}
+            if "tick_uuid" in cols:
+                self._conn.execute("ALTER TABLE raw_events DROP COLUMN tick_uuid")
+                logger.info("Dropped orphaned tick_uuid column from raw_events")
+
     def _register_device(self) -> None:
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
@@ -84,16 +93,65 @@ class Storage:
             (now, self._device_id),
         )
 
+    def _run_startup_health_checks(self) -> None:
+        result = self.check_integrity()
+        if not result["ok"]:
+            logger.warning("Database integrity check FAILED: %s", result["message"])
+
+        vac = self.auto_vacuum()
+        if vac["vacuumed"]:
+            logger.info("Database vacuumed: %s", vac["message"])
+
+    def check_integrity(self) -> dict:
+        if self._path == ":memory:":
+            return {"ok": True, "message": "skipped (in-memory)"}
+        try:
+            row = self._conn.execute("PRAGMA integrity_check").fetchone()
+            ok = row[0] == "ok"
+            return {"ok": ok, "message": row[0]}
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    def auto_vacuum(self, waste_pct_threshold: float = 20.0, min_size_mb: float = 10.0) -> dict:
+        if self._path == ":memory:":
+            return {"vacuumed": False, "size_mb": 0.0, "message": "skipped (in-memory)"}
+        try:
+            page_size = self._conn.execute("PRAGMA page_size").fetchone()[0]
+            page_count = self._conn.execute("PRAGMA page_count").fetchone()[0]
+            freelist_count = self._conn.execute("PRAGMA freelist_count").fetchone()[0]
+
+            total_mb = page_count * page_size / (1024 * 1024)
+            waste_mb = freelist_count * page_size / (1024 * 1024)
+            waste_pct = (waste_mb / total_mb * 100) if total_mb > 0 else 0.0
+
+            if waste_pct > waste_pct_threshold and total_mb > min_size_mb:
+                self._conn.execute("VACUUM")
+                new_page_count = self._conn.execute("PRAGMA page_count").fetchone()[0]
+                new_total_mb = new_page_count * page_size / (1024 * 1024)
+                return {
+                    "vacuumed": True,
+                    "size_mb": total_mb,
+                    "waste_pct": waste_pct,
+                    "new_size_mb": new_total_mb,
+                    "message": f"vacuumed {total_mb:.1f}MB -> {new_total_mb:.1f}MB (waste was {waste_pct:.1f}%)",
+                }
+
+            return {
+                "vacuumed": False,
+                "size_mb": total_mb,
+                "waste_pct": waste_pct,
+                "message": f"{total_mb:.1f}MB, {waste_pct:.1f}% waste (threshold: {waste_pct_threshold:.0f}%)",
+            }
+        except Exception as e:
+            return {"vacuumed": False, "size_mb": 0.0, "message": f"check failed: {e}"}
+
     def write_event(
         self,
         event_type: str,
         timestamp: float,
         payload: dict,
         source: str,
-        tick_uuid: str | None = None,
     ) -> int:
-        if tick_uuid is not None:
-            payload = {**payload, "_tick_uuid": tick_uuid}
         self._conn.execute(
             """INSERT INTO raw_events
                (device_id, platform, event_type, timestamp, collected_at, payload, source)
