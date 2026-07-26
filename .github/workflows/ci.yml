@@ -1,56 +1,106 @@
-name: Build Release Binaries
+name: CI
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "Existing release tag to publish assets to (example: v0.1.0-alpha.1 or 0.1.0-alpha.1)"
-        required: true
-        type: string
+  push:
+    branches: [master, dev]
+  pull_request:
+    branches: [master, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
+  actions: read
+
+defaults:
+  run:
+    shell: pwsh
 
 jobs:
-  metadata:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      artifact_stem: ${{ steps.meta.outputs.artifact_stem }}
-      release_tag: ${{ steps.meta.outputs.release_tag }}
-      publish_enabled: ${{ steps.meta.outputs.publish_enabled }}
+  lint:
+    runs-on: windows-latest
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run ruff check
+        run: uv run ruff check src/ tests/
+
+  test:
+    runs-on: windows-latest
+    needs: lint
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --tb=short -q
+
+  detect-version-bump:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    outputs:
+      should_release: ${{ steps.detect.outputs.should_release }}
+      tag: ${{ steps.detect.outputs.tag }}
+      version: ${{ steps.detect.outputs.current_version }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Read metadata from pyproject.toml
-        id: meta
+      - name: Detect version bump
+        id: detect
         shell: bash
         env:
-          EVENT_RELEASE_TAG: ${{ github.event.release.tag_name }}
-          EVENT_INPUTS_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          EVENT_BEFORE: ${{ github.event.before }}
         run: |
-          release_tag="${EVENT_RELEASE_TAG:-$EVENT_INPUTS_RELEASE_TAG}"
-          python scripts/ci/release_metadata.py extract-release-metadata \
+          python scripts/ci/release_metadata.py detect-version-bump \
             --pyproject pyproject.toml \
-            --event-name "${{ github.event_name }}" \
-            --release-tag "$release_tag"
+            --before "$EVENT_BEFORE"
 
   build-windows:
     runs-on: windows-latest
-    needs: metadata
+    needs: [test, detect-version-bump]
+    if: needs.detect-version-bump.outputs.should_release == 'true'
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -58,19 +108,15 @@ jobs:
           python-version: "3.12"
 
       - name: Install project and Flet CLI
-        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install ".[url,firefox]"
           pip install flet-cli
 
       - name: Install Inno Setup
-        shell: pwsh
-        run: |
-          choco install innosetup -y --no-progress
+        run: choco install innosetup -y --no-progress
 
       - name: Build Windows EXE
-        shell: pwsh
         run: |
           chcp 65001 > $null
           $env:PYTHONUTF8 = "1"
@@ -81,7 +127,6 @@ jobs:
 
       - name: Package portable ZIP and installer
         id: collect
-        shell: pwsh
         run: |
           $allExeCandidates = @(Get-ChildItem -Path build, dist -Recurse -Filter *.exe -File -ErrorAction SilentlyContinue)
           $allExeCandidates = $allExeCandidates | Where-Object {
@@ -91,54 +136,37 @@ jobs:
             $_.FullName -notmatch "\\build_python_" -and
             $_.FullName -notmatch "\\python\\"
           }
-
           $exe = $allExeCandidates |
             Where-Object { $_.DirectoryName -match "\\build\\windows$" } |
             Select-Object -First 1
-
           if (-not $exe) {
             $exe = $allExeCandidates |
               Where-Object { $_.DirectoryName -match "\\build\\flutter\\build\\windows\\x64\\runner\\Release$" } |
               Select-Object -First 1
           }
-
           if (-not $exe) {
             $exe = $allExeCandidates | Select-Object -First 1
           }
-
           if (-not $exe) {
-            throw "No application .exe output found. Candidates were filtered to avoid Python/tool executables."
+            throw "No application .exe output found."
           }
-
           $bundleDir = $exe.DirectoryName
-          $pythonDlls = @(Get-ChildItem -Path $bundleDir -Filter python*.dll -File -ErrorAction SilentlyContinue)
-          if ($pythonDlls.Count -eq 0) {
-            Write-Host "Warning: No python*.dll found in bundle directory - continuing anyway"
-          } else {
-            Write-Host "Found Python runtime DLL(s): $($pythonDlls.Name -join ', ')"
-          }
-
-          Write-Host "Selected app executable: $($exe.FullName)"
-
-          $portableName = "${{ needs.metadata.outputs.artifact_stem }}-portable.zip"
+          $portableName = "${{ needs.detect-version-bump.outputs.version }}-portable.zip"
           if (Test-Path $portableName) {
             Remove-Item $portableName -Force
           }
           Compress-Archive -Path (Join-Path $bundleDir "*") -DestinationPath $portableName -CompressionLevel Optimal
-
-          $installerBase = "${{ needs.metadata.outputs.artifact_stem }}-setup"
+          $installerBase = "${{ needs.detect-version-bump.outputs.version }}-setup"
           $installerName = "$installerBase.exe"
           $issPath = Join-Path $PWD "installer.iss"
           $appName = "Touched Grass Yet"
-          $appVersion = "${{ needs.metadata.outputs.version }}"
+          $appVersion = "${{ needs.detect-version-bump.outputs.version }}"
           $exeName = $exe.Name
-
           @"
           #define MyAppName "$appName"
           #define MyAppVersion "$appVersion"
           #define MyAppPublisher "Flet"
           #define MyAppExeName "$exeName"
-
           [Setup]
           AppId={{D2E3F4A5-B6C7-48D9-A0B1-C2D3E4F5A6B7}
           AppName={#MyAppName}
@@ -153,24 +181,18 @@ jobs:
           WizardStyle=modern
           ArchitecturesAllowed=x64compatible
           ArchitecturesInstallIn64BitMode=x64compatible
-
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
-
           [Tasks]
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-
           [Files]
           Source: "$bundleDir\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
           [Icons]
           Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
           Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ | Set-Content -Path $issPath -Encoding UTF8
-
           $isccPath = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $isccPath)) {
             $isccFromPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
@@ -180,30 +202,29 @@ jobs:
               throw "ISCC.exe not found after installing Inno Setup."
             }
           }
-
           & $isccPath $issPath
           if (-not (Test-Path $installerName)) {
             throw "Installer was not produced at expected path: $installerName"
           }
-
           "portable_path=$portableName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_path=$installerName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ needs.metadata.outputs.artifact_stem }}-windows
+          name: ${{ needs.detect-version-bump.outputs.version }}-windows
           path: |
             ${{ steps.collect.outputs.portable_path }}
             ${{ steps.collect.outputs.installer_path }}
 
   build-android:
     runs-on: ubuntu-latest
-    needs: metadata
+    needs: [test, detect-version-bump]
+    if: needs.detect-version-bump.outputs.should_release == 'true'
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -245,21 +266,17 @@ jobs:
 
       - name: Locate APK
         id: locate_apk
-        shell: pwsh
         run: |
           $candidateDirs = @("build", "dist")
           $apks = @()
-
           foreach ($dir in $candidateDirs) {
             if (Test-Path $dir) {
               $apks += Get-ChildItem -Path $dir -Recurse -Filter *.apk -File
             }
           }
-
           if ($apks.Count -eq 0) {
             throw "No .apk output found in build/ or dist/."
           }
-
           $apk = $apks | Select-Object -First 1
           Write-Host "Discovered APK: $($apk.FullName)"
           "apk_path=$($apk.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -291,49 +308,54 @@ jobs:
 
       - name: Collect APK
         id: collect
-        shell: pwsh
         run: |
-          $newApkName = "${{ needs.metadata.outputs.artifact_stem }}.apk"
-
+          $newApkName = "${{ needs.detect-version-bump.outputs.version }}.apk"
           if (-not (Test-Path "signed.apk")) {
             throw "Signed APK not found."
           }
-
           Move-Item -Path "signed.apk" -Destination $newApkName -Force
-
           "path=$newApkName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ needs.metadata.outputs.artifact_stem }}-android
+          name: ${{ needs.detect-version-bump.outputs.version }}-android
           path: ${{ steps.collect.outputs.path }}
 
   publish-release:
     runs-on: ubuntu-latest
-    if: needs.metadata.outputs.publish_enabled == 'true'
     needs:
-      - metadata
+      - detect-version-bump
       - build-windows
       - build-android
+    if: needs.detect-version-bump.outputs.should_release == 'true'
+    timeout-minutes: 10
 
     steps:
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.detect-version-bump.outputs.tag }}
+          name: Release ${{ needs.detect-version-bump.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ contains(needs.detect-version-bump.outputs.version, '-') }}
+
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.metadata.outputs.artifact_stem }}-windows
+          name: ${{ needs.detect-version-bump.outputs.version }}-windows
           path: release-assets
 
       - name: Download Android artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.metadata.outputs.artifact_stem }}-android
+          name: ${{ needs.detect-version-bump.outputs.version }}-android
           path: release-assets
 
       - name: Attach binaries to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.metadata.outputs.release_tag }}
+          tag_name: ${{ needs.detect-version-bump.outputs.tag }}
           files: |
             release-assets/*-portable.zip
             release-assets/*-setup.exe

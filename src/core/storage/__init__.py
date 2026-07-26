@@ -67,9 +67,6 @@ class Storage:
                 if stmt:
                     self._conn.execute(stmt)
 
-            if current_version < 7:
-                self._migrate_v7()
-
             self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             logger.info("Schema migration complete")
 

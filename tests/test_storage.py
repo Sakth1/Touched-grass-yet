@@ -1,31 +1,107 @@
 import sqlite3
-import subprocess
 from datetime import datetime, timezone
 
 from core.device_identity import get_device_id
-from core.storage import Storage
+from core.storage import SCHEMA_VERSION, Storage
 
 T0 = datetime(2026, 7, 19, tzinfo=timezone.utc)
 
-_SCHEMA_COMMITS = {1: "3b327cf", 2: "0c4f9ef", 5: "cd19ae4"}
-_SCHEMA_DIR = "src/core/storage/schemas"
+_CORE_V1 = """\
+CREATE TABLE IF NOT EXISTS devices (
+    device_id   TEXT PRIMARY KEY,
+    hostname    TEXT,
+    platform    TEXT,
+    first_seen  TEXT NOT NULL,
+    last_seen   TEXT,
+    is_current  INTEGER DEFAULT 0
+);
+"""
+
+_PLAT_V1 = """\
+CREATE TABLE IF NOT EXISTS events_{short_id} (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    watcher    TEXT NOT NULL,
+    timestamp  REAL NOT NULL,
+    duration   REAL DEFAULT 0,
+    data       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_{short_id}_watcher_ts
+    ON events_{short_id}(watcher, timestamp);
+"""
+
+_PLAT_V2 = _PLAT_V1 + """\
+CREATE TABLE IF NOT EXISTS observations_{short_id} (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    watcher    TEXT NOT NULL,
+    timestamp  REAL NOT NULL,
+    data       TEXT NOT NULL,
+    obs_type   TEXT DEFAULT 'snapshot'
+);
+CREATE INDEX IF NOT EXISTS idx_obs_{short_id}_watcher_ts
+    ON observations_{short_id}(watcher, timestamp);
+CREATE TABLE IF NOT EXISTS sessions_{short_id} (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    watcher     TEXT NOT NULL,
+    start_ts    REAL NOT NULL,
+    end_ts      REAL,
+    duration_s  REAL,
+    app_key     TEXT NOT NULL,
+    data        TEXT NOT NULL,
+    source      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ses_{short_id}_app_ts
+    ON sessions_{short_id}(app_key, start_ts);
+"""
+
+_CORE_V5 = """\
+CREATE TABLE IF NOT EXISTS devices (
+    device_id   TEXT PRIMARY KEY,
+    hostname    TEXT,
+    platform    TEXT,
+    first_seen  TEXT NOT NULL,
+    last_seen   TEXT,
+    is_current  INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS raw_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id     TEXT NOT NULL,
+    platform      TEXT NOT NULL,
+    event_type    TEXT NOT NULL,
+    timestamp     REAL NOT NULL,
+    collected_at  REAL NOT NULL,
+    payload       TEXT NOT NULL,
+    source        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_raw_events_type_ts
+    ON raw_events(event_type, timestamp);
+CREATE INDEX IF NOT EXISTS idx_raw_events_device_ts
+    ON raw_events(device_id, timestamp);
+CREATE TABLE IF NOT EXISTS sessions (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id     TEXT NOT NULL,
+    platform      TEXT NOT NULL,
+    start_ts      REAL NOT NULL,
+    end_ts        REAL,
+    duration_s    REAL,
+    app_key       TEXT NOT NULL,
+    payload       TEXT NOT NULL,
+    session_type  TEXT DEFAULT 'foreground'
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_device_app
+    ON sessions(device_id, app_key, start_ts);
+CREATE INDEX IF NOT EXISTS idx_sessions_ts
+    ON sessions(device_id, start_ts);
+"""
+
+_PLAT_V5 = """\
+DROP TABLE IF EXISTS events_{short_id};
+DROP TABLE IF EXISTS observations_{short_id};
+DROP TABLE IF EXISTS sessions_{short_id};
+"""
 
 
 def _short_id() -> str:
     return get_device_id()[:8]
-
-
-def _extract_sql(version: int, platform: str = "windows") -> tuple[str, str]:
-    commit = _SCHEMA_COMMITS[version]
-    core = subprocess.run(
-        ["git", "show", f"{commit}:{_SCHEMA_DIR}/core.sql"],
-        capture_output=True, text=True, check=True,
-    ).stdout
-    plat = subprocess.run(
-        ["git", "show", f"{commit}:{_SCHEMA_DIR}/{platform}.sql"],
-        capture_output=True, text=True, check=True,
-    ).stdout
-    return core, plat
 
 
 def _exec_sql(conn, sql: str, sid: str) -> None:
@@ -35,11 +111,18 @@ def _exec_sql(conn, sql: str, sid: str) -> None:
             conn.execute(stmt)
 
 
+_SCHEMAS = {
+    1: (_CORE_V1, _PLAT_V1),
+    2: (_CORE_V1, _PLAT_V2),
+    5: (_CORE_V5, _PLAT_V5),
+}
+
+
 def _seed_version(db_path: str, version: int, platform: str = "windows") -> None:
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
-    core_sql, plat_sql = _extract_sql(version, platform)
+    core_sql, plat_sql = _SCHEMAS[version]
     sid = _short_id()
     _exec_sql(conn, core_sql, sid)
     _exec_sql(conn, plat_sql, sid)
@@ -524,4 +607,19 @@ class TestStorageHealthCheck:
         db = str(tmp_path / "test.db")
         storage = Storage(db_path=db)
         assert storage._conn is not None
+        storage.close()
+
+
+class TestStorageInitRegression:
+    """Regression tests for CI-specific issues that were missed locally."""
+
+    def test_fresh_memory_db_initialises_without_error(self):
+        storage = Storage(db_path=":memory:")
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        storage.close()
+
+    def test_fresh_file_db_initialises_without_error(self, tmp_path):
+        db = str(tmp_path / "fresh.db")
+        storage = Storage(db_path=db)
+        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         storage.close()
