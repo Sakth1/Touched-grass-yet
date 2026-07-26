@@ -58,6 +58,17 @@ push (master/dev) or PR
 - CI runs on Windows Server 2022, Python 3.12.x (patch may differ).
 - Check for environment-dependent behavior (file paths, permissions, timezone).
 
+## Auto-Update Support
+
+The build pipeline must generate installers compatible with v0.5.0's silent auto-update system:
+
+| Platform | Update Mechanism | CI Requirements |
+|----------|-----------------|-----------------|
+| Windows | Inno Setup silent install (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`) | Inno Setup script must set `DisableDirPage=auto`, `DisableProgramGroupPage=auto`, verify `UsePreviousAppDir=yes` |
+| Android | APK download + `ACTION_VIEW` install intent | Standard APK build is sufficient (install intent handled client-side) |
+
+After auto-update, user data in `%APPDATA%\TouchedGrassYet\` (Windows) or app internal storage (Android) is preserved — only program files are replaced.
+
 ### Release not created
 - Verify `version` in `pyproject.toml` was increased.
 - Check `detect-version-bump` step output in CI logs.
