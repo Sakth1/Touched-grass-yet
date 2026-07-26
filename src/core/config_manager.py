@@ -13,6 +13,7 @@ DEFAULT_CONFIG = {
     "tick_interval_overrides": {},
     "watchers_enabled": ["foreground", "afk"],
     "log_level": "INFO",
+    "duckdb_sync_interval_s": 60,
 }
 
 
@@ -70,3 +71,7 @@ class ConfigManager:
     @property
     def log_level(self) -> str:
         return self._data.get("log_level", "INFO")
+
+    @property
+    def duckdb_sync_interval_s(self) -> int:
+        return self._data.get("duckdb_sync_interval_s", 60)
