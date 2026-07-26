@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from core.storage import Storage
+
 T0 = datetime(2026, 7, 19, tzinfo=timezone.utc)
 
 
@@ -290,3 +292,64 @@ class TestSchemaMigration:
         events = final.get_raw_events()
         assert len(events) == 1
         final.close()
+
+
+class TestStorageHealthCheck:
+    def test_integrity_ok_on_healthy_db(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        result = storage.check_integrity()
+        assert result["ok"] is True
+        storage.close()
+
+    def test_integrity_ok_on_memory_db(self, in_memory_db):
+        result = in_memory_db.check_integrity()
+        assert result["ok"] is True
+        assert "in-memory" in result["message"]
+
+    def test_auto_vacuum_skipped_on_memory_db(self, in_memory_db):
+        result = in_memory_db.auto_vacuum()
+        assert result["vacuumed"] is False
+        assert "in-memory" in result["message"]
+
+    def test_auto_vacuum_no_waste_on_fresh_db(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        result = storage.auto_vacuum()
+        assert result["vacuumed"] is False
+        assert result["waste_pct"] == 0.0
+        storage.close()
+
+    def test_auto_vacuum_clears_freelist_pages(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        storage._conn.execute("CREATE TABLE tmp_test (id INTEGER PRIMARY KEY, data TEXT)")
+        for i in range(100):
+            storage._conn.execute("INSERT INTO tmp_test (data) VALUES ('x')")
+        storage._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        freelist_before = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
+        assert freelist_before == 0, "Freelist should be empty before DROP"
+
+        storage._conn.execute("DROP TABLE tmp_test")
+        freelist_before = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
+        assert freelist_before > 0, "DROP TABLE should create freelist pages"
+
+        result = storage.auto_vacuum(waste_pct_threshold=0.0, min_size_mb=0.0)
+        assert result["vacuumed"] is True
+
+        after_freelist = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
+        assert after_freelist == 0
+        storage.close()
+
+    def test_auto_vacuum_skips_below_threshold(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        result = storage.auto_vacuum(waste_pct_threshold=99.0)
+        assert result["vacuumed"] is False
+        storage.close()
+
+    def test_startup_checks_do_not_crash(self, tmp_path):
+        db = str(tmp_path / "test.db")
+        storage = Storage(db_path=db)
+        assert storage._conn is not None
+        storage.close()
