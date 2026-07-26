@@ -169,3 +169,40 @@ class TestScreenMonitor:
                 pass
 
         assert cm.is_paused
+
+
+class TestHealthMonitor:
+    async def test_health_monitor_runs_checks_periodically(self):
+        from core.application.collection_manager import CollectionManager
+
+        cm = CollectionManager()
+        cm._running = True
+
+        monitor = asyncio.create_task(cm._run_health_monitor(interval=0.01))
+        await asyncio.sleep(0.03)
+        cm._running = False
+        try:
+            await monitor
+        except asyncio.CancelledError:
+            pass
+
+        cm._storage.check_integrity.assert_called()
+        cm._storage.auto_vacuum.assert_called()
+
+    async def test_health_monitor_cancelled_on_stop(self):
+        from core.application.collection_manager import CollectionManager
+
+        cm = CollectionManager()
+        cm._running = True
+        cm._health_monitor_task = asyncio.create_task(cm._run_health_monitor(interval=3600))
+
+        cm._running = False
+        if cm._health_monitor_task:
+            cm._health_monitor_task.cancel()
+            try:
+                await cm._health_monitor_task
+            except asyncio.CancelledError:
+                pass
+            cm._health_monitor_task = None
+
+        assert cm._health_monitor_task is None
