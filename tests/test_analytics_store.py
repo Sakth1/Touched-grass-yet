@@ -279,3 +279,100 @@ class TestPerAppDuration:
     def test_returns_float_total(self, store_with_sessions):
         result = store_with_sessions.per_app_duration(0.0, 3000.0)
         assert isinstance(result[0]["total_duration_s"], float)
+
+
+class TestSyncFromSQLite:
+    def test_sync_incremental(self, tmp_path):
+        db = os.path.join(tmp_path, "test.db")
+        storage = Storage(db_path=db)
+        for i in range(3):
+            storage.write_event("foreground_transition", 1000.0 + i, {"app": "Code.exe"}, "foreground")
+        storage.close()
+
+        store = AnalyticsStore(db_path=db)
+        result = store.sync_from_sqlite()
+        assert result["raw_events"] == 3
+        store.close()
+
+        store2 = AnalyticsStore(db_path=db)
+        storage = Storage(db_path=db)
+        for i in range(2):
+            storage.write_event("foreground_transition", 2000.0 + i, {"app": "Terminal.exe"}, "foreground")
+        storage.close()
+
+        result2 = store2.sync_from_sqlite()
+        assert result2["raw_events"] == 2
+        count = store2._conn.execute("SELECT COUNT(*) FROM raw_events").fetchone()[0]
+        assert count == 5
+        store2.close()
+
+    def test_sync_idempotent(self, tmp_path):
+        db = os.path.join(tmp_path, "test.db")
+        storage = Storage(db_path=db)
+        storage.write_event("foreground_transition", 1000.0, {"app": "Code.exe"}, "foreground")
+        storage.close()
+
+        store = AnalyticsStore(db_path=db)
+        store.sync_from_sqlite()
+        store.sync_from_sqlite()
+
+        count = store._conn.execute("SELECT COUNT(*) FROM raw_events").fetchone()[0]
+        assert count == 1
+        store.close()
+
+    def test_sync_all_tables(self, tmp_path):
+        db = os.path.join(tmp_path, "test.db")
+        storage = Storage(db_path=db)
+        storage.write_event("foreground_transition", 1000.0, {"app": "Code.exe"}, "foreground")
+        storage.write_canonical_session({
+            "device_id": "d1", "platform": "windows",
+            "start_ts": 1000.0, "end_ts": 1100.0, "duration_s": 100.0,
+            "app_key": "Code.exe", "payload": {}, "session_type": "foreground",
+        })
+        storage.write_url_visit("https://example.com", 1000.0)
+        storage.close()
+
+        store = AnalyticsStore(db_path=db)
+        result = store.sync_from_sqlite()
+        assert result["raw_events"] == 1
+        assert result["sessions"] == 1
+        assert result["url_visits"] == 1
+        store.close()
+
+    def test_clear(self, tmp_path):
+        db = os.path.join(tmp_path, "test.db")
+        storage = Storage(db_path=db)
+        storage.write_event("foreground_transition", 1000.0, {"app": "Code.exe"}, "foreground")
+        storage.close()
+
+        store = AnalyticsStore(db_path=db)
+        store.sync_from_sqlite()
+        assert store._conn.execute("SELECT COUNT(*) FROM raw_events").fetchone()[0] == 1
+
+        store.clear()
+        assert store._conn.execute("SELECT COUNT(*) FROM raw_events").fetchone()[0] == 0
+        assert store._get_meta("last_synced_raw_events_id") == 0
+        store.close()
+
+    def test_clear_then_sync_resets(self, tmp_path):
+        db = os.path.join(tmp_path, "test.db")
+        storage = Storage(db_path=db)
+        storage.write_event("foreground_transition", 1000.0, {"app": "Code.exe"}, "foreground")
+        storage.close()
+
+        store = AnalyticsStore(db_path=db)
+        store.sync_from_sqlite()
+        store.clear()
+
+        result = store.sync_from_sqlite()
+        assert result["raw_events"] == 1
+        store.close()
+
+    def test_sync_empty_db_is_noop(self, tmp_path):
+        db = os.path.join(tmp_path, "test.db")
+        Storage(db_path=db).close()
+
+        store = AnalyticsStore(db_path=db)
+        result = store.sync_from_sqlite()
+        assert all(v == 0 for v in result.values())
+        store.close()
