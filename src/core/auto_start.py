@@ -22,10 +22,24 @@ def _get_target_path() -> str | None:
     if not pythonw.exists():
         pythonw = Path(sys.executable)
     script = Path(__file__).resolve().parent.parent / "main.py"
-    if not script.exists():
-        logger.warning("main.py not found for dev-mode auto-start")
-        return None
-    return f'"{pythonw}" "{script}"'
+    if script.exists():
+        return f'"{pythonw}" "{script}"'
+    launcher = _find_launcher_exe()
+    if launcher is not None:
+        return launcher
+    logger.warning("main.py not found for dev-mode auto-start")
+    return None
+
+
+def _find_launcher_exe() -> str | None:
+    for parent in Path(sys.executable).resolve().parents:
+        for exe in parent.glob("*.exe"):
+            name = exe.stem.lower()
+            if name not in ("python", "pythonw", "pip", "py", "python3"):
+                return str(exe)
+        if parent.parent == parent:
+            break
+    return None
 
 
 def enable() -> bool:
