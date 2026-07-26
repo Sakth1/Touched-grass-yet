@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
 from core.storage import Storage
+from core.storage.analytics_store import AnalyticsStore
 from core.tick_bus import TickBus
 from utils.models import SystemType, Tick
 
@@ -91,6 +92,7 @@ class CollectionManager:
         self._auto_paused = False
         self._screen_monitor_task: asyncio.Task | None = None
         self._health_monitor_task: asyncio.Task | None = None
+        self._sync_task: asyncio.Task | None = None
         self._on_pause_changed = None
         self._event_bridge = _EventBridge(self._storage, "")
 
@@ -138,6 +140,9 @@ class CollectionManager:
         self._health_monitor_task = asyncio.create_task(self._run_health_monitor())
         logger.info("Health monitor started")
 
+        self._sync_task = asyncio.create_task(self._run_sync_loop(self._config.duckdb_sync_interval_s))
+        logger.info("DuckDB sync started")
+
         if self._system_type == SystemType.ANDROID:
             self._screen_monitor_task = asyncio.create_task(self._monitor_screen_state())
             logger.info("Screen state monitor started")
@@ -154,6 +159,13 @@ class CollectionManager:
             except asyncio.CancelledError:
                 pass
             self._health_monitor_task = None
+        if self._sync_task:
+            self._sync_task.cancel()
+            try:
+                await self._sync_task
+            except asyncio.CancelledError:
+                pass
+            self._sync_task = None
         if self._screen_monitor_task:
             self._screen_monitor_task.cancel()
             try:
@@ -238,6 +250,21 @@ class CollectionManager:
             if vac["vacuumed"]:
                 logger.info("Periodic auto-vacuum completed: %s", vac["message"])
 
+    async def _run_sync_loop(self, interval: float = 60.0) -> None:
+        store = AnalyticsStore()
+        try:
+            while self._running:
+                try:
+                    result = store.sync_from_sqlite()
+                    total = sum(v for v in result.values() if v > 0)
+                    if total:
+                        logger.info("DuckDB sync complete: %d rows", total)
+                except Exception:
+                    logger.exception("DuckDB sync failed")
+                await asyncio.sleep(interval)
+        finally:
+            store.close()
+
     @property
     def bus(self) -> TickBus:
         return self._bus
@@ -256,6 +283,11 @@ class CollectionManager:
 
     def clear_all_data(self) -> None:
         self._storage.clear_all_data()
+        store = AnalyticsStore()
+        try:
+            store.clear()
+        finally:
+            store.close()
 
     @property
     def on_pause_changed(self) -> Callable[[bool], None] | None:
