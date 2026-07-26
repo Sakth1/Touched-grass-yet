@@ -13,7 +13,7 @@ DEFAULT_CONFIG = {
     "tick_interval_overrides": {},
     "watchers_enabled": ["foreground", "afk"],
     "log_level": "INFO",
-    "duckdb_sync_interval_s": 60,
+    "auto_start_enabled": False,
 }
 
 
@@ -69,9 +69,13 @@ class ConfigManager:
         self._data["url_extraction_enabled"] = value
 
     @property
-    def log_level(self) -> str:
-        return self._data.get("log_level", "INFO")
+    def auto_start_enabled(self) -> bool:
+        return self._data.get("auto_start_enabled", False)
+
+    @auto_start_enabled.setter
+    def auto_start_enabled(self, value: bool) -> None:
+        self._data["auto_start_enabled"] = value
 
     @property
-    def duckdb_sync_interval_s(self) -> int:
-        return self._data.get("duckdb_sync_interval_s", 60)
+    def log_level(self) -> str:
+        return self._data.get("log_level", "INFO")

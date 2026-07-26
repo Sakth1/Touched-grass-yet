@@ -3,6 +3,8 @@ import logging
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
+from core.auto_start import disable as disable_auto_start
+from core.auto_start import enable as enable_auto_start
 from core.logging_setup import clear_logs, read_log_lines
 
 logger = logging.getLogger(__name__)
@@ -14,11 +16,17 @@ class SettingsPanel:
     def __init__(self, page: ft.Page, manager: CollectionManager):
         self._page = page
         self._manager = manager
+        self._config = manager.config
         self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._log_scroll = ft.ListView(
             expand=True,
             auto_scroll=False,
             spacing=0,
+        )
+        self._auto_start_switch = ft.Switch(
+            label="Launch on system startup",
+            value=self._config.auto_start_enabled,
+            on_change=self._toggle_auto_start,
         )
 
         self._build()
@@ -42,6 +50,8 @@ class SettingsPanel:
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                     ft.Divider(height=10),
+                    self._auto_start_switch,
+                    ft.Divider(height=5),
                     ft.Button(
                         "View App Log",
                         icon=ft.Icons.DESCRIPTION,
@@ -97,6 +107,19 @@ class SettingsPanel:
 
     def hide(self):
         self._view.visible = False
+        self._page.update()
+
+    def _toggle_auto_start(self, e):
+        if self._auto_start_switch.value:
+            ok = enable_auto_start()
+        else:
+            ok = disable_auto_start()
+        if ok:
+            self._config.auto_start_enabled = self._auto_start_switch.value
+            self._config.save()
+        else:
+            self._auto_start_switch.value = not self._auto_start_switch.value
+            self._status_text.value = "Failed to update auto-start setting"
         self._page.update()
 
     @property

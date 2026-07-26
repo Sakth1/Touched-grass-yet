@@ -3,6 +3,8 @@ import logging
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
+from core.auto_start import enable as enable_auto_start
+from core.auto_start import is_enabled as is_auto_start_enabled
 from core.logging_setup import setup_file_logging
 from UI.home_page import HomePage
 from utils.models import SystemType
@@ -26,6 +28,9 @@ async def entrypoint(page: ft.Page):
     manager = CollectionManager()
     home = HomePage(page, manager)
     page.update()
+
+    if manager.config.auto_start_enabled and not is_auto_start_enabled():
+        enable_auto_start()
 
     if manager.detect_platform() == SystemType.ANDROID:
         from core.collectors.android.usage_stats import check_usage_stats_permission

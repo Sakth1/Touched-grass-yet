@@ -70,6 +70,13 @@ class Storage:
             self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             logger.info("Schema migration complete")
 
+        cols = {r[1] for r in self._conn.execute(
+            "PRAGMA table_info(raw_events)"
+        ).fetchall()}
+        if "tick_uuid" in cols:
+            self._conn.execute("ALTER TABLE raw_events DROP COLUMN tick_uuid")
+            logger.info("Dropped orphaned tick_uuid column from raw_events")
+
     def _register_device(self) -> None:
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
@@ -141,10 +148,7 @@ class Storage:
         timestamp: float,
         payload: dict,
         source: str,
-        tick_uuid: str | None = None,
     ) -> int:
-        if tick_uuid is not None:
-            payload = {**payload, "_tick_uuid": tick_uuid}
         self._conn.execute(
             """INSERT INTO raw_events
                (device_id, platform, event_type, timestamp, collected_at, payload, source)

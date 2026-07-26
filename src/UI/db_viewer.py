@@ -27,6 +27,7 @@ class DbViewer:
     def __init__(self, page: ft.Page, manager: CollectionManager):
         self._page = page
         self._manager = manager
+        self._title_text = ft.Text("DB Viewer (dev)", size=22, weight=ft.FontWeight.BOLD)
         self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._watcher_dd = ft.Dropdown(
             width=140,
@@ -60,7 +61,7 @@ class DbViewer:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Text("DB Viewer (dev)", size=22, weight=ft.FontWeight.BOLD),
+                            self._title_text,
                             ft.IconButton(
                                 ft.Icons.CLOSE,
                                 on_click=lambda e: self.hide(),

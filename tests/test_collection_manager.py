@@ -208,41 +208,4 @@ class TestHealthMonitor:
         assert cm._health_monitor_task is None
 
 
-class TestDuckDBSync:
-    async def test_sync_loop_runs_periodically(self):
-        from core.application.collection_manager import CollectionManager
-
-        cm = CollectionManager()
-        cm._running = True
-
-        with patch("core.application.collection_manager.AnalyticsStore") as mock_store:
-            instance = mock_store.return_value
-
-            sync = asyncio.create_task(cm._run_sync_loop(interval=0.01))
-            await asyncio.sleep(0.03)
-            cm._running = False
-            try:
-                await sync
-            except asyncio.CancelledError:
-                pass
-
-            assert instance.sync_from_sqlite.called
-            assert instance.close.called
-
-    async def test_sync_loop_cancelled_on_stop(self):
-        from core.application.collection_manager import CollectionManager
-
-        cm = CollectionManager()
-        cm._running = True
-        cm._sync_task = asyncio.create_task(cm._run_sync_loop(interval=3600))
-
-        cm._running = False
-        if cm._sync_task:
-            cm._sync_task.cancel()
-            try:
-                await cm._sync_task
-            except asyncio.CancelledError:
-                pass
-            cm._sync_task = None
-
-        assert cm._sync_task is None
+_import_guard = True  # prevent unintentional class deletion from breaking indentation
