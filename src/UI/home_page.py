@@ -52,74 +52,75 @@ class HomePage:
 
         self._manager.on_pause_changed = self._on_pause_state_changed
 
-        self.page.add(
-            ft.Stack(
-                controls=[
-                    ft.Column(
-                        controls=[
-                            ft.Row(
-                                controls=[
-                                    self._status_text,
-                                    ft.Row(
-                                        controls=[
-                                            self._platform_text,
-                                            ft.IconButton(
-                                                ft.Icons.STORAGE,
-                                                icon_size=20,
-                                                tooltip="DB Viewer (dev)",
-                                                on_click=lambda e: self._db_viewer.show(),
-                                            ),
-                                            ft.IconButton(
-                                                ft.Icons.SETTINGS,
-                                                icon_size=20,
-                                                on_click=lambda e: self._settings.show(),
-                                            ),
-                                        ],
-                                        spacing=4,
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                            ft.Divider(height=5),
-                            ft.Container(
-                                content=ft.Column(
+        self._content = ft.Stack(
+            controls=[
+                ft.Column(
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                self._status_text,
+                                ft.Row(
                                     controls=[
-                                        ft.Text(
-                                            "Foreground App",
-                                            size=14,
-                                            weight=ft.FontWeight.BOLD,
+                                        self._platform_text,
+                                        ft.IconButton(
+                                            ft.Icons.STORAGE,
+                                            icon_size=20,
+                                            tooltip="DB Viewer (dev)",
+                                            on_click=lambda e: self._db_viewer.show(),
                                         ),
-                                        self._current_title,
+                                        ft.IconButton(
+                                            ft.Icons.SETTINGS,
+                                            icon_size=20,
+                                            on_click=lambda e: self._settings.show(),
+                                        ),
                                     ],
-                                    spacing=2,
+                                    spacing=4,
                                 ),
-                                padding=10,
-                                bgcolor=ft.Colors.SURFACE_DIM,
-                                border_radius=8,
-                            ),
-                            ft.Divider(height=5),
-                            ft.Row(
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        ),
+                        ft.Divider(height=5),
+                        ft.Container(
+                            content=ft.Column(
                                 controls=[
-                                    self._start_btn,
-                                    self._pause_btn,
-                                    self._stop_btn,
+                                    ft.Text(
+                                        "Foreground App",
+                                        size=14,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    self._current_title,
                                 ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                spacing=20,
+                                spacing=2,
                             ),
-                            ft.Divider(height=5),
-                            ft.Text("Activity Log", size=14, weight=ft.FontWeight.BOLD),
-                            self._log_area,
-                        ],
-                        expand=True,
-                        spacing=3,
-                    ),
-                    self._settings.overlay,
-                    self._db_viewer.overlay,
-                ],
-                expand=True,
-            )
+                            padding=10,
+                            bgcolor=ft.Colors.SURFACE_DIM,
+                            border_radius=8,
+                        ),
+                        ft.Divider(height=5),
+                        ft.Row(
+                            controls=[
+                                self._start_btn,
+                                self._pause_btn,
+                                self._stop_btn,
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=20,
+                        ),
+                        ft.Divider(height=5),
+                        ft.Text("Activity Log", size=14, weight=ft.FontWeight.BOLD),
+                        self._log_area,
+                    ],
+                    expand=True,
+                    spacing=3,
+                ),
+                self._settings.overlay,
+                self._db_viewer.overlay,
+            ],
+            expand=True,
         )
+
+    def build_content(self) -> ft.Control:
+        return self._content
 
     def _on_tick(self, tick: Tick) -> None:
         if tick.watcher == "android_foreground":
