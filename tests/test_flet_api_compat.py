@@ -225,7 +225,7 @@ def _trial_construct_or_call(
     valid: set[str],
 ) -> None:
     """Try constructing (type) or calling (function) *obj* with ``None`` kwargs.
-    
+
     Catches ``DeprecationWarning`` / ``FutureWarning`` emitted by the constructor/call.
     Skips functions known to start event loops (``run``, ``app``, …).
     """

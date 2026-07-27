@@ -9,8 +9,8 @@ import pytest
 # in any test is immediately caught, not just in the compat gate.
 warnings.filterwarnings("error", category=DeprecationWarning)
 
-from core.tick_bus import TickBus
-from utils.models import Tick, WatcherConfig
+from core.tick_bus import TickBus  # noqa: E402
+from utils.models import Tick, WatcherConfig  # noqa: E402
 
 
 @pytest.fixture(autouse=True, scope="session")

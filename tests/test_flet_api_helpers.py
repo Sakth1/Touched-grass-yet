@@ -8,12 +8,12 @@ import sys
 from pathlib import Path
 
 import flet as ft
-import pytest
 
 # Allow importing from the test package itself
 sys.path.insert(0, str(Path(__file__).parent))
 
 from test_flet_api_compat import (
+    SRC_DIR,
     _get_flet_imports,
     _has_flet_imports,
     _has_var_keyword,
@@ -25,9 +25,7 @@ from test_flet_api_compat import (
     _resolve_signature,
     _resolve_typed_target,
     _to_ft_chain,
-    SRC_DIR,
 )
-
 
 # ===========================================================================
 # _resolve_attr_chain
