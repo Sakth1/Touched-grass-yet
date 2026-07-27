@@ -181,12 +181,12 @@ class HomePage:
         if paused:
             self._status_text.value = "Status: Paused"
             self._status_text.color = ft.Colors.ORANGE
-            self._pause_btn.text = "Resume"
+            self._pause_btn.content = "Resume"
             self._pause_btn.icon = ft.Icons.PLAY_ARROW
         else:
             self._status_text.value = "Status: Running"
             self._status_text.color = ft.Colors.GREEN
-            self._pause_btn.text = "Pause"
+            self._pause_btn.content = "Pause"
             self._pause_btn.icon = ft.Icons.PAUSE
         self.page.update()
 
@@ -200,7 +200,7 @@ class HomePage:
         else:
             self._status_text.value = "Status: Stopped"
             self._status_text.color = None
-            self._pause_btn.text = "Pause"
+            self._pause_btn.content = "Pause"
             self._pause_btn.icon = ft.Icons.PAUSE
         self.page.update()
 
@@ -249,7 +249,7 @@ class HomePage:
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self._close_dialog(dlg)),
-                ft.ElevatedButton("Open Settings", on_click=lambda e: self._open_settings(dlg)),
+                ft.Button("Open Settings", on_click=lambda e: self._open_settings(dlg)),
             ],
         )
         self.page.show_dialog(dlg)

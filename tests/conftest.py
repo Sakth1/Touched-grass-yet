@@ -1,8 +1,13 @@
 import uuid
+import warnings
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Turn DeprecationWarning into errors so any deprecation (esp. from flet)
+# in any test is immediately caught, not just in the compat gate.
+warnings.filterwarnings("error", category=DeprecationWarning)
 
 from core.tick_bus import TickBus
 from utils.models import Tick, WatcherConfig
