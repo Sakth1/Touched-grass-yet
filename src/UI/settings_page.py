@@ -136,7 +136,7 @@ class SettingsPanel:
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self._dismiss_dialog(dlg)),
-                ft.ElevatedButton(
+                ft.Button(
                     "Delete Everything",
                     on_click=lambda e: self._handle_clear_data(dlg),
                     color=ft.Colors.RED_400,
