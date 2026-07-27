@@ -1,5 +1,6 @@
 import logging
 import traceback
+from collections.abc import Callable
 
 import flet as ft
 
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 class ErrorBoundary(ft.Container):
     def __init__(
         self,
-        content_builder: ft.ControlEventHandler,
+        content_builder: Callable[[], ft.Control],
         fallback: ft.Control | None = None,
     ) -> None:
         self._builder = content_builder
@@ -38,3 +39,8 @@ class ErrorBoundary(ft.Container):
             spacing=8,
             expand=True,
         )
+
+
+
+
+

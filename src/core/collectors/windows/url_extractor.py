@@ -93,10 +93,7 @@ def is_trackable_url(url: str | None) -> bool:
     if url in SKIP_EXACT:
         return False
     url_lower = url.lower()
-    for prefix in SKIP_PREFIXES:
-        if url_lower.startswith(prefix):
-            return False
-    return True
+    return not any(url_lower.startswith(prefix) for prefix in SKIP_PREFIXES)
 
 
 def normalize_url(url: str) -> str:
@@ -431,8 +428,7 @@ class UrlExtractor:
                     session = json.loads(decompressed)
                     tabs_info = self._parse_firefox_session(session)
                     for t in tabs_info:
-                        if t["is_active_window"] and t["is_selected_tab"]:
-                            if is_trackable_url(t["url"]):
+                        if t["is_active_window"] and t["is_selected_tab"] and is_trackable_url(t["url"]):
                                 return t["url"]
                     if tabs_info:
                         url = tabs_info[0]["url"]

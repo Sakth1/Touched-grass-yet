@@ -143,6 +143,27 @@ uv run flet run           # desktop app
 uv run flet run --web     # web app
 ```
 
+## Validation Pipeline
+
+The project uses a layered validation architecture to catch failures before runtime:
+
+| Layer | Tool | CI? | Catches |
+|---|---|---|---|
+| Lint | `ruff` (F, E, W, I, B, SIM) | Yes | Syntax, undefined names, imports, common bugs |
+| Type checking | `pyright` | Yes | Type mismatches, missing attributes |
+| Flet API compat | `pytest tests/test_flet_api_compat.py` | Yes | Removed/renamed APIs, invalid kwargs, deprecation |
+| Wiring validation | `python scripts/validate_wiring.py` | Yes | Missing callback methods (`_on_dismiss`-class bugs) |
+| Startup smoke | `pytest tests/test_startup.py` | Yes | Construction-time exceptions in any component |
+| Unit tests | `pytest tests/` (285+ tests) | Yes | Component logic (storage, scheduler, collectors, etc.) |
+
+Run locally:
+```bash
+uv run ruff check src/ tests/
+uv run pyright src/
+uv run pytest tests/ -q
+uv run python scripts/validate_wiring.py
+```
+
 ## Dependencies
 
 flet, orjson, psutil, rich

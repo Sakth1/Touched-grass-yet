@@ -36,7 +36,10 @@ line-length = 120
 exclude = ["src/trial and error"]
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "I"]
+select = ["F", "E", "W", "I", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B018", "SIM105", "SIM115", "SIM117"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

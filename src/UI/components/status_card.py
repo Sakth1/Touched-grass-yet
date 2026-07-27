@@ -24,3 +24,8 @@ class StatusCard(ft.Card):
             ),
             padding=ft.padding.Padding.all(16),
         )
+
+
+
+
+

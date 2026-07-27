@@ -376,6 +376,40 @@ class Storage:
             (session_id, url_visit_id),
         )
 
+    def get_today_seconds(self) -> float:
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).timestamp()
+        row = self._conn.execute(
+            "SELECT COALESCE(SUM(duration_s), 0) FROM sessions WHERE start_ts >= ? AND duration_s IS NOT NULL",
+            (today_start,),
+        ).fetchone()
+        return float(row[0])
+
+    def get_latest_battery(self) -> dict | None:
+        row = self._conn.execute(
+            "SELECT payload FROM raw_events WHERE event_type = ? ORDER BY timestamp DESC LIMIT 1",
+            ("power_change",),
+        ).fetchone()
+        if row is None:
+            return None
+        return json.loads(row[0])
+
+    def get_today_top_apps(self, limit: int = 5) -> list[dict]:
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).timestamp()
+        rows = self._conn.execute(
+            """SELECT app_key, SUM(duration_s) as total_s
+               FROM sessions
+               WHERE start_ts >= ? AND duration_s IS NOT NULL
+               GROUP BY app_key
+               ORDER BY total_s DESC
+               LIMIT ?""",
+            (today_start, limit),
+        ).fetchall()
+        return [{"app_key": r[0], "duration_s": r[1]} for r in rows]
+
     def clear_all_data(self) -> None:
         self._conn.execute("DELETE FROM url_visits")
         self._conn.execute("DELETE FROM raw_events")

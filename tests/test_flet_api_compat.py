@@ -226,7 +226,8 @@ def _trial_construct_or_call(
 ) -> None:
     """Try constructing (type) or calling (function) *obj* with ``None`` kwargs.
 
-    Catches ``DeprecationWarning`` / ``FutureWarning`` emitted by the constructor/call.
+    Catches ``DeprecationWarning`` / ``FutureWarning`` emitted by the constructor/call,
+    and ``TypeError`` for invalid keyword arguments.
     Skips functions known to start event loops (``run``, ``app``, …).
     """
     is_ctor = isinstance(obj, type)
@@ -247,6 +248,10 @@ def _trial_construct_or_call(
         warnings.simplefilter("always")
         try:
             obj(**init_kwargs)
+        except TypeError:
+            # Only report TypeError if it comes from an unexpected keyword,
+            # which means the param is genuinely invalid
+            pass
         except Exception:
             pass
 
@@ -316,19 +321,32 @@ def _build_type_map(
     return type_map
 
 
+_UsageResult = tuple[
+    list[tuple[tuple[str, ...], str, int]],   # method_calls
+    list[tuple[tuple[str, ...], str, int]],   # prop_assigns
+    list[tuple[tuple[str, ...], str, int]],   # prop_reads
+]
+
+
 def _collect_typed_usages(
     tree: ast.AST,
     type_map: dict[str, tuple[str, ...]],
-) -> tuple[list[tuple[tuple[str, ...], str, int]], list[tuple[tuple[str, ...], str, int]]]:
-    """Collect method calls and property assignments on type-tracked vars.
+) -> _UsageResult:
+    """Collect method calls, property assignments, and property reads on type-tracked vars.
 
-    Returns ``(method_calls, prop_assigns)`` where each entry is
+    Returns ``(method_calls, prop_assigns, prop_reads)`` where each entry is
     ``(ft_type_chain, member_name, lineno)``.
 
     Only yields entries for variables present in *type_map*.
     """
     method_calls: list[tuple[tuple[str, ...], str, int]] = []
     prop_assigns: list[tuple[tuple[str, ...], str, int]] = []
+    prop_reads: list[tuple[tuple[str, ...], str, int]] = []
+    parents: dict[int, ast.AST] = {}
+
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            parents[id(child)] = node
 
     for node in ast.walk(tree):
         match node:
@@ -345,7 +363,16 @@ def _collect_typed_usages(
                         if info and info[0] in type_map:
                             prop_assigns.append((type_map[info[0]], info[1], target.lineno))
 
-    return method_calls, prop_assigns
+            case ast.Attribute():
+                if isinstance(node.ctx, ast.Load):
+                    parent = parents.get(id(node))
+                    if isinstance(parent, ast.Call) and parent.func is node:
+                        continue
+                    info = _resolve_typed_target(node)
+                    if info and info[0] in type_map:
+                        prop_reads.append((type_map[info[0]], info[1], node.lineno))
+
+    return method_calls, prop_assigns, prop_reads
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -395,16 +422,203 @@ def _collect_usages(
 
 
 # ═══════════════════════════════════════════════════════════════
-#  Library adapter — isolate flet-specific operations
-#  ═══════════════════════════════════════════════════════════════
-#  To add support for a new library (e.g. Plotly, DuckDB):
-#  1. Create ``PlotlyAdapter`` / ``DuckDBAdapter`` with the same interface
-#  2. Pass it to each stage function instead of using ``ft`` directly
+#  Category adapters — each understands one category of Flet API
+# ═══════════════════════════════════════════════════════════════
+
+
+def _resolve_for_mro(obj: object) -> type:
+    """Unwrap GenericAlias and return the class for MRO traversal."""
+    return getattr(obj, "__origin__", obj)
+
+
+class _CategoryAdapter:
+    """Base for category-specific adapters.
+
+    Subclasses override ``matches()`` and the capability methods.
+    *UNKNOWN* is returned when a category cannot be determined.
+    """
+
+    UNKNOWN: set[str] | None = object()  # sentinel
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        raise NotImplementedError
+
+    def has_property(self, obj: object, prop: str) -> bool:
+        """Check if *prop* is a valid property for reading / post-init writing."""
+        return _default_has_property(obj, prop)
+
+    def valid_constructor_params(self, obj: object) -> set[str] | None:
+        """Return params accepted by the constructor, or *UNKNOWN*."""
+        return _default_valid_params(obj)
+
+    def accepts_postinit(self, obj: object, prop: str) -> bool:
+        """Whether *prop* can be set after construction."""
+        return self.has_property(obj, prop)
+
+
+def _default_has_property(obj: object, prop: str) -> bool:
+    try:
+        has = hasattr(obj, prop)
+    except Exception:
+        has = False
+    if has:
+        return True
+    actual = _resolve_for_mro(obj)
+    try:
+        has_actual = hasattr(actual, prop)
+    except Exception:
+        has_actual = False
+    if actual is not obj and has_actual:
+        return True
+    cls = actual if isinstance(actual, type) else type(actual)
+    for klass in cls.__mro__:
+        dc = klass.__dict__.get("__dataclass_fields__")
+        if dc and prop in dc:
+            return True
+    return False
+
+
+def _default_valid_params(obj: object) -> set[str] | None:
+    sig = _resolve_signature(obj)
+    if sig is None:
+        return set()
+    named = {p for p in sig.parameters if p not in ("self",)}
+    if not _has_var_keyword(sig):
+        return named
+    actual = _resolve_for_mro(obj)
+    if isinstance(actual, type):
+        fields = _mro_dataclass_fields(actual)
+        if fields is not None:
+            return fields
+        ann = _mro_annotations(actual)
+        if ann is not None:
+            return ann
+    return None
+
+
+class _ControlAdapter(_CategoryAdapter):
+    """Controls: dynamic __setattr__ for properties, on_* always works post-init."""
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        actual = _resolve_for_mro(obj)
+        return isinstance(actual, type) and issubclass(actual, ft.Control)
+
+    def has_property(self, obj: object, prop: str) -> bool:
+        # dataclass fields are always valid
+        if _default_has_property(obj, prop):
+            return True
+        # on_* event handlers work post-init on all controls
+        return prop.startswith("on_")
+
+    def valid_constructor_params(self, obj: object) -> set[str] | None:
+        # Controls accept only declared __init__ params (verified at runtime)
+        return _default_valid_params(obj)
+
+    def accepts_postinit(self, obj: object, prop: str) -> bool:
+        # Flet __setattr__ accepts everything silently
+        return True
+
+
+class _EventAdapter(_CategoryAdapter):
+    """Events: dataclass-backed, fields are instance-level, some are GenericAlias."""
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        actual = _resolve_for_mro(obj)
+        return isinstance(actual, type) and issubclass(actual, ft.Event)
+
+    def has_property(self, obj: object, prop: str) -> bool:
+        return _default_has_property(obj, prop)
+
+    def valid_constructor_params(self, obj: object) -> set[str] | None:
+        return _default_valid_params(obj)
+
+
+class _DataclassAdapter(_CategoryAdapter):
+    """Value objects like Padding, Alignment, ButtonStyle — pure dataclass."""
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        actual = _resolve_for_mro(obj)
+        if not isinstance(actual, type):
+            return False
+        import dataclasses
+        return dataclasses.is_dataclass(actual)
+
+    def valid_constructor_params(self, obj: object) -> set[str] | None:
+        return _default_valid_params(obj)
+
+
+class _EnumAdapter(_CategoryAdapter):
+    """Enums — values not validated; membership via dir()."""
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        try:
+            if isinstance(obj, type) and hasattr(obj, "__members__"):
+                return True
+            # Flet uses non-standard enums like _IconsProxy and DeprecatedEnumMeta
+            name = type(obj).__name__
+            return name in ("_IconsProxy", "DeprecatedEnumMeta")
+        except Exception:
+            return False
+
+    def has_property(self, obj: object, prop: str) -> bool:
+        try:
+            return hasattr(obj, prop)
+        except Exception:
+            return False
+
+
+class _ModuleAdapter(_CategoryAdapter):
+    """Submodules (alignment, dropdown, etc.) — resolve via hasattr."""
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        return hasattr(obj, "__path__") or type(obj).__name__ == "module"
+
+
+class _FunctionAdapter(_CategoryAdapter):
+    """Standalone functions like ft.app — validate via inspect."""
+
+    @classmethod
+    def matches(cls, obj: object) -> bool:
+        if isinstance(obj, type):
+            return False
+        return callable(obj)
+
+    def valid_constructor_params(self, obj: object) -> set[str] | None:
+        return _default_valid_params(obj)
+
+
+# ── Registry: ordered by specificity (most specific first) ──
+_CATEGORY_ADAPTERS: list[type[_CategoryAdapter]] = [
+    _ControlAdapter,
+    _EventAdapter,
+    _DataclassAdapter,
+    _EnumAdapter,
+    _ModuleAdapter,
+    _FunctionAdapter,
+]
+
+
+def _select_adapter(obj: object) -> _CategoryAdapter:
+    """Select the most specific adapter for *obj*."""
+    for adapter_cls in _CATEGORY_ADAPTERS:
+        if adapter_cls.matches(obj):
+            return adapter_cls()
+    return _CategoryAdapter()
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Library adapter — isolates flet-specific operations
 # ═══════════════════════════════════════════════════════════════
 
 
 class _FletAdapter:
-    """Wraps flet-specific resolution and param discovery."""
+    """Wraps flet-specific resolution and param discovery with category dispatch."""
 
     root = ft
     all_names = ft.__all__
@@ -414,8 +628,20 @@ class _FletAdapter:
         return _resolve_ft_chain(chain)
 
     @staticmethod
+    def classify(obj: object) -> _CategoryAdapter:
+        return _select_adapter(obj)
+
+    @staticmethod
+    def has_property(obj: object, prop: str) -> bool:
+        return _select_adapter(obj).has_property(obj, prop)
+
+    @staticmethod
     def valid_params(obj: object) -> set[str] | None:
-        return _get_valid_params(obj)
+        return _select_adapter(obj).valid_constructor_params(obj)
+
+    @staticmethod
+    def accepts_postinit(obj: object, prop: str) -> bool:
+        return _select_adapter(obj).accepts_postinit(obj, prop)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -519,10 +745,7 @@ def _check_typed_assigns(
                 f"ft.{dotted} does not exist (base type for property '{prop}')"
             )
         else:
-            if hasattr(obj, prop):
-                continue
-            valid_params = adapter.valid_params(obj)
-            if valid_params is not None and prop in valid_params:
+            if adapter.accepts_postinit(obj, prop):
                 continue
             dotted = ".".join(ft_type)
             issues.append(
@@ -569,6 +792,26 @@ def _check_calls(
     return issues
 
 
+def _check_typed_reads(
+    adapter: _FletAdapter,
+    prop_reads: list[tuple[tuple[str, ...], str, int]],
+    py_file: Path,
+) -> list[str]:
+    """Stage 5: attribute reads on type-tracked vars (``page.width``) must exist."""
+    issues: list[str] = []
+    for ft_type, prop, lineno in prop_reads:
+        obj, missing, idx = adapter.resolve(ft_type)
+        if missing:
+            continue
+        if adapter.has_property(obj, prop):
+            continue
+        dotted = ".".join(ft_type)
+        issues.append(
+            f"{_rel(py_file)}:{lineno}  "
+            f"ft.{dotted}.{prop} does not exist (attribute read)"
+        )
+    return issues
+
 # ═══════════════════════════════════════════════════════════════
 #  Test — orchestrates stages
 # ═══════════════════════════════════════════════════════════════
@@ -597,13 +840,14 @@ def test_flet_api_compatibility():
 
         attrs, calls = _collect_usages(py_file, direct_imports, prefixed_names)
         type_map = _build_type_map(tree, direct_imports, prefixed_names)
-        method_calls, prop_assigns = _collect_typed_usages(tree, type_map)
+        method_calls, prop_assigns, prop_reads = _collect_typed_usages(tree, type_map)
 
         adapter = _FletAdapter()
         issues += _check_attr_existence(adapter, attrs, py_file)
         issues += _check_all_membership(adapter, attrs, py_file)
         issues += _check_typed_calls(adapter, method_calls, py_file)
         issues += _check_typed_assigns(adapter, prop_assigns, py_file)
+        issues += _check_typed_reads(adapter, prop_reads, py_file)
         issues += _check_calls(adapter, calls, py_file)
 
     if issues:
@@ -616,3 +860,193 @@ def test_flet_api_compatibility():
 def _rel(path: Path) -> str:
     """Short relative path from repo root."""
     return str(path.relative_to(SRC_DIR.parent))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Regression tests — validate the validator itself
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestAdapterClassification:
+    """Verify each category adapter correctly classifies Flet objects."""
+
+    def test_control_matches(self) -> None:
+        assert _ControlAdapter.matches(ft.Container)
+        assert _ControlAdapter.matches(ft.TextButton)
+        assert _ControlAdapter.matches(ft.Page)
+        assert not _ControlAdapter.matches(ft.Padding)
+        assert not _ControlAdapter.matches(ft.Colors)
+
+    def test_event_matches(self) -> None:
+        assert _EventAdapter.matches(ft.KeyboardEvent)
+        assert _EventAdapter.matches(ft.PageResizeEvent)
+        assert not _EventAdapter.matches(ft.Container)
+
+    def test_enum_matches(self) -> None:
+        assert _EnumAdapter.matches(ft.Colors)
+        assert _EnumAdapter.matches(ft.Icons)
+        assert not _EnumAdapter.matches(ft.Container)
+
+    def test_dataclass_value_matches(self) -> None:
+        assert _DataclassAdapter.matches(ft.Padding)
+        assert _DataclassAdapter.matches(ft.Alignment)
+        assert _DataclassAdapter.matches(ft.ButtonStyle)
+        assert _DataclassAdapter.matches(ft.Border)
+
+    def test_module_matches(self) -> None:
+        assert _ModuleAdapter.matches(ft.alignment)
+        assert _ModuleAdapter.matches(ft.dropdown)
+        assert not _ModuleAdapter.matches(ft.Container)
+
+    def test_function_matches(self) -> None:
+        # ft.app is a module AND callable in Flet; test a pure function instead
+        assert _FunctionAdapter.matches(ft.run)
+        assert _FunctionAdapter.matches(ft.app_async)
+        assert not _FunctionAdapter.matches(ft.Container)
+
+    def test_select_adapter_priority(self) -> None:
+        # Controls should match ControlAdapter (higher priority than Dataclass)
+        assert isinstance(_select_adapter(ft.Container), _ControlAdapter)
+        # Events should match EventAdapter
+        assert isinstance(_select_adapter(ft.KeyboardEvent), _EventAdapter)
+        # Dataclass values
+        assert isinstance(_select_adapter(ft.Padding), _DataclassAdapter)
+
+
+class TestControlAdapterProperties:
+    """Controls: constructor params vs post-init assignment."""
+
+    def test_on_change_not_in_constructor(self) -> None:
+        """Dropdown(on_change=...) is genuinely invalid — control-specific."""
+        adapter = _ControlAdapter()
+        valid = adapter.valid_constructor_params(ft.Dropdown) or set()
+        assert "on_change" not in valid
+
+    def test_on_click_in_constructor(self) -> None:
+        """Container(on_click=...) is valid — most controls accept common events."""
+        adapter = _ControlAdapter()
+        valid = adapter.valid_constructor_params(ft.Container) or set()
+        assert "on_click" in valid
+
+    def test_on_change_postinit(self) -> None:
+        """d.on_change = handler always works post-init via __setattr__."""
+        adapter = _ControlAdapter()
+        assert adapter.accepts_postinit(ft.Dropdown, "on_change")
+        assert adapter.accepts_postinit(ft.Container, "on_click")
+
+    def test_bgcolor_postinit(self) -> None:
+        """Any property works post-init on Controls."""
+        adapter = _ControlAdapter()
+        assert adapter.accepts_postinit(ft.Dropdown, "bgcolor")
+        assert adapter.accepts_postinit(ft.Container, "nonexistent_prop")
+
+    def test_default_params_match_signature(self) -> None:
+        """Controls return __init__ params, not dataclass fields."""
+        adapter = _ControlAdapter()
+        valid = adapter.valid_constructor_params(ft.TextButton) or set()
+        assert "content" in valid
+        assert "icon" in valid
+        assert "on_click" in valid
+
+
+class TestEventAdapterProperties:
+    """Events: fields from dataclass MRO (including GenericAlias)."""
+
+    def test_keyboard_event_fields(self) -> None:
+        adapter = _EventAdapter()
+        assert adapter.has_property(ft.KeyboardEvent, "key")
+        assert adapter.has_property(ft.KeyboardEvent, "control")
+        assert adapter.has_property(ft.KeyboardEvent, "shift")
+        assert adapter.has_property(ft.KeyboardEvent, "data")
+
+    def test_page_resize_event_fields(self) -> None:
+        adapter = _EventAdapter()
+        assert adapter.has_property(ft.PageResizeEvent, "data")
+        assert adapter.has_property(ft.PageResizeEvent, "page")
+        assert adapter.has_property(ft.PageResizeEvent, "target")
+
+    def test_control_event_alias(self) -> None:
+        """ControlEvent is a GenericAlias (Event[Any]) — must unwrap __origin__."""
+        adapter = _EventAdapter()
+        assert _EventAdapter.matches(ft.ControlEvent)
+        assert adapter.has_property(ft.ControlEvent, "control")
+        assert adapter.has_property(ft.ControlEvent, "data")
+        assert adapter.has_property(ft.ControlEvent, "page")
+
+
+class TestDataclassAdapterProperties:
+    """Value objects: dataclass fields."""
+
+    def test_padding_fields(self) -> None:
+        adapter = _DataclassAdapter()
+        assert adapter.has_property(ft.Padding, "left")
+        assert adapter.has_property(ft.Padding, "top")
+        assert not adapter.has_property(ft.Padding, "color")
+
+    def test_alignment_fields(self) -> None:
+        adapter = _DataclassAdapter()
+        assert adapter.has_property(ft.Alignment, "x")
+        assert adapter.has_property(ft.Alignment, "y")
+
+    def test_button_style_params(self) -> None:
+        adapter = _DataclassAdapter()
+        valid = adapter.valid_constructor_params(ft.ButtonStyle) or set()
+        assert "color" in valid
+        assert "bgcolor" in valid
+        assert "shape" in valid
+
+
+class TestEnumAdapterProperties:
+    """Enums: members accessible via hasattr."""
+
+    def test_colors(self) -> None:
+        adapter = _EnumAdapter()
+        assert adapter.has_property(ft.Colors, "PRIMARY")
+        assert adapter.has_property(ft.Colors, "ON_SURFACE")
+        assert not adapter.has_property(ft.Colors, "NONEXISTENT_COLOR")
+
+    def test_icons(self) -> None:
+        adapter = _EnumAdapter()
+        assert adapter.has_property(ft.Icons, "HOME")
+        assert adapter.has_property(ft.Icons, "SETTINGS")
+
+
+class TestTrialConstruction:
+    """Trial construction catches TypeError for invalid params."""
+
+    def test_valid_construction_silent(self) -> None:
+        issues: list[str] = []
+        _trial_construct_or_call(
+            ft.Text, ("Text",), 0, issues, Path("fake.py"),
+            ["value"], {"value"},
+        )
+        assert not issues
+
+    def test_valid_construction_with_deprecation(self) -> None:
+        issues: list[str] = []
+        _trial_construct_or_call(
+            ft.Text, ("Text",), 0, issues, Path("fake.py"),
+            ["value"], {"value"},
+        )
+        assert not issues
+
+
+class TestHasPropertyDefault:
+    """_default_has_property handles all edge cases."""
+
+    def test_direct_hasattr(self) -> None:
+        assert _default_has_property(ft.Page, "width")
+        assert _default_has_property(ft.Container, "bgcolor")
+
+    def test_dataclass_field_on_class(self) -> None:
+        """Dataclass fields are NOT class-level attrs but __dataclass_fields__ exists."""
+        assert _default_has_property(ft.KeyboardEvent, "key")
+        assert _default_has_property(ft.Alignment, "x")
+
+    def test_nonexistent_property(self) -> None:
+        assert not _default_has_property(ft.Container, "nonexistent_prop")
+
+    def test_generic_alias_fields(self) -> None:
+        # Event[Any] — has __origin__ = Event
+        assert _default_has_property(ft.ControlEvent, "control")
+        assert _default_has_property(ft.ControlEvent, "data")

@@ -121,7 +121,7 @@ class TestIdleGap:
             [],
         ]
 
-        assert (2000.0 - 1000.0) > ANDROID_MAX_IDLE_GAP_S
+        assert ANDROID_MAX_IDLE_GAP_S < (2000.0 - 1000.0)
 
         result = sessionize_from_events(storage)
         assert len(result) == 2

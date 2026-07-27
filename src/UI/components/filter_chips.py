@@ -24,3 +24,8 @@ class FilterChips(ft.Row):
     @property
     def selected_values(self) -> list[str]:
         return [c.data for c in self._chips if c.selected]
+
+
+
+
+

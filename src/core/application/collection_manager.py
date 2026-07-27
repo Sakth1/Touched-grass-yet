@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import platform
 from collections.abc import Callable
@@ -145,17 +146,13 @@ class CollectionManager:
         self._auto_paused = False
         if self._health_monitor_task:
             self._health_monitor_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._health_monitor_task
-            except asyncio.CancelledError:
-                pass
             self._health_monitor_task = None
         if self._screen_monitor_task:
             self._screen_monitor_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._screen_monitor_task
-            except asyncio.CancelledError:
-                pass
             self._screen_monitor_task = None
         await self._scheduler.stop()
         if self._runtime:

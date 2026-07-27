@@ -1,79 +1,50 @@
 import flet as ft
 
-from UI.theme.tokens import SEED_COLOR
+from .tokens import DEFAULT_SEED, SEED_COLORS
 
 
-def build_text_theme() -> ft.TextTheme:
-    return ft.TextTheme(
-        display_large=ft.TextStyle(size=57, weight=ft.FontWeight.W_700),
-        display_medium=ft.TextStyle(size=45, weight=ft.FontWeight.W_700),
-        display_small=ft.TextStyle(size=36, weight=ft.FontWeight.W_700),
-        headline_large=ft.TextStyle(size=32, weight=ft.FontWeight.W_600),
-        headline_medium=ft.TextStyle(size=28, weight=ft.FontWeight.W_600),
-        headline_small=ft.TextStyle(size=24, weight=ft.FontWeight.W_600),
-        title_large=ft.TextStyle(size=22, weight=ft.FontWeight.W_500),
-        title_medium=ft.TextStyle(size=16, weight=ft.FontWeight.W_500),
-        title_small=ft.TextStyle(size=14, weight=ft.FontWeight.W_500),
-        body_large=ft.TextStyle(size=16, weight=ft.FontWeight.W_400),
-        body_medium=ft.TextStyle(size=14, weight=ft.FontWeight.W_400),
-        body_small=ft.TextStyle(size=12, weight=ft.FontWeight.W_400),
-        label_large=ft.TextStyle(size=14, weight=ft.FontWeight.W_500),
-        label_medium=ft.TextStyle(size=12, weight=ft.FontWeight.W_500),
-        label_small=ft.TextStyle(size=11, weight=ft.FontWeight.W_500),
+def build_theme(seed_color_name: str = DEFAULT_SEED, dark: bool = True) -> ft.Theme:
+    seed = SEED_COLORS.get(seed_color_name, SEED_COLORS[DEFAULT_SEED])
+    theme = ft.Theme(
+        use_material3=True,
+        color_scheme_seed=seed,
+        font_family="Segoe UI",
     )
 
+    theme.page_transitions_android = ft.PageTransitionTheme.FADE_UPWARDS
+    theme.page_transitions_ios = ft.PageTransitionTheme.FADE_UPWARDS
+    theme.page_transitions_macos = ft.PageTransitionTheme.FADE_UPWARDS
+    theme.page_transitions_linux = ft.PageTransitionTheme.FADE_UPWARDS
+    theme.page_transitions_windows = ft.PageTransitionTheme.FADE_UPWARDS
 
-def build_card_theme() -> ft.CardTheme:
-    return ft.CardTheme(
+    theme.card_theme = ft.CardTheme(
         elevation=1,
         shape=ft.RoundedRectangleBorder(radius=12),
-        margin=4,
     )
 
-
-def build_navigation_bar_theme() -> ft.NavigationBarTheme:
-    return ft.NavigationBarTheme(
+    theme.navigation_bar_theme = ft.NavigationBarTheme(
         elevation=3,
-        label_behavior=ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED,
+        indicator_shape=ft.RoundedRectangleBorder(radius=8),
     )
 
-
-def build_navigation_rail_theme() -> ft.NavigationRailTheme:
-    return ft.NavigationRailTheme(
-        elevation=3,
+    theme.navigation_rail_theme = ft.NavigationRailTheme(
+        elevation=0,
+        indicator_shape=ft.RoundedRectangleBorder(radius=8),
         label_type=ft.NavigationRailLabelType.ALL,
     )
 
+    theme.bottom_app_bar_theme = ft.BottomAppBarTheme(elevation=3)
 
-def build_page_transitions_theme() -> ft.PageTransitionsTheme:
-    return ft.PageTransitionsTheme(
-        android=ft.PageTransitionTheme.ZOOM,
-        ios=ft.PageTransitionTheme.ZOOM,
-        windows=ft.PageTransitionTheme.ZOOM,
-        linux=ft.PageTransitionTheme.ZOOM,
-        macos=ft.PageTransitionTheme.ZOOM,
-    )
+    if dark:
+        theme.page_transitions_dark_android = ft.PageTransitionTheme.FADE_UPWARDS
+        theme.page_transitions_dark_ios = ft.PageTransitionTheme.FADE_UPWARDS
+        theme.page_transitions_dark_macos = ft.PageTransitionTheme.FADE_UPWARDS
+        theme.page_transitions_dark_linux = ft.PageTransitionTheme.FADE_UPWARDS
+        theme.page_transitions_dark_windows = ft.PageTransitionTheme.FADE_UPWARDS
 
-
-def build_theme() -> ft.Theme:
-    return ft.Theme(
-        color_scheme_seed=SEED_COLOR,
-        use_material3=True,
-        text_theme=build_text_theme(),
-        card_theme=build_card_theme(),
-        navigation_bar_theme=build_navigation_bar_theme(),
-        navigation_rail_theme=build_navigation_rail_theme(),
-        page_transitions=build_page_transitions_theme(),
-    )
+    return theme
 
 
-def build_dark_theme() -> ft.Theme:
-    return ft.Theme(
-        color_scheme_seed=SEED_COLOR,
-        use_material3=True,
-        text_theme=build_text_theme(),
-        card_theme=build_card_theme(),
-        navigation_bar_theme=build_navigation_bar_theme(),
-        navigation_rail_theme=build_navigation_rail_theme(),
-        page_transitions=build_page_transitions_theme(),
-    )
+
+
+

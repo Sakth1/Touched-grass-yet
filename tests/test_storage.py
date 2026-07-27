@@ -579,7 +579,7 @@ class TestStorageHealthCheck:
         db = str(tmp_path / "test.db")
         storage = Storage(db_path=db)
         storage._conn.execute("CREATE TABLE tmp_test (id INTEGER PRIMARY KEY, data TEXT)")
-        for i in range(100):
+        for _i in range(100):
             storage._conn.execute("INSERT INTO tmp_test (data) VALUES ('x')")
         storage._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         freelist_before = storage._conn.execute("PRAGMA freelist_count").fetchone()[0]
