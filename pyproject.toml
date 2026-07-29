@@ -13,11 +13,9 @@ dependencies = [
     "psutil>=7.2.2",
     "publicsuffixlist>=1.0.2",
     "rich>=15.0.0",
+    "lz4>=4.3",
+    'pywinauto>=0.6.8; platform_system=="Windows"',
 ]
-
-[project.optional-dependencies]
-url = ["pywinauto>=0.6.8"]
-firefox = ["lz4>=4.3"]
 
 [dependency-groups]
 dev = [
@@ -29,6 +27,12 @@ dev = [
     "ruff>=0.16.0",
     "pyright>=1.1.0",
 ]
+
+[project.scripts]
+check = "_check_runner:main"
+
+[tool.uv]
+package = true
 
 [tool.ruff]
 target-version = "py310"

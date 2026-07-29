@@ -184,7 +184,6 @@ Each device writes to its own `events_{id}` table. Sync copies remote tables as 
 | macOS | Stub only, untested | AppleScript + JSONLZ4 session files |
 | Linux | Stub only, untested | AT-SPI2 / xdotool + SNSS/JSONLZ4 session files |
 
-**App deps:** `pip install touched-grass-yet[url]` for UIA (Windows), `[firefox]` for JSONLZ4.  
-**Prototype deps:** `pywinauto` (Windows UIA), `lz4` (Firefox JSONLZ4).
+**Prototype deps:** `pywinauto` (Windows UIA, auto-installed on Windows), `lz4` (Firefox JSONLZ4).
 
 Usage: `python prototypes/browser_url_extractor/cli.py --help`
