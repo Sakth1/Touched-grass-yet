@@ -31,20 +31,32 @@ class AndroidAfkWatcher:
         if not screen_on:
             return Tick(
                 watcher="android_afk",
-                data={"present": False, "screen_on": False, "seconds_since_last_event": None},
+                data={
+                    "present": False,
+                    "screen_on": False,
+                    "seconds_since_last_event": None,
+                },
             )
 
         if not check_usage_stats_permission():
             if not self._permission_lost:
-                logger.warning("Usage Stats permission lost — user presence fallback to screen state")
+                logger.warning(
+                    "Usage Stats permission lost — user presence fallback to screen state"
+                )
                 self._permission_lost = True
             return Tick(
                 watcher="android_afk",
-                data={"present": True, "screen_on": True, "seconds_since_last_event": None},
+                data={
+                    "present": True,
+                    "screen_on": True,
+                    "seconds_since_last_event": None,
+                },
             )
 
         if self._permission_lost:
-            logger.info("Usage Stats permission restored — user presence watcher resumed")
+            logger.info(
+                "Usage Stats permission restored — user presence watcher resumed"
+            )
             self._permission_lost = False
 
         present, seconds_since = self._check_presence(now_ms)
@@ -65,7 +77,11 @@ class AndroidAfkWatcher:
             if ev["event_type"] == _EVENT_TYPE_RESUMED:
                 event_time_ms = ev.get("time_stamp_ms", now_ms)
                 self._last_event_time_ms = event_time_ms
-                seconds_since = round((now_ms - event_time_ms) / 1000.0, 1) if self._last_event_time_ms else None
+                seconds_since = (
+                    round((now_ms - event_time_ms) / 1000.0, 1)
+                    if self._last_event_time_ms
+                    else None
+                )
                 return True, seconds_since
 
         if self._last_event_time_ms is not None:

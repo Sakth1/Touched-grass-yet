@@ -155,7 +155,11 @@ class HomePage:
     def _on_android_tick(self, tick: Tick) -> None:
         durations = tick.data.get("durations")
         if durations:
-            items = sorted(durations.items(), key=lambda x: x[1].get("duration_ms", 0), reverse=True)
+            items = sorted(
+                durations.items(),
+                key=lambda x: x[1].get("duration_ms", 0),
+                reverse=True,
+            )
             parts = []
             for pkg, d in items:
                 label = d.get("app_name") or pkg

@@ -35,7 +35,9 @@ class AndroidForegroundWatcher:
 
         if not check_usage_stats_permission():
             if not self._permission_lost:
-                logger.warning("Usage Stats permission lost — pausing foreground watcher")
+                logger.warning(
+                    "Usage Stats permission lost — pausing foreground watcher"
+                )
                 self._permission_lost = True
                 self._current_app = None
                 self._last_tick_ms = None
@@ -73,7 +75,9 @@ class AndroidForegroundWatcher:
 
         if app is None:
             if is_screen_on() and self._current_app is not None:
-                logger.debug("foreground [stale]: %s (screen on, no events)", self._current_app)
+                logger.debug(
+                    "foreground [stale]: %s (screen on, no events)", self._current_app
+                )
                 return None
             logger.info("foreground [idle]: no app activity")
             return None

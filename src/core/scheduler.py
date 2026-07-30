@@ -59,13 +59,21 @@ class Scheduler:
     def _escalate(self, name: str, count: int) -> None:
         if count >= _CIRCUIT_BREAKER_THRESHOLD:
             self._paused_watchers.add(name)
-            logger.critical("Watcher %s paused after %d consecutive failures", name, count)
+            logger.critical(
+                "Watcher %s paused after %d consecutive failures", name, count
+            )
         elif count >= 7:
-            logger.error("Watcher %s failed (%d/%d)", name, count, _CIRCUIT_BREAKER_THRESHOLD)
+            logger.error(
+                "Watcher %s failed (%d/%d)", name, count, _CIRCUIT_BREAKER_THRESHOLD
+            )
         elif count >= 4:
-            logger.warning("Watcher %s failed (%d/%d)", name, count, _CIRCUIT_BREAKER_THRESHOLD)
+            logger.warning(
+                "Watcher %s failed (%d/%d)", name, count, _CIRCUIT_BREAKER_THRESHOLD
+            )
         else:
-            logger.debug("Watcher %s failed (%d/%d)", name, count, _CIRCUIT_BREAKER_THRESHOLD)
+            logger.debug(
+                "Watcher %s failed (%d/%d)", name, count, _CIRCUIT_BREAKER_THRESHOLD
+            )
 
     async def _run_loop(self, watcher: Watcher) -> None:
         cfg = watcher.config

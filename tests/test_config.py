@@ -33,7 +33,10 @@ class TestConfigLoad:
         from core.config_manager import ConfigManager
 
         p = tmp_path / "config.json"
-        p.write_text(json.dumps({"collection_enabled": False, "watchers_enabled": ["afk"]}), encoding="utf-8")
+        p.write_text(
+            json.dumps({"collection_enabled": False, "watchers_enabled": ["afk"]}),
+            encoding="utf-8",
+        )
         cm = ConfigManager(path=str(p))
         cm.load()
         assert cm.collection_enabled is False
@@ -96,7 +99,10 @@ class TestConfigProperties:
         from core.config_manager import ConfigManager
 
         p = tmp_path / "config.json"
-        p.write_text(json.dumps({"tick_interval_overrides": {"foreground": 10.0}}), encoding="utf-8")
+        p.write_text(
+            json.dumps({"tick_interval_overrides": {"foreground": 10.0}}),
+            encoding="utf-8",
+        )
         cm = ConfigManager(path=str(p))
         cm.load()
         assert cm.get_interval("foreground", 30.0) == 10.0

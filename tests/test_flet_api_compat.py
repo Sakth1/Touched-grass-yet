@@ -55,9 +55,13 @@ def _get_flet_imports(tree: ast.AST) -> tuple[dict[str, str], dict[str, str]]:
                         local = alias.asname or alias.name
                         direct[local] = alias.name
             case ast.ImportFrom():
-                if node.module and (node.module == "flet" or node.module.startswith("flet.")):
+                if node.module and (
+                    node.module == "flet" or node.module.startswith("flet.")
+                ):
                     for alias in node.names:
-                        prefixed[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+                        prefixed[alias.asname or alias.name] = (
+                            f"{node.module}.{alias.name}"
+                        )
     return direct, prefixed
 
 
@@ -103,7 +107,9 @@ def _to_ft_chain(
     return None
 
 
-def _has_flet_imports(direct_imports: dict[str, str], prefixed_names: dict[str, str]) -> bool:
+def _has_flet_imports(
+    direct_imports: dict[str, str], prefixed_names: dict[str, str]
+) -> bool:
     return bool(direct_imports) or bool(prefixed_names)
 
 
@@ -309,22 +315,33 @@ def _build_type_map(
                                     and target.value.id == "self"
                                 ):
                                     # self.xxx = param_name (param known from step 1)
-                                    if isinstance(stmt.value, ast.Name) and stmt.value.id in type_map:
-                                        type_map[f"self.{target.attr}"] = type_map[stmt.value.id]
+                                    if (
+                                        isinstance(stmt.value, ast.Name)
+                                        and stmt.value.id in type_map
+                                    ):
+                                        type_map[f"self.{target.attr}"] = type_map[
+                                            stmt.value.id
+                                        ]
                                     # self.xxx = ft.Y(...)
                                     elif isinstance(stmt.value, ast.Call):
                                         call_root = _resolve_attr_chain(stmt.value.func)
                                         if call_root:
-                                            ft_chain = _to_ft_chain(call_root, direct_imports, prefixed_names)
+                                            ft_chain = _to_ft_chain(
+                                                call_root,
+                                                direct_imports,
+                                                prefixed_names,
+                                            )
                                             if ft_chain:
-                                                type_map[f"self.{target.attr}"] = ft_chain
+                                                type_map[f"self.{target.attr}"] = (
+                                                    ft_chain
+                                                )
     return type_map
 
 
 _UsageResult = tuple[
-    list[tuple[tuple[str, ...], str, int]],   # method_calls
-    list[tuple[tuple[str, ...], str, int]],   # prop_assigns
-    list[tuple[tuple[str, ...], str, int]],   # prop_reads
+    list[tuple[tuple[str, ...], str, int]],  # method_calls
+    list[tuple[tuple[str, ...], str, int]],  # prop_assigns
+    list[tuple[tuple[str, ...], str, int]],  # prop_reads
 ]
 
 
@@ -361,7 +378,9 @@ def _collect_typed_usages(
                     if isinstance(target, ast.Attribute):
                         info = _resolve_typed_target(target)
                         if info and info[0] in type_map:
-                            prop_assigns.append((type_map[info[0]], info[1], target.lineno))
+                            prop_assigns.append(
+                                (type_map[info[0]], info[1], target.lineno)
+                            )
 
             case ast.Attribute():
                 if isinstance(node.ctx, ast.Load):
@@ -548,6 +567,7 @@ class _DataclassAdapter(_CategoryAdapter):
         if not isinstance(actual, type):
             return False
         import dataclasses
+
         return dataclasses.is_dataclass(actual)
 
     def valid_constructor_params(self, obj: object) -> set[str] | None:
@@ -725,8 +745,7 @@ def _check_typed_calls(
         elif not hasattr(obj, method):
             dotted = ".".join(ft_type)
             issues.append(
-                f"{_rel(py_file)}:{lineno}  "
-                f"ft.{dotted}.{method}() does not exist"
+                f"{_rel(py_file)}:{lineno}  " f"ft.{dotted}.{method}() does not exist"
             )
     return issues
 
@@ -752,8 +771,7 @@ def _check_typed_assigns(
                 continue
             dotted = ".".join(ft_type)
             issues.append(
-                f"{_rel(py_file)}:{lineno}  "
-                f"ft.{dotted}.{prop} does not exist"
+                f"{_rel(py_file)}:{lineno}  " f"ft.{dotted}.{prop} does not exist"
             )
     return issues
 
@@ -814,6 +832,7 @@ def _check_typed_reads(
             f"ft.{dotted}.{prop} does not exist (attribute read)"
         )
     return issues
+
 
 # ═══════════════════════════════════════════════════════════════
 #  Test — orchestrates stages
@@ -1020,16 +1039,26 @@ class TestTrialConstruction:
     def test_valid_construction_silent(self) -> None:
         issues: list[str] = []
         _trial_construct_or_call(
-            ft.Text, ("Text",), 0, issues, Path("fake.py"),
-            ["value"], {"value"},
+            ft.Text,
+            ("Text",),
+            0,
+            issues,
+            Path("fake.py"),
+            ["value"],
+            {"value"},
         )
         assert not issues
 
     def test_valid_construction_with_deprecation(self) -> None:
         issues: list[str] = []
         _trial_construct_or_call(
-            ft.Text, ("Text",), 0, issues, Path("fake.py"),
-            ["value"], {"value"},
+            ft.Text,
+            ("Text",),
+            0,
+            issues,
+            Path("fake.py"),
+            ["value"],
+            {"value"},
         )
         assert not issues
 

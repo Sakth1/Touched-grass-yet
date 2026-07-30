@@ -22,7 +22,9 @@ def _get_activity():
         return _activity
     activity_host_class = os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
     if not activity_host_class:
-        logger.warning("MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?")
+        logger.warning(
+            "MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?"
+        )
         return None
     try:
         from jnius import autoclass  # type: ignore
@@ -86,7 +88,9 @@ def _query_jnius(begin_ms: int, end_ms: int) -> dict:
         assert _manager is not None
         stats_list = _manager.queryUsageStats(0, begin_ms, end_ms)
         if stats_list is None:
-            logger.debug("queryUsageStats returned None for range %d-%d", begin_ms, end_ms)
+            logger.debug(
+                "queryUsageStats returned None for range %d-%d", begin_ms, end_ms
+            )
             return {}
         result = {}
         for i in range(stats_list.size()):
@@ -136,7 +140,9 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
         return result
     except Exception as e:
         if "SecurityException" in type(e).__name__:
-            logger.warning("Usage Access permission not granted — cannot query usage events")
+            logger.warning(
+                "Usage Access permission not granted — cannot query usage events"
+            )
         else:
             logger.exception("queryUsageEvents failed")
         return []
@@ -166,13 +172,17 @@ def get_battery_info() -> dict:
         Context = autoclass("android.content.Context")
         battery_manager = activity.getSystemService(Context.BATTERY_SERVICE)
 
-        capacity = battery_manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        capacity = battery_manager.getIntProperty(
+            BatteryManager.BATTERY_PROPERTY_CAPACITY
+        )
         if capacity < 0:
             return {"battery_pct": None, "charging": None}
 
         Intent = autoclass("android.content.Intent")
         IntentFilter = autoclass("android.content.IntentFilter")
-        battery_status = activity.registerReceiver(None, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        battery_status = activity.registerReceiver(
+            None, IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        )
 
         if battery_status is None:
             return {"battery_pct": capacity, "charging": None}
@@ -209,7 +219,14 @@ def open_usage_access_settings() -> bool:
 
         try:
             subprocess.run(
-                ["am", "start", "-a", "android.settings.USAGE_ACCESS_SETTINGS", "--user", "0"],
+                [
+                    "am",
+                    "start",
+                    "-a",
+                    "android.settings.USAGE_ACCESS_SETTINGS",
+                    "--user",
+                    "0",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=5,

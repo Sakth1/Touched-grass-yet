@@ -67,6 +67,3 @@ class TestFletTextFieldContract:
         t = ft.Text("hello", size=11, font_family="monospace")
         assert isinstance(t, ft.Text)
         assert t.font_family == "monospace"
-
-
-

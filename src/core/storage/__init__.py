@@ -32,14 +32,19 @@ class Storage:
 
         path = db_path or _db_path()
         if self._device_id == self._TEST_DEVICE_ID and path != ":memory:":
-            logger.warning("Test device ID used with file-based DB at %s — this may contaminate production data", path)
+            logger.warning(
+                "Test device ID used with file-based DB at %s — this may contaminate production data",
+                path,
+            )
 
         parent = os.path.dirname(path)
         if parent:
             os.makedirs(parent, exist_ok=True)
 
         self._path = path
-        self._conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+        self._conn = sqlite3.connect(
+            path, check_same_thread=False, isolation_level=None
+        )
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA synchronous=NORMAL")
 
@@ -70,9 +75,10 @@ class Storage:
             self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
             logger.info("Schema migration complete")
 
-            cols = {r[1] for r in self._conn.execute(
-                "PRAGMA table_info(raw_events)"
-            ).fetchall()}
+            cols = {
+                r[1]
+                for r in self._conn.execute("PRAGMA table_info(raw_events)").fetchall()
+            }
             if "tick_uuid" in cols:
                 self._conn.execute("ALTER TABLE raw_events DROP COLUMN tick_uuid")
                 logger.info("Dropped orphaned tick_uuid column from raw_events")
@@ -109,7 +115,9 @@ class Storage:
         except Exception as e:
             return {"ok": False, "message": str(e)}
 
-    def auto_vacuum(self, waste_pct_threshold: float = 20.0, min_size_mb: float = 10.0) -> dict:
+    def auto_vacuum(
+        self, waste_pct_threshold: float = 20.0, min_size_mb: float = 10.0
+    ) -> dict:
         if self._path == ":memory:":
             return {"vacuumed": False, "size_mb": 0.0, "message": "skipped (in-memory)"}
         try:
@@ -257,9 +265,7 @@ class Storage:
             filters.append("platform = ?")
             params.append(platform)
 
-        sql = (
-            "SELECT id, device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type FROM sessions"
-        )
+        sql = "SELECT id, device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type FROM sessions"
         if filters:
             sql += " WHERE " + " AND ".join(filters)
         sql += " ORDER BY start_ts ASC"
@@ -377,9 +383,11 @@ class Storage:
         )
 
     def get_today_seconds(self) -> float:
-        today_start = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).timestamp()
+        today_start = (
+            datetime.now(timezone.utc)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            .timestamp()
+        )
         row = self._conn.execute(
             "SELECT COALESCE(SUM(duration_s), 0) FROM sessions WHERE start_ts >= ? AND duration_s IS NOT NULL",
             (today_start,),
@@ -396,9 +404,11 @@ class Storage:
         return json.loads(row[0])
 
     def get_today_top_apps(self, limit: int = 5) -> list[dict]:
-        today_start = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).timestamp()
+        today_start = (
+            datetime.now(timezone.utc)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            .timestamp()
+        )
         rows = self._conn.execute(
             """SELECT app_key, SUM(duration_s) as total_s
                FROM sessions

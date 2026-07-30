@@ -32,7 +32,12 @@ def list_browsers():
 
 
 def extract_url(browser_filter: str | None = None) -> dict:
-    result: dict = {"url": None, "browser": None, "method": "session-file", "all_tabs": []}
+    result: dict = {
+        "url": None,
+        "browser": None,
+        "method": "session-file",
+        "all_tabs": [],
+    }
 
     platform_url_val = platform_url.get_active_url_platform()
     if platform_url_val and is_trackable_url(platform_url_val):
@@ -121,12 +126,32 @@ def main():
         description="Browser URL Extractor Prototype",
         epilog="Platform support: Windows (fully tested), macOS/Linux (stubs only, untested)",
     )
-    parser.add_argument("--one-shot", action="store_true", help="Extract URL once and exit")
+    parser.add_argument(
+        "--one-shot", action="store_true", help="Extract URL once and exit"
+    )
     parser.add_argument("--poll", action="store_true", help="Poll URL continuously")
-    parser.add_argument("--interval", type=float, default=3.0, help="Poll interval in seconds (default: 3)")
-    parser.add_argument("--list-browsers", action="store_true", help="List detected browser session dirs")
-    parser.add_argument("--browser", type=str, default=None, help="Target browser: chrome, brave, firefox, etc.")
-    parser.add_argument("--verbose", action="store_true", help="Print every poll result (not just changes)")
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=3.0,
+        help="Poll interval in seconds (default: 3)",
+    )
+    parser.add_argument(
+        "--list-browsers",
+        action="store_true",
+        help="List detected browser session dirs",
+    )
+    parser.add_argument(
+        "--browser",
+        type=str,
+        default=None,
+        help="Target browser: chrome, brave, firefox, etc.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print every poll result (not just changes)",
+    )
 
     args = parser.parse_args()
 

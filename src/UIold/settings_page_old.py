@@ -110,7 +110,11 @@ class SettingsPanel:
         self._page.update()
 
     def _toggle_auto_start(self, e):
-        ok = enable_auto_start() if self._auto_start_switch.value else disable_auto_start()
+        ok = (
+            enable_auto_start()
+            if self._auto_start_switch.value
+            else disable_auto_start()
+        )
         if ok:
             self._config.auto_start_enabled = self._auto_start_switch.value
             self._config.save()

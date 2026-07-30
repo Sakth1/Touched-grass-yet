@@ -24,16 +24,27 @@ class UrlProcessor:
         self._psl = None
         try:
             from publicsuffixlist import PublicSuffixList
+
             self._psl = PublicSuffixList()
             logger.debug("UrlProcessor using publicsuffixlist for domain extraction")
         except ImportError:
-            logger.warning("publicsuffixlist not available, using fallback domain extraction")
+            logger.warning(
+                "publicsuffixlist not available, using fallback domain extraction"
+            )
 
-    def normalize(self, url: str | None, method: str | None = None, confidence: str = "high") -> NormalizedUrl:
+    def normalize(
+        self, url: str | None, method: str | None = None, confidence: str = "high"
+    ) -> NormalizedUrl:
         if not url:
             return NormalizedUrl(
-                url=None, scheme=None, host=None, domain=None, path=None,
-                is_trackable=False, extraction_method=method, confidence=confidence,
+                url=None,
+                scheme=None,
+                host=None,
+                domain=None,
+                path=None,
+                is_trackable=False,
+                extraction_method=method,
+                confidence=confidence,
             )
 
         raw = normalize_url(url)

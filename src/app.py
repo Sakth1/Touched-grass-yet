@@ -35,7 +35,10 @@ class App:
         self._initiate()
 
     def _initiate(self):
-        if self.collection_manager.config.auto_start_enabled and not is_auto_start_enabled():
+        if (
+            self.collection_manager.config.auto_start_enabled
+            and not is_auto_start_enabled()
+        ):
             enable_auto_start()
 
         if self.collection_manager.detect_platform() == SystemType.ANDROID:

@@ -8,8 +8,14 @@ class TestAppUsageInitialization:
         from core.collectors.android.app_usage import AndroidAppUsageWatcher
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch("core.collectors.android.app_usage.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = {
@@ -31,9 +37,17 @@ class TestAppUsageInitialization:
         from core.collectors.android.app_usage import AndroidAppUsageWatcher
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
-            patch("core.collectors.android.app_usage.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
+            patch(
+                "core.collectors.android.app_usage.query_usage_stats", return_value={}
+            ),
         ):
             w = AndroidAppUsageWatcher()
             tick = await w.tick()
@@ -63,8 +77,14 @@ class TestAppUsageInterval:
         w._last_foreground_ms = {"com.pkg1": 100000}
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch("core.collectors.android.app_usage.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = self._make_stats("com.pkg1", 101000, "Pkg1")
@@ -84,8 +104,14 @@ class TestAppUsageInterval:
         w._last_foreground_ms = {"com.pkg1": 100000}
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch("core.collectors.android.app_usage.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = self._make_stats("com.pkg1", 100000, "Pkg1")
@@ -100,8 +126,14 @@ class TestAppUsageInterval:
         w._last_foreground_ms = {"com.pkg1": 100000, "com.pkg2": 50000}
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch("core.collectors.android.app_usage.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = {
@@ -127,7 +159,10 @@ class TestAppUsageInterval:
         pkg_map = {i["package"]: i["duration_ms"] for i in tick.data["intervals"]}
         assert pkg_map["com.pkg1"] == 2000
         assert pkg_map["com.pkg2"] == 500
-        assert tick.data["intervals"][0]["duration_ms"] >= tick.data["intervals"][1]["duration_ms"]
+        assert (
+            tick.data["intervals"][0]["duration_ms"]
+            >= tick.data["intervals"][1]["duration_ms"]
+        )
 
     async def test_cleans_up_stale_packages(self):
         from core.collectors.android.app_usage import AndroidAppUsageWatcher
@@ -136,8 +171,14 @@ class TestAppUsageInterval:
         w._last_foreground_ms = {"com.stale": 100000, "com.active": 50000}
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch("core.collectors.android.app_usage.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = self._make_stats("com.active", 51000, "Active")
@@ -155,8 +196,14 @@ class TestAppUsageInterval:
         w._last_foreground_ms = {"com.test": 100000}
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=False),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=False,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
         ):
             tick = await w.tick()
 
@@ -171,8 +218,14 @@ class TestAppUsageInterval:
         w._permission_lost = True
 
         with (
-            patch("core.collectors.android.app_usage.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.app_usage.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.app_usage.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.app_usage.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch("core.collectors.android.app_usage.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = self._make_stats("com.pkg1", 100000, "Pkg1")

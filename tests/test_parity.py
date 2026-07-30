@@ -17,7 +17,10 @@ class TestAfkParity:
         mock_time = 1_000_000_000
 
         with (
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=mock_time),
+            patch(
+                "core.collectors.android.afk.get_current_time_ms",
+                return_value=mock_time,
+            ),
             patch("core.collectors.android.afk.is_screen_on", return_value=True),
             patch("core.collectors.android.afk.query_usage_events", return_value=[]),
         ):
@@ -33,8 +36,14 @@ class TestAfkParity:
         mock_time = 1_000_000_000
 
         with (
-            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=mock_time),
+            patch(
+                "core.collectors.android.afk.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.afk.get_current_time_ms",
+                return_value=mock_time,
+            ),
             patch("core.collectors.android.afk.is_screen_on", return_value=False),
             patch("core.collectors.android.afk.query_usage_events", return_value=[]),
         ):
@@ -48,8 +57,14 @@ class TestAfkParity:
         mock_time = 1_000_000_000
 
         with (
-            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=mock_time),
+            patch(
+                "core.collectors.android.afk.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.afk.get_current_time_ms",
+                return_value=mock_time,
+            ),
             patch("core.collectors.android.afk.is_screen_on", return_value=True),
             patch(
                 "core.collectors.android.afk.query_usage_events",
@@ -72,8 +87,14 @@ class TestAfkParity:
         mock_time = 1_000_000_000
 
         with (
-            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=mock_time),
+            patch(
+                "core.collectors.android.afk.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.afk.get_current_time_ms",
+                return_value=mock_time,
+            ),
             patch("core.collectors.android.afk.is_screen_on", return_value=True),
             patch(
                 "core.collectors.android.afk.query_usage_events",
@@ -154,7 +175,10 @@ class TestPowerParity:
         from core.collectors.windows.power import PowerWatcher
 
         Battery = namedtuple("Battery", ["percent", "secsleft", "power_plugged"])
-        with patch("psutil.sensors_battery", return_value=Battery(percent=50, secsleft=10000, power_plugged=True)):
+        with patch(
+            "psutil.sensors_battery",
+            return_value=Battery(percent=50, secsleft=10000, power_plugged=True),
+        ):
             w = PowerWatcher()
             tick = await w.tick()
 
@@ -169,7 +193,10 @@ class TestPowerParity:
         from core.collectors.windows.power import PowerWatcher
 
         Battery = namedtuple("Battery", ["percent", "secsleft", "power_plugged"])
-        with patch("psutil.sensors_battery", return_value=Battery(percent=50, secsleft=10000, power_plugged=True)):
+        with patch(
+            "psutil.sensors_battery",
+            return_value=Battery(percent=50, secsleft=10000, power_plugged=True),
+        ):
             w = PowerWatcher()
             tick = await w.tick()
 
@@ -208,10 +235,20 @@ class TestForegroundParity:
         MOCK_TIME = 1_700_000_000_000
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=MOCK_TIME,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
         ):
             w = AndroidForegroundWatcher()
             tick = await w.tick()
@@ -224,13 +261,25 @@ class TestForegroundParity:
         MOCK_TIME = 1_700_000_000_000
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=MOCK_TIME,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.test.app", "event_type": 1, "time_stamp_ms": MOCK_TIME - 5000},
+                    {
+                        "package_name": "com.test.app",
+                        "event_type": 1,
+                        "time_stamp_ms": MOCK_TIME - 5000,
+                    },
                 ],
             ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
@@ -241,13 +290,25 @@ class TestForegroundParity:
         assert tick is None
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME + 10_000),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=MOCK_TIME + 10_000,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.other.app", "event_type": 1, "time_stamp_ms": MOCK_TIME + 5000},
+                    {
+                        "package_name": "com.other.app",
+                        "event_type": 1,
+                        "time_stamp_ms": MOCK_TIME + 5000,
+                    },
                 ],
             ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
@@ -274,8 +335,14 @@ class TestPermissionDegradation:
         MOCK_TIME = 1_700_000_000_000
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=False),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=False,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=MOCK_TIME,
+            ),
         ):
             w = AndroidForegroundWatcher()
             tick1 = await w.tick()
@@ -291,18 +358,34 @@ class TestPermissionDegradation:
         MOCK_TIME = 1_700_000_000_000
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=False),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=False,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=MOCK_TIME,
+            ),
         ):
             w = AndroidForegroundWatcher()
             await w.tick()
             assert w._permission_lost
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=MOCK_TIME + 100_000),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=MOCK_TIME + 100_000,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
         ):
             tick = await w.tick()
             assert not w._permission_lost
@@ -310,9 +393,15 @@ class TestPermissionDegradation:
 
     async def test_afk_screen_off_returns_not_present(self):
         with (
-            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=False),
+            patch(
+                "core.collectors.android.afk.check_usage_stats_permission",
+                return_value=False,
+            ),
             patch("core.collectors.android.afk.is_screen_on", return_value=False),
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=1_000_000),
+            patch(
+                "core.collectors.android.afk.get_current_time_ms",
+                return_value=1_000_000,
+            ),
         ):
             w = AndroidAfkWatcher()
             tick = await w.tick()
@@ -322,9 +411,15 @@ class TestPermissionDegradation:
 
     async def test_afk_screen_on_no_permission_returns_present(self):
         with (
-            patch("core.collectors.android.afk.check_usage_stats_permission", return_value=False),
+            patch(
+                "core.collectors.android.afk.check_usage_stats_permission",
+                return_value=False,
+            ),
             patch("core.collectors.android.afk.is_screen_on", return_value=True),
-            patch("core.collectors.android.afk.get_current_time_ms", return_value=1_000_000),
+            patch(
+                "core.collectors.android.afk.get_current_time_ms",
+                return_value=1_000_000,
+            ),
         ):
             w = AndroidAfkWatcher()
             tick = await w.tick()

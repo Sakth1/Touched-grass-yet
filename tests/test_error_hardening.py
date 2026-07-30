@@ -5,18 +5,27 @@ class TestWindowsAfkHardening:
     async def test_idle_seconds_returns_zero_on_ctypes_failure(self):
         from core.collectors.windows.afk import _idle_seconds
 
-        with patch("core.collectors.windows.afk._user32.GetLastInputInfo", side_effect=OSError("mock")):
+        with patch(
+            "core.collectors.windows.afk._user32.GetLastInputInfo",
+            side_effect=OSError("mock"),
+        ):
             result = _idle_seconds()
             assert result == 0.0
 
-        with patch("core.collectors.windows.afk._kernel32.GetTickCount64", side_effect=OSError("mock")):
+        with patch(
+            "core.collectors.windows.afk._kernel32.GetTickCount64",
+            side_effect=OSError("mock"),
+        ):
             result = _idle_seconds()
             assert result == 0.0
 
     async def test_tick_returns_defaults_on_unexpected_failure(self):
         from core.collectors.windows.afk import AfkWatcher
 
-        with patch("core.collectors.windows.afk._idle_seconds", side_effect=RuntimeError("unexpected")):
+        with patch(
+            "core.collectors.windows.afk._idle_seconds",
+            side_effect=RuntimeError("unexpected"),
+        ):
             w = AfkWatcher()
             tick = await w.tick()
 

@@ -50,7 +50,9 @@ def safe_update(control: ft.Control) -> None:
     except RuntimeError as exc:
         logger.debug("safe_update suppressed RuntimeError: %s", exc, exc_info=True)
     except Exception as exc:
-        logger.warning("safe_update suppressed unexpected error: %s", exc, exc_info=True)
+        logger.warning(
+            "safe_update suppressed unexpected error: %s", exc, exc_info=True
+        )
 
 
 def show_permission_dialog(page: ft.Page):
@@ -69,9 +71,11 @@ def show_permission_dialog(page: ft.Page):
     )
     page.show_dialog(dlg)
 
+
 def _close_dialog(page: ft.Page, dlg: ft.AlertDialog):
     dlg.open = False
     page.update()
+
 
 def _open_settings(page: ft.Page, dlg: ft.AlertDialog):
     dlg.open = False

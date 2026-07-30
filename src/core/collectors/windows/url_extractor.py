@@ -56,8 +56,16 @@ SKIP_EXACT = {
 }
 
 KNOWN_PREFIXES = (
-    "http://", "https://", "file://", "about:", "chrome://",
-    "edge://", "data:", "brave://", "opera://", "vivaldi://",
+    "http://",
+    "https://",
+    "file://",
+    "about:",
+    "chrome://",
+    "edge://",
+    "data:",
+    "brave://",
+    "opera://",
+    "vivaldi://",
 )
 
 BROWSER_TO_DISCOVERY_KEY = {
@@ -70,11 +78,24 @@ BROWSER_TO_DISCOVERY_KEY = {
 }
 
 BROWSER_SESSION_PATHS = {
-    "brave": os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data"),
-    "chrome": os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data"),
-    "edge": os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data"),
-    "firefox": os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"),
-    "opera": os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable"),
+    "brave": os.path.join(
+        os.environ.get("LOCALAPPDATA", ""),
+        "BraveSoftware",
+        "Brave-Browser",
+        "User Data",
+    ),
+    "chrome": os.path.join(
+        os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data"
+    ),
+    "edge": os.path.join(
+        os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data"
+    ),
+    "firefox": os.path.join(
+        os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"
+    ),
+    "opera": os.path.join(
+        os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable"
+    ),
     "vivaldi": os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data"),
 }
 
@@ -115,7 +136,7 @@ def _read_string(data: bytes, pos: int) -> tuple[str | None, int]:
     if length == 0 or length > 500000 or pos + length > len(data):
         return None, pos
     try:
-        s = data[pos: pos + length].decode("utf-8", errors="replace")
+        s = data[pos : pos + length].decode("utf-8", errors="replace")
     except Exception:
         s = None
     pos = _align4(pos + length)
@@ -130,7 +151,7 @@ def _read_string16(data: bytes, pos: int) -> tuple[str | None, int]:
     if length == 0 or length > 250000 or pos + length * 2 > len(data):
         return None, pos
     try:
-        s = data[pos: pos + length * 2].decode("utf-16-le", errors="replace")
+        s = data[pos : pos + length * 2].decode("utf-16-le", errors="replace")
     except Exception:
         s = None
     pos = _align4(pos + length * 2)
@@ -158,7 +179,7 @@ def _parse_session_file(path: str | os.PathLike) -> list[dict]:
             pos += 2
             continue
         cmd_id = data[pos + 2]
-        payload = data[pos + 3: pos + cmd_size + 2]
+        payload = data[pos + 3 : pos + cmd_size + 2]
         pos += cmd_size + 2
 
         if cmd_id == CMD_TAB_WINDOW and len(payload) >= 8:
@@ -194,14 +215,16 @@ def _parse_session_file(path: str | os.PathLike) -> list[dict]:
             info = tabs.get(tab_id)
             if info:
                 is_active = win_id == active_window_id
-                result.append({
-                    "window_id": win_id,
-                    "tab_id": tab_id,
-                    "url": info["url"],
-                    "title": info["title"],
-                    "nav_index": info["nav_index"],
-                    "is_active_window": is_active,
-                })
+                result.append(
+                    {
+                        "window_id": win_id,
+                        "tab_id": tab_id,
+                        "url": info["url"],
+                        "title": info["title"],
+                        "nav_index": info["nav_index"],
+                        "is_active_window": is_active,
+                    }
+                )
     return result
 
 
@@ -210,7 +233,10 @@ class UrlExtractor:
         self._max_stale_s = max_stale_s
 
     def extract(
-        self, browser_name: str, window_title: str | None = None, window_pid: int | None = None,
+        self,
+        browser_name: str,
+        window_title: str | None = None,
+        window_pid: int | None = None,
     ) -> ExtractionResult:
         url = self._try_uia(browser_name, window_title, window_pid)
         if url:
@@ -224,7 +250,12 @@ class UrlExtractor:
 
         return ExtractionResult(url=None, method=None, confidence="low")
 
-    def _try_uia(self, browser_name: str, window_title: str | None = None, window_pid: int | None = None) -> str | None:
+    def _try_uia(
+        self,
+        browser_name: str,
+        window_title: str | None = None,
+        window_pid: int | None = None,
+    ) -> str | None:
         try:
             from pywinauto import Application
         except ImportError:
@@ -277,6 +308,7 @@ class UrlExtractor:
         try:
             import ctypes
             from ctypes import wintypes
+
             user32 = ctypes.windll.user32
             handle = user32.GetForegroundWindow()
             pid = wintypes.DWORD()
@@ -308,6 +340,7 @@ class UrlExtractor:
         if os.path.isfile(local_state):
             try:
                 import json
+
                 with open(local_state, encoding="utf-8") as f:
                     data = json.load(f)
                 info = data.get("profile", {}).get("info_cache", {})
@@ -425,11 +458,16 @@ class UrlExtractor:
                         continue
                     decompressed = lz4.block.decompress(raw[8:])
                     import json
+
                     session = json.loads(decompressed)
                     tabs_info = self._parse_firefox_session(session)
                     for t in tabs_info:
-                        if t["is_active_window"] and t["is_selected_tab"] and is_trackable_url(t["url"]):
-                                return t["url"]
+                        if (
+                            t["is_active_window"]
+                            and t["is_selected_tab"]
+                            and is_trackable_url(t["url"])
+                        ):
+                            return t["url"]
                     if tabs_info:
                         url = tabs_info[0]["url"]
                         if is_trackable_url(url):
@@ -451,16 +489,20 @@ class UrlExtractor:
                 entry_index = tab.get("index", 1) - 1
                 if 0 <= entry_index < len(entries):
                     entry = entries[entry_index]
-                    tabs_info.append({
-                        "window_index": win_index,
-                        "tab_index": tab_index,
-                        "is_active_window": win_index == active_win_index,
-                        "is_selected_tab": tab_index == sel_tab_index,
-                        "url": entry.get("url"),
-                        "title": entry.get("title"),
-                    })
+                    tabs_info.append(
+                        {
+                            "window_index": win_index,
+                            "tab_index": tab_index,
+                            "is_active_window": win_index == active_win_index,
+                            "is_selected_tab": tab_index == sel_tab_index,
+                            "url": entry.get("url"),
+                            "title": entry.get("title"),
+                        }
+                    )
 
-        active = [t for t in tabs_info if t["is_active_window"] and t["is_selected_tab"]]
+        active = [
+            t for t in tabs_info if t["is_active_window"] and t["is_selected_tab"]
+        ]
         if active:
             return active
         active_win = [t for t in tabs_info if t["is_active_window"]]

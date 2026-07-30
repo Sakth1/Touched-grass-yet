@@ -70,7 +70,10 @@ class TestToFtChain:
         assert _to_ft_chain(["ft", "Page"], self._DIRECT, {}) == ("Page",)
 
     def test_direct_import_nested(self):
-        assert _to_ft_chain(["ft", "Colors", "RED"], self._DIRECT, {}) == ("Colors", "RED")
+        assert _to_ft_chain(["ft", "Colors", "RED"], self._DIRECT, {}) == (
+            "Colors",
+            "RED",
+        )
 
     def test_direct_submodule(self):
         assert _to_ft_chain(["ctrl", "X"], self._DIRECT, {}) == ("controls", "X")
@@ -79,7 +82,11 @@ class TestToFtChain:
         assert _to_ft_chain(["Foo", "Y"], {}, self._PREFIXED) == ("Foo", "Y")
 
     def test_prefixed_submodule(self):
-        assert _to_ft_chain(["Bar", "Z"], {}, self._PREFIXED) == ("controls", "Bar", "Z")
+        assert _to_ft_chain(["Bar", "Z"], {}, self._PREFIXED) == (
+            "controls",
+            "Bar",
+            "Z",
+        )
 
     def test_unknown_root_returns_none(self):
         assert _to_ft_chain(["unknown", "X"], self._DIRECT, {}) is None

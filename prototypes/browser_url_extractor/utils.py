@@ -49,8 +49,18 @@ def is_trackable_url(url: str | None) -> bool:
     return not any(url_lower.startswith(prefix) for prefix in SKIP_PREFIXES)
 
 
-KNOWN_PREFIXES = ("http://", "https://", "file://", "about:", "chrome://",
-                  "edge://", "data:", "brave://", "opera://", "vivaldi://")
+KNOWN_PREFIXES = (
+    "http://",
+    "https://",
+    "file://",
+    "about:",
+    "chrome://",
+    "edge://",
+    "data:",
+    "brave://",
+    "opera://",
+    "vivaldi://",
+)
 
 
 def normalize_url(url: str) -> str:

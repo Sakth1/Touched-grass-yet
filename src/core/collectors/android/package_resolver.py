@@ -57,7 +57,9 @@ def _get_activity():
         return _activity
     activity_host_class = os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
     if not activity_host_class:
-        logger.warning("MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?")
+        logger.warning(
+            "MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?"
+        )
         return None
     try:
         from jnius import autoclass  # type: ignore

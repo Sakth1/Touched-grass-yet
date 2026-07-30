@@ -12,7 +12,9 @@ class TestFixturesAvailable:
         assert "sessions" in names
 
     def test_device_registered(self, in_memory_db):
-        row = in_memory_db._conn.execute("SELECT device_id, is_current FROM devices LIMIT 1").fetchone()
+        row = in_memory_db._conn.execute(
+            "SELECT device_id, is_current FROM devices LIMIT 1"
+        ).fetchone()
         assert row is not None
         assert row[0] is not None
         assert row[1] == 1

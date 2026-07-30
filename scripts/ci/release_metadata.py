@@ -231,7 +231,9 @@ def command_detect_version_bump(args: argparse.Namespace) -> int:
                         f"version increased from {tag_version} to {current_version}"
                     )
                 elif comparison == 0:
-                    reason = f"version unchanged at {current_version} (tag already exists)"
+                    reason = (
+                        f"version unchanged at {current_version} (tag already exists)"
+                    )
                 else:
                     raise ValueError(
                         "project.version must increase on main/master. "

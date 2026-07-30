@@ -131,22 +131,33 @@ def _seed_version(db_path: str, version: int, platform: str = "windows") -> None
 
 
 def _assert_schema_v6(conn) -> None:
-    tables = {r[0] for r in conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-    ).fetchall()}
+    tables = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
     for tbl in ("devices", "raw_events", "sessions", "url_visits"):
         assert tbl in tables, f"Missing table {tbl}"
     sid = _short_id()
     for legacy in (f"events_{sid}", f"observations_{sid}", f"sessions_{sid}"):
         assert legacy not in tables, f"Legacy table {legacy} should have been dropped"
-    indexes = {r[0] for r in conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='index'"
-    ).fetchall() if not r[0].startswith("sqlite_")}
+    indexes = {
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'"
+        ).fetchall()
+        if not r[0].startswith("sqlite_")
+    }
     for idx in (
-        "idx_raw_events_type_ts", "idx_raw_events_device_ts",
-        "idx_sessions_device_app", "idx_sessions_ts",
-        "idx_url_visits_device_seen", "idx_url_visits_device_domain",
-        "idx_url_visits_event", "idx_url_visits_session",
+        "idx_raw_events_type_ts",
+        "idx_raw_events_device_ts",
+        "idx_sessions_device_app",
+        "idx_sessions_ts",
+        "idx_url_visits_device_seen",
+        "idx_url_visits_device_domain",
+        "idx_url_visits_event",
+        "idx_url_visits_session",
     ):
         assert idx in indexes, f"Missing index {idx}"
 
@@ -304,6 +315,7 @@ class TestCanonicalSessions:
 class TestUrlVisits:
     def test_write_and_get_url_visit(self, in_memory_db):
         import time
+
         seen_at = time.time()
         visit_id = in_memory_db.write_url_visit(
             url="https://github.com/user/repo",
@@ -330,6 +342,7 @@ class TestUrlVisits:
 
     def test_get_url_visits_filtered_by_device(self, in_memory_db):
         import time
+
         in_memory_db.write_url_visit(url="https://a.com", seen_at=time.time())
         result = in_memory_db.get_url_visits(device_id="nonexistent")
         assert len(result) == 0
@@ -344,6 +357,7 @@ class TestUrlVisits:
 
     def test_get_url_visits_limit(self, in_memory_db):
         import time
+
         for i in range(5):
             in_memory_db.write_url_visit(url=f"https://x.com/{i}", seen_at=time.time())
         results = in_memory_db.get_url_visits(limit=2)
@@ -351,13 +365,17 @@ class TestUrlVisits:
 
     def test_clear_all_data_clears_url_visits(self, in_memory_db):
         import time
+
         in_memory_db.write_url_visit(url="https://a.com", seen_at=time.time())
         in_memory_db.clear_all_data()
         assert len(in_memory_db.get_url_visits()) == 0
 
     def test_backfill_event_id(self, in_memory_db, make_tick):
         import time
-        visit_id = in_memory_db.write_url_visit(url="https://a.com", seen_at=time.time())
+
+        visit_id = in_memory_db.write_url_visit(
+            url="https://a.com", seen_at=time.time()
+        )
         event_id = in_memory_db.write_event(
             event_type="foreground_transition",
             timestamp=time.time(),
@@ -370,17 +388,22 @@ class TestUrlVisits:
 
     def test_backfill_session_id(self, in_memory_db):
         import time
-        visit_id = in_memory_db.write_url_visit(url="https://a.com", seen_at=time.time())
-        sess_id = in_memory_db.write_canonical_session({
-            "device_id": "test",
-            "platform": "windows",
-            "start_ts": 1000.0,
-            "end_ts": 1100.0,
-            "duration_s": 100.0,
-            "app_key": "brave.exe",
-            "payload": {},
-            "session_type": "foreground",
-        })
+
+        visit_id = in_memory_db.write_url_visit(
+            url="https://a.com", seen_at=time.time()
+        )
+        sess_id = in_memory_db.write_canonical_session(
+            {
+                "device_id": "test",
+                "platform": "windows",
+                "start_ts": 1000.0,
+                "end_ts": 1100.0,
+                "duration_s": 100.0,
+                "app_key": "brave.exe",
+                "payload": {},
+                "session_type": "foreground",
+            }
+        )
         in_memory_db.backfill_url_session_id(visit_id, sess_id)
         visits = in_memory_db.get_url_visits()
         assert visits[0]["session_id"] == sess_id
@@ -455,8 +478,15 @@ class TestSchemaMigration:
         conn.execute(
             "INSERT INTO raw_events (device_id, platform, event_type, timestamp, collected_at, payload, source) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (did, "windows", "foreground_transition",
-             1000.0, 1000.0, '{"app":"Code.exe"}', "foreground"),
+            (
+                did,
+                "windows",
+                "foreground_transition",
+                1000.0,
+                1000.0,
+                '{"app":"Code.exe"}',
+                "foreground",
+            ),
         )
         conn.execute(
             "INSERT INTO sessions (device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type) "
@@ -481,10 +511,17 @@ class TestSchemaMigration:
         db = str(tmp_path / "test.db")
         _seed_version(db, 2)
         conn = sqlite3.connect(db)
-        for legacy in (f"events_{_short_id()}", f"observations_{_short_id()}", f"sessions_{_short_id()}"):
-            assert legacy in {r[0] for r in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()}, f"{legacy} should exist before migration"
+        for legacy in (
+            f"events_{_short_id()}",
+            f"observations_{_short_id()}",
+            f"sessions_{_short_id()}",
+        ):
+            assert legacy in {
+                r[0]
+                for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }, f"{legacy} should exist before migration"
         conn.close()
 
         storage = Storage(db_path=db)
@@ -496,9 +533,12 @@ class TestSchemaMigration:
         db = str(tmp_path / "test.db")
         _seed_version(db, 1)
         conn = sqlite3.connect(db)
-        assert f"events_{_short_id()}" in {r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()}, "events_{short_id} should exist before migration"
+        assert f"events_{_short_id()}" in {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }, "events_{short_id} should exist before migration"
         conn.close()
 
         storage = Storage(db_path=db)
@@ -578,7 +618,9 @@ class TestStorageHealthCheck:
     def test_auto_vacuum_clears_freelist_pages(self, tmp_path):
         db = str(tmp_path / "test.db")
         storage = Storage(db_path=db)
-        storage._conn.execute("CREATE TABLE tmp_test (id INTEGER PRIMARY KEY, data TEXT)")
+        storage._conn.execute(
+            "CREATE TABLE tmp_test (id INTEGER PRIMARY KEY, data TEXT)"
+        )
         for _i in range(100):
             storage._conn.execute("INSERT INTO tmp_test (data) VALUES ('x')")
         storage._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -615,11 +657,15 @@ class TestStorageInitRegression:
 
     def test_fresh_memory_db_initialises_without_error(self):
         storage = Storage(db_path=":memory:")
-        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        assert (
+            storage._conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        )
         storage.close()
 
     def test_fresh_file_db_initialises_without_error(self, tmp_path):
         db = str(tmp_path / "fresh.db")
         storage = Storage(db_path=db)
-        assert storage._conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        assert (
+            storage._conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        )
         storage.close()

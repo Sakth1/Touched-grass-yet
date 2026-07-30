@@ -28,7 +28,9 @@ class DbViewer:
     def __init__(self, page: ft.Page, manager: CollectionManager):
         self._page = page
         self._manager = manager
-        self._title_text = ft.Text("DB Viewer (dev)", size=22, weight=ft.FontWeight.BOLD)
+        self._title_text = ft.Text(
+            "DB Viewer (dev)", size=22, weight=ft.FontWeight.BOLD
+        )
         self._status_text = ft.Text("", size=12, color=ft.Colors.GREY_400)
         self._watcher_dd = ft.Dropdown(
             width=140,
@@ -48,7 +50,9 @@ class DbViewer:
             label_style=ft.TextStyle(size=11),
             keyboard_type=ft.KeyboardType.NUMBER,
         )
-        self._rows_lv = ft.ListView(expand=True, auto_scroll=False, spacing=4, padding=4)
+        self._rows_lv = ft.ListView(
+            expand=True, auto_scroll=False, spacing=4, padding=4
+        )
         self._file_picker = ft.FilePicker()
         self._build()
 
@@ -167,7 +171,9 @@ class DbViewer:
             return
 
         for r in rows:
-            ts = datetime.datetime.fromtimestamp(r["timestamp"], tz=datetime.timezone.utc).strftime("%H:%M:%S")
+            ts = datetime.datetime.fromtimestamp(
+                r["timestamp"], tz=datetime.timezone.utc
+            ).strftime("%H:%M:%S")
             payload_str = _fmt_data(r["payload"])
 
             card = ft.Container(
@@ -178,10 +184,27 @@ class DbViewer:
                     controls=[
                         ft.Row(
                             controls=[
-                                ft.Text(f"#{r['id']}", size=11, color=ft.Colors.GREY_500, width=50),
-                                ft.Text(r["source"], size=11, weight=ft.FontWeight.W_600, width=130),
-                                ft.Text(r["event_type"], size=11, color=ft.Colors.GREY_400, width=170),
-                                ft.Text(ts, size=11, color=ft.Colors.GREY_400, width=70),
+                                ft.Text(
+                                    f"#{r['id']}",
+                                    size=11,
+                                    color=ft.Colors.GREY_500,
+                                    width=50,
+                                ),
+                                ft.Text(
+                                    r["source"],
+                                    size=11,
+                                    weight=ft.FontWeight.W_600,
+                                    width=130,
+                                ),
+                                ft.Text(
+                                    r["event_type"],
+                                    size=11,
+                                    color=ft.Colors.GREY_400,
+                                    width=170,
+                                ),
+                                ft.Text(
+                                    ts, size=11, color=ft.Colors.GREY_400, width=70
+                                ),
                             ],
                             spacing=4,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -232,12 +255,17 @@ class DbViewer:
             else:
                 self._status_text.value = result
                 self._page.show_dialog(
-                    ft.SnackBar(content=ft.Text(f"Saved: {result}", size=12, selectable=True), open=True)
+                    ft.SnackBar(
+                        content=ft.Text(f"Saved: {result}", size=12, selectable=True),
+                        open=True,
+                    )
                 )
         except Exception as ex:
             logger.exception("Export failed")
             self._status_text.value = "Export failed"
-            self._page.show_dialog(ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True))
+            self._page.show_dialog(
+                ft.SnackBar(content=ft.Text(f"Export failed: {ex}", size=12), open=True)
+            )
         self._page.update()
 
     def _export_direct(self, fmt: str):
@@ -254,14 +282,18 @@ class DbViewer:
                 f.write(data)
 
             self._status_text.value = os.path.basename(path)
-            self._page.show_dialog(ft.SnackBar(content=ft.Text(path, size=12, selectable=True), open=True))
+            self._page.show_dialog(
+                ft.SnackBar(content=ft.Text(path, size=12, selectable=True), open=True)
+            )
         except Exception as ex:
             logger.exception("Export failed")
             self._status_text.value = "Export failed"
             msg = f"Export failed: {ex}"
             if "Permission denied" in str(ex) or "denied" in str(ex).lower():
                 msg += " — enable storage permission in system settings"
-            self._page.show_dialog(ft.SnackBar(content=ft.Text(msg, size=12), open=True))
+            self._page.show_dialog(
+                ft.SnackBar(content=ft.Text(msg, size=12), open=True)
+            )
         self._page.update()
 
 

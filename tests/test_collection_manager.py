@@ -113,7 +113,10 @@ class TestScreenMonitor:
 
         screen_states = [True, False, False, False, False, False]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
+            patch(
+                "core.collectors.android.usage_stats.is_screen_on",
+                side_effect=screen_states,
+            ),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -136,7 +139,10 @@ class TestScreenMonitor:
 
         screen_states = [False, True, True, True, True, True]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
+            patch(
+                "core.collectors.android.usage_stats.is_screen_on",
+                side_effect=screen_states,
+            ),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -158,7 +164,10 @@ class TestScreenMonitor:
 
         screen_states = [False, True, True, True, True, True]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
+            patch(
+                "core.collectors.android.usage_stats.is_screen_on",
+                side_effect=screen_states,
+            ),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -196,7 +205,9 @@ class TestHealthMonitor:
 
         cm = CollectionManager()
         cm._running = True
-        cm._health_monitor_task = asyncio.create_task(cm._run_health_monitor(interval=3600))
+        cm._health_monitor_task = asyncio.create_task(
+            cm._run_health_monitor(interval=3600)
+        )
 
         cm._running = False
         if cm._health_monitor_task:

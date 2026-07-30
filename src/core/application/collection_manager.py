@@ -105,9 +105,11 @@ class CollectionManager:
         match self._system_type:
             case SystemType.WINDOWS:
                 from core.collectors.windows.runtime import WindowsRuntime
+
                 return WindowsRuntime(self._config, storage=self._storage)
             case SystemType.ANDROID:
                 from core.collectors.android.runtime import AndroidRuntime
+
                 return AndroidRuntime(self._config)
             case _:
                 raise RuntimeError(f"Unsupported platform: {self._system_type}")
@@ -136,7 +138,9 @@ class CollectionManager:
         logger.info("Health monitor started")
 
         if self._system_type == SystemType.ANDROID:
-            self._screen_monitor_task = asyncio.create_task(self._monitor_screen_state())
+            self._screen_monitor_task = asyncio.create_task(
+                self._monitor_screen_state()
+            )
             logger.info("Screen state monitor started")
 
         logger.info("Collection started")

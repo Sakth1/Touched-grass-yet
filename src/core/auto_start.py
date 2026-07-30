@@ -81,7 +81,9 @@ def is_enabled() -> bool:
     if winreg is None:
         return False
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_QUERY_VALUE)
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_QUERY_VALUE
+        )
         winreg.QueryValueEx(key, VALUE_NAME)
         winreg.CloseKey(key)
         return True

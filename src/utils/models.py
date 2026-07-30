@@ -44,6 +44,7 @@ class AppLayout:
     the page changes size, callers ask :func:`resolve_app_layout` for a new
     instance and pass it to each control.
     """
+
     resolved_breakpoint: str
     width: float
     height: float
