@@ -181,12 +181,12 @@ class HomePage:
         if paused:
             self._status_text.value = "Status: Paused"
             self._status_text.color = ft.Colors.ORANGE
-            self._pause_btn.text = "Resume"
+            self._pause_btn.text = "Resume"  # type: ignore
             self._pause_btn.icon = ft.Icons.PLAY_ARROW
         else:
             self._status_text.value = "Status: Running"
             self._status_text.color = ft.Colors.GREEN
-            self._pause_btn.text = "Pause"
+            self._pause_btn.text = "Pause"  # type: ignore
             self._pause_btn.icon = ft.Icons.PAUSE
         self.page.update()
 
@@ -200,7 +200,7 @@ class HomePage:
         else:
             self._status_text.value = "Status: Stopped"
             self._status_text.color = None
-            self._pause_btn.text = "Pause"
+            self._pause_btn.text = "Pause"  # type: ignore
             self._pause_btn.icon = ft.Icons.PAUSE
         self.page.update()
 

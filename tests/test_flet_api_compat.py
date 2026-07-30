@@ -194,7 +194,7 @@ def _mro_dataclass_fields(obj: type) -> set[str] | None:
     fields: set[str] = set()
     for cls in obj.__mro__:
         if hasattr(cls, "__dataclass_fields__"):
-            fields.update(cls.__dataclass_fields__)
+            fields.update(cls.__dataclass_fields__)  # type: ignore
     return fields if fields else None
 
 
@@ -247,7 +247,7 @@ def _trial_construct_or_call(
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         try:
-            obj(**init_kwargs)
+            obj(**init_kwargs)  # type: ignore
         except TypeError:
             # Only report TypeError if it comes from an unexpected keyword,
             # which means the param is genuinely invalid
@@ -428,7 +428,10 @@ def _collect_usages(
 
 def _resolve_for_mro(obj: object) -> type:
     """Unwrap GenericAlias and return the class for MRO traversal."""
-    return getattr(obj, "__origin__", obj)
+    result = getattr(obj, "__origin__", obj)
+    if isinstance(result, type):
+        return result
+    return type(obj)
 
 
 class _CategoryAdapter:
@@ -438,7 +441,7 @@ class _CategoryAdapter:
     *UNKNOWN* is returned when a category cannot be determined.
     """
 
-    UNKNOWN: set[str] | None = object()  # sentinel
+    UNKNOWN: set[str] | None = object()  # type: ignore  # sentinel
 
     @classmethod
     def matches(cls, obj: object) -> bool:

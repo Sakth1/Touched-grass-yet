@@ -186,8 +186,10 @@ class TestHealthMonitor:
         except asyncio.CancelledError:
             pass
 
-        cm._storage.check_integrity.assert_called()
-        cm._storage.auto_vacuum.assert_called()
+        # The health monitor calls check_integrity + auto_vacuum on the real
+        # storage; the interval is 0.01 so at least one cycle runs in 0.03 s.
+        cm._storage.check_integrity.assert_called()  # type: ignore  # Storage is a Mock at test time
+        cm._storage.auto_vacuum.assert_called()  # type: ignore
 
     async def test_health_monitor_cancelled_on_stop(self):
         from core.application.collection_manager import CollectionManager

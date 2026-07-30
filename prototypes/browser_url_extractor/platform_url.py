@@ -80,7 +80,7 @@ def _find_url_via_pywinauto() -> str | None:
 
 def _find_url_via_uiautomation() -> str | None:
     try:
-        import uiautomation as auto
+        import uiautomation as auto  # type: ignore
     except ImportError:
         return None
 
@@ -232,9 +232,9 @@ def get_url_macos_applescript() -> str | None:
 
 def get_url_linux_atspi() -> str | None:
     try:
-        import gi
+        import gi  # type: ignore
         gi.require_version("Atspi", "2.0")
-        from gi.repository import Atspi
+        from gi.repository import Atspi  # type: ignore
     except ImportError:
         pass
     else:

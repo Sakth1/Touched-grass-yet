@@ -1,11 +1,15 @@
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     import winreg
-except ImportError:
-    winreg = None
+else:
+    try:
+        import winreg
+    except ImportError:
+        winreg = None
 
 logger = logging.getLogger(__name__)
 

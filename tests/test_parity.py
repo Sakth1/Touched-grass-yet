@@ -41,6 +41,7 @@ class TestAfkParity:
             w = AndroidAfkWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data["present"] is False
 
     async def test_android_afk_no_recent_events_returns_not_present(self):
@@ -64,6 +65,7 @@ class TestAfkParity:
             w = AndroidAfkWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data["present"] is False
 
     async def test_android_afk_recent_event_returns_present(self):
@@ -87,6 +89,7 @@ class TestAfkParity:
             w = AndroidAfkWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data["present"] is True
 
     async def test_windows_afk_tick_returns_correct_schema(self):
@@ -141,6 +144,7 @@ class TestPowerParity:
             w = AndroidPowerWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data["battery_pct"] is None
         assert tick.data["charging"] is None
 
@@ -169,6 +173,7 @@ class TestPowerParity:
             w = PowerWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert isinstance(tick.data["battery_pct"], (int, float, type(None)))
         assert isinstance(tick.data["charging"], (bool, type(None)))
 
@@ -180,6 +185,7 @@ class TestPowerParity:
             w = AndroidPowerWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert isinstance(tick.data["battery_pct"], (int, type(None)))
         assert isinstance(tick.data["charging"], (bool, type(None)))
 

@@ -60,7 +60,7 @@ def _get_activity():
         logger.warning("MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?")
         return None
     try:
-        from jnius import autoclass
+        from jnius import autoclass  # type: ignore
 
         activity_host = autoclass(activity_host_class)
         _activity = activity_host.mActivity
@@ -94,6 +94,7 @@ def resolve(package_name: str) -> str:
         return package_name
 
     try:
+        assert _PackageManager is not None
         info = _PackageManager.getApplicationInfo(package_name, 0)
         label = info.loadLabel(_PackageManager)
         if label:

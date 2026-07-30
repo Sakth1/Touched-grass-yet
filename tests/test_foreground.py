@@ -165,6 +165,7 @@ class TestTransition:
         ):
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data.keys() == {"package", "app_name"}
         assert "durations" not in tick.data
         assert "source" not in tick.data

@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from core.collectors.base import Watcher
 from core.collectors.windows.afk import AfkWatcher
@@ -35,7 +36,8 @@ class WindowsRuntime:
                 interval = self._config.get_interval(name, _DEFAULT_INTERVALS[name])
                 wc = WatcherConfig(name=name, interval_s=interval, enabled=True)
                 if name == "foreground":
-                    watchers.append(cls(wc, app_config=self._config, storage=self._storage))
+                    fw = cast(type[ForegroundWatcher], cls)
+                    watchers.append(fw(wc, app_config=self._config, storage=self._storage))
                 else:
                     watchers.append(cls(wc))
         logger.info("Created %d Windows watchers: %s", len(watchers), enabled)

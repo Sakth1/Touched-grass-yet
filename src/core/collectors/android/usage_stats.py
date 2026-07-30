@@ -25,7 +25,7 @@ def _get_activity():
         logger.warning("MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?")
         return None
     try:
-        from jnius import autoclass
+        from jnius import autoclass  # type: ignore
 
         activity_host = autoclass(activity_host_class)
         _activity = activity_host.mActivity
@@ -40,7 +40,7 @@ def _ensure_jnius():
     if _manager is not None:
         return True
     try:
-        from jnius import autoclass
+        from jnius import autoclass  # type: ignore
 
         _Context = autoclass("android.content.Context")
         _UsageStatsManager = autoclass("android.app.usage.UsageStatsManager")
@@ -62,7 +62,7 @@ def check_usage_stats_permission() -> bool:
         activity = _get_activity()
         if activity is None:
             return False
-        from jnius import autoclass
+        from jnius import autoclass  # type: ignore
 
         AppOpsManager = autoclass("android.app.AppOpsManager")
         Process = autoclass("android.os.Process")
@@ -83,6 +83,7 @@ def _query_jnius(begin_ms: int, end_ms: int) -> dict:
     if not _ensure_jnius():
         return {}
     try:
+        assert _manager is not None
         stats_list = _manager.queryUsageStats(0, begin_ms, end_ms)
         if stats_list is None:
             logger.debug("queryUsageStats returned None for range %d-%d", begin_ms, end_ms)
@@ -115,11 +116,13 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
     if not _ensure_jnius():
         return []
     try:
+        assert _manager is not None
         events = _manager.queryEvents(begin_ms, end_ms)
         if events is None:
             logger.debug("queryEvents returned None for range %d-%d", begin_ms, end_ms)
             return []
         result = []
+        assert _UsageEventClass is not None
         event = _UsageEventClass()
         while events.hasNextEvent():
             events.getNextEvent(event)
@@ -157,7 +160,7 @@ def get_battery_info() -> dict:
         if activity is None:
             return {"battery_pct": None, "charging": None}
 
-        from jnius import autoclass
+        from jnius import autoclass  # type: ignore
 
         BatteryManager = autoclass("android.os.BatteryManager")
         Context = autoclass("android.content.Context")
@@ -192,7 +195,7 @@ def open_usage_access_settings() -> bool:
         activity = _get_activity()
         if activity is None:
             return False
-        from jnius import autoclass
+        from jnius import autoclass  # type: ignore
 
         Intent = autoclass("android.content.Intent")
         Settings = autoclass("android.provider.Settings")

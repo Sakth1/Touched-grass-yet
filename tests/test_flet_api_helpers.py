@@ -12,7 +12,7 @@ import flet as ft
 # Allow importing from the test package itself
 sys.path.insert(0, str(Path(__file__).parent))
 
-from test_flet_api_compat import (
+from test_flet_api_compat import (  # type: ignore
     SRC_DIR,
     _get_flet_imports,
     _has_flet_imports,

@@ -36,7 +36,7 @@ async def test_app_entrypoint_awaits_startup_without_nested_event_loop(monkeypat
 
     page = _FakePage()
 
-    await app.entrypoint(page)
+    await app.entrypoint(page)  # type: ignore
 
     assert page.updated is True
 
@@ -60,7 +60,7 @@ class TestFletTextFieldContract:
                 value="test",
                 multiline=True,
                 read_only=True,
-                font_family="monospace",
+                font_family="monospace",  # type: ignore
             )
 
     def test_text_accepts_font_family_directly(self):

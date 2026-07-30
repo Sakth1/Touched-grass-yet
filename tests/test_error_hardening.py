@@ -44,6 +44,7 @@ class TestWindowsAfkHardening:
             w = AfkWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data["status"] == "idle"
 
     async def test_tick_returns_away_status(self):
@@ -53,6 +54,7 @@ class TestWindowsAfkHardening:
             w = AfkWatcher()
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data["status"] == "away"
 
 

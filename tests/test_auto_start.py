@@ -152,6 +152,7 @@ def test_get_target_path_dev_mode(tmp_path):
         from core.auto_start import _get_target_path
 
         result = _get_target_path()
+        assert result is not None
         assert "pythonw.exe" in result
         assert "main.py" in result
 
@@ -174,5 +175,6 @@ def test_get_target_path_dev_mode_falls_back_to_python_exe(tmp_path):
         from core.auto_start import _get_target_path
 
         result = _get_target_path()
+        assert result is not None
         assert "python.exe" in result
         assert "main.py" in result
