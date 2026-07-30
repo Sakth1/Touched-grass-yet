@@ -3,8 +3,8 @@ import logging
 import flet as ft
 
 from core.application.collection_manager import CollectionManager
-from UI.db_viewer import DbViewer
-from UI.settings_page import SettingsPanel
+from UIold.db_viewer_old import DbViewer
+from UIold.settings_page_old import SettingsPanel
 from utils.models import SystemType, Tick
 
 logger = logging.getLogger(__name__)
@@ -249,7 +249,7 @@ class HomePage:
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self._close_dialog(dlg)),
-                ft.Button("Open Settings", on_click=lambda e: self._open_settings(dlg)),
+                ft.ElevatedButton("Open Settings", on_click=lambda e: self._open_settings(dlg)),
             ],
         )
         self.page.show_dialog(dlg)

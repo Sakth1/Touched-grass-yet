@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
-from uuid import UUID, uuid4
 
 
 class SystemType(Enum):
@@ -13,7 +12,6 @@ class SystemType(Enum):
 
 @dataclass
 class Tick:
-    id: UUID = field(default_factory=uuid4)
     watcher: str = ""
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     data: dict[str, Any] = field(default_factory=dict)
@@ -36,3 +34,18 @@ class RawEvent:
     collected_at: float = 0.0
     payload: dict[str, Any] = field(default_factory=dict)
     source: str = ""
+
+
+@dataclass(frozen=True)
+class AppLayout:
+    """Resolved responsive metrics for the current page size.
+
+    The dataclass is frozen because it represents one layout calculation. When
+    the page changes size, callers ask :func:`resolve_app_layout` for a new
+    instance and pass it to each control.
+    """
+    resolved_breakpoint: str
+    width: float
+    height: float
+    padding: float
+    gap: float

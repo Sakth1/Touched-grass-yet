@@ -1,4 +1,3 @@
-import contextlib
 import datetime
 import logging
 import os
@@ -138,8 +137,10 @@ class DbViewer:
         try:
             watcher = self._watcher_dd.value
             limit = 500
-            with contextlib.suppress(ValueError):
+            try:
                 limit = int(self._limit_tf.value or "500")
+            except ValueError:
+                pass
 
             kw: dict = {"desc": True, "limit": limit}
             if watcher and watcher != "All":
