@@ -19,7 +19,6 @@ class TestFixturesAvailable:
 
     def test_make_tick_creates_ticks(self, make_tick):
         t1 = make_tick(watcher="afk", data={"status": "active"})
-        t2 = make_tick(watcher="foreground")
         assert t1.watcher == "afk"
         assert t1.data == {"status": "active"}
 
