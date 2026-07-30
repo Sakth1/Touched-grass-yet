@@ -1,8 +1,7 @@
 import logging
 
+from utils.constants import MIN_PAGE_HEIGHT, MIN_PAGE_WIDTH, MOBILE_BREAKPOINT, TABLET_BREAKPOINT
 from utils.models import AppLayout
-from utils.constants import MIN_PAGE_WIDTH, MIN_PAGE_HEIGHT, MOBILE_BREAKPOINT, TABLET_BREAKPOINT
-
 
 logger = logging.getLogger(__name__)
 

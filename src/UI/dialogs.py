@@ -1,3 +1,4 @@
+import contextlib
 import logging
 from typing import Callable, Optional
 
@@ -38,10 +39,8 @@ def _handle_alert_close(page: ft.Page, on_close: Optional[Callable]) -> None:
 
 def safe_pop_dialog(page: ft.Page) -> None:
     """Close the topmost dialog while tolerating detached-control errors."""
-    try:
+    with contextlib.suppress(IndexError, RuntimeError):
         page.pop_dialog()
-    except (IndexError, RuntimeError):
-        pass
 
 
 def safe_update(control: ft.Control) -> None:

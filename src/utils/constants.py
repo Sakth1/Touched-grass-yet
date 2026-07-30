@@ -1,7 +1,5 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Set
-
 
 #: Absolute path to the ``src`` directory; used as the anchor for bundled assets.
 ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

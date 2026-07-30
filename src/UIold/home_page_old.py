@@ -249,7 +249,7 @@ class HomePage:
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self._close_dialog(dlg)),
-                ft.ElevatedButton("Open Settings", on_click=lambda e: self._open_settings(dlg)),
+                ft.Button("Open Settings", on_click=lambda e: self._open_settings(dlg)),
             ],
         )
         self.page.show_dialog(dlg)

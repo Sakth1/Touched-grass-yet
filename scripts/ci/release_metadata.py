@@ -65,7 +65,7 @@ def compare_semver(left: str, right: str) -> int:
         return 1
     if not right_pre:
         return -1
-    for left_ident, right_ident in zip(left_pre, right_pre):
+    for left_ident, right_ident in zip(left_pre, right_pre, strict=True):
         comp = compare_identifier(left_ident, right_ident)
         if comp != 0:
             return comp

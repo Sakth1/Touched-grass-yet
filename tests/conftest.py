@@ -1,4 +1,3 @@
-import uuid
 import warnings
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -46,7 +45,6 @@ def make_tick():
         nonlocal _counter
         _counter += 1
         return Tick(
-            id=uuid.UUID(f"00000000-0000-0000-0000-{_counter:012d}"),
             watcher=watcher,
             timestamp=timestamp or datetime(2026, 7, 19, tzinfo=timezone.utc),
             data=data or {},

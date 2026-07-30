@@ -46,10 +46,7 @@ def is_trackable_url(url: str | None) -> bool:
     if url in SKIP_EXACT:
         return False
     url_lower = url.lower()
-    for prefix in SKIP_PREFIXES:
-        if url_lower.startswith(prefix):
-            return False
-    return True
+    return not any(url_lower.startswith(prefix) for prefix in SKIP_PREFIXES)
 
 
 KNOWN_PREFIXES = ("http://", "https://", "file://", "about:", "chrome://",

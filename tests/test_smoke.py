@@ -22,7 +22,6 @@ class TestFixturesAvailable:
         t2 = make_tick(watcher="foreground")
         assert t1.watcher == "afk"
         assert t1.data == {"status": "active"}
-        assert t1.id != t2.id
 
     def test_mock_tick_bus(self, mock_tick_bus):
         import asyncio

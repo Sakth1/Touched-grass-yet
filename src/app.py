@@ -6,11 +6,9 @@ from core.application.collection_manager import CollectionManager
 from core.auto_start import enable as enable_auto_start
 from core.auto_start import is_enabled as is_auto_start_enabled
 from core.logging_setup import setup_file_logging
-from UI.screens.dashboard_screen import Dashboard
 from UI.dialogs import show_permission_dialog
+from UI.screens.dashboard_screen import Dashboard
 from utils.models import SystemType
-
-from UIold.home_page_old import HomePage as OldHomePage
 
 logging.basicConfig(
     level=logging.INFO,
