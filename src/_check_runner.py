@@ -14,6 +14,7 @@ def main() -> None:
     _step("2. ruff check", "uv", "run", "ruff", "check", "src/", "tests/")
     _step("3. pyright", "uv", "run", "pyright", "src/")
     _step("4. pytest", "uv", "run", "pytest", "tests/", "-v", "--tb=short", "-q")
+    _step("5. black formating", "uv", "run", "black", "src/", "tests/", "--target-version", "py312")
     print("\n=== All CI checks passed ===")
 
 
