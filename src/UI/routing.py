@@ -1,4 +1,3 @@
-
 import logging
 
 import flet as ft
@@ -26,7 +25,6 @@ class RouteManager:
                 logger.warning("Unknown route=%s, falling back to /home", route)
                 route = "/home"
                 new_view = self._route_views.get("/home")
-
 
             self._container.content = new_view
             self.current_route = route
