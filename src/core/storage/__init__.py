@@ -265,7 +265,10 @@ class Storage:
             filters.append("platform = ?")
             params.append(platform)
 
-        sql = "SELECT id, device_id, platform, start_ts, end_ts, duration_s, app_key, payload, session_type FROM sessions"
+        sql = (
+            "SELECT id, device_id, platform, start_ts, end_ts, duration_s,"
+            "app_key, payload, session_type FROM sessions"
+        )
         if filters:
             sql += " WHERE " + " AND ".join(filters)
         sql += " ORDER BY start_ts ASC"

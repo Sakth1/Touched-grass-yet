@@ -6,7 +6,7 @@ from utils.constants import (
     MOBILE_BREAKPOINT,
     TABLET_BREAKPOINT,
 )
-from utils.models import AppLayout, ScreenOrientation
+from utils.models import AppLayout
 
 logger = logging.getLogger(__name__)
 

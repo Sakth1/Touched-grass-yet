@@ -1,7 +1,7 @@
+import asyncio
 import logging
 
 import flet as ft
-import asyncio
 
 from core.application.collection_manager import CollectionManager
 from core.auto_start import enable as enable_auto_start
