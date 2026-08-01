@@ -10,9 +10,12 @@ class _FakeWindow:
 class _FakePage:
     def __init__(self):
         self.window = _FakeWindow()
+        self.width = 500
+        self.height = 600
         self.title = None
         self.theme_mode = None
         self.updated = False
+        self.views = []
 
     def update(self):
         self.updated = True
@@ -21,14 +24,14 @@ class _FakePage:
 @pytest.mark.asyncio
 async def test_app_entrypoint_awaits_startup_without_nested_event_loop(monkeypatch):
     import app
-    from utils.models import SystemType
+    from utils.models import OSType
 
     class FakeCollectionManager:
         def __init__(self):
             self.config = type("Config", (), {"auto_start_enabled": False})()
 
         def detect_platform(self):
-            return SystemType.WINDOWS
+            return OSType.WINDOWS
 
     monkeypatch.setattr(app, "setup_file_logging", lambda: None)
     monkeypatch.setattr(app, "CollectionManager", FakeCollectionManager)
@@ -39,6 +42,15 @@ async def test_app_entrypoint_awaits_startup_without_nested_event_loop(monkeypat
     await app.entrypoint(page)  # type: ignore
 
     assert page.updated is True
+
+
+def test_dashboard_constructs_before_flet_mount():
+    from UI.screens.dashboard_screen import Dashboard
+
+    dashboard = Dashboard()
+
+    assert dashboard.width == 500
+    assert dashboard.height == 600
 
 
 class TestFletTextFieldContract:

@@ -1,11 +1,17 @@
 import logging
 
-from utils.constants import MIN_PAGE_HEIGHT, MIN_PAGE_WIDTH, MOBILE_BREAKPOINT, TABLET_BREAKPOINT
-from utils.models import AppLayout
+from utils.constants import (
+    MIN_PAGE_HEIGHT,
+    MIN_PAGE_WIDTH,
+    MOBILE_BREAKPOINT,
+    TABLET_BREAKPOINT,
+)
+from utils.models import AppLayout, ScreenOrientation
 
 logger = logging.getLogger(__name__)
 
-def resolve_app_layout(page_width: float, page_height: float) -> AppLayout:
+
+def app_layout_resolver(page_width: float, page_height: float, **kwargs) -> AppLayout:
     """Return a responsive layout tuned to the available viewport.
 
     Args:
@@ -21,24 +27,20 @@ def resolve_app_layout(page_width: float, page_height: float) -> AppLayout:
     height = max(float(page_height or 0), MIN_PAGE_HEIGHT)
     logger.debug("Resolving app layout: width=%s, height=%s", width, height)
 
-        # Mobile gets a stacked layout because the board needs most of the width.
+    # Mobile gets a stacked layout because the board needs most of the width.
     if width < MOBILE_BREAKPOINT:
-        resolved_breakpoint = "mobile"
+        screen_orientation = "mobile"
         padding = 12
-        gap = 12
     elif width < TABLET_BREAKPOINT:
-        resolved_breakpoint = "tablet"
+        screen_orientation = "tablet"
         padding = 18
-        gap = 16
     else:
-        resolved_breakpoint = "desktop"
+        screen_orientation = "desktop"
         padding = 24
-        gap = 20
 
     return AppLayout(
-        resolved_breakpoint=resolved_breakpoint,
+        screen_orientation=screen_orientation,
         width=width,
         height=height,
         padding=padding,
-        gap=gap,
     )

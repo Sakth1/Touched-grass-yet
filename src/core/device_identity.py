@@ -4,7 +4,7 @@ import uuid
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
-from core.paths import get_data_dir
+from utils.paths import get_data_dir
 
 if TYPE_CHECKING:
     import winreg

@@ -160,7 +160,7 @@ jobs:
           $installerBase = "${{ needs.detect-version-bump.outputs.version }}-setup"
           $installerName = "$installerBase.exe"
           $issPath = Join-Path $PWD "installer.iss"
-          $appName = "Touched Grass Yet"
+          $appName = "Unscreen"
           $appVersion = "${{ needs.detect-version-bump.outputs.version }}"
           $exeName = $exe.Name
           @"

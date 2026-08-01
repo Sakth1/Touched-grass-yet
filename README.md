@@ -1,4 +1,4 @@
-# Touched Grass Yet
+# Unscreen
 
 Cross-device app usage timeline tracker with idle detection. Privacy-first, local-only, no cloud.
 
@@ -56,7 +56,7 @@ Browser info (`browser`, `page_title`, `inferred_domain`, `url`) is populated wh
 
 ## Database Schema
 
-**Location:** `%APPDATA%\TouchedGrassYet\data.db`
+**Location:** `%APPDATA%\Unscreen\data.db`
 
 **Engine:** SQLite via APSW, WAL journal mode.
 
@@ -134,7 +134,7 @@ Uses `psutil.sensors_battery()` every 60s. Returns `null` values on desktops wit
 ## Device Identity
 
 - **Primary:** Machine GUID from `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`
-- **Fallback:** Generated UUID4 stored in `%APPDATA%\TouchedGrassYet\device.json`
+- **Fallback:** Generated UUID4 stored in `%APPDATA%\Unscreen\device.json`
 
 ## Setup
 

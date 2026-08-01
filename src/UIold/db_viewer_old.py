@@ -8,7 +8,7 @@ import flet as ft
 
 from core.application.collection_manager import CollectionManager
 from core.application.export_service import ExportService
-from core.paths import get_export_dir
+from utils.paths import get_export_dir
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ import flet as ft
 from core.application.collection_manager import CollectionManager
 from UIold.db_viewer_old import DbViewer
 from UIold.settings_page_old import SettingsPanel
-from utils.models import SystemType, Tick
+from utils.models import OSType, Tick
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +209,7 @@ class HomePage:
         self.page.update()
 
     async def _handle_start(self, e):
-        if self._manager.system_type == SystemType.ANDROID:
+        if self._manager.system_type == OSType.ANDROID:
             from core.collectors.android.usage_stats import check_usage_stats_permission
 
             if not check_usage_stats_permission():

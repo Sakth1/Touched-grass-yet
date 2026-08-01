@@ -67,7 +67,7 @@ The build pipeline must generate installers compatible with v0.5.0's silent auto
 | Windows | Inno Setup silent install (`/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`) | Inno Setup script must set `DisableDirPage=auto`, `DisableProgramGroupPage=auto`, verify `UsePreviousAppDir=yes` |
 | Android | APK download + `ACTION_VIEW` install intent | Standard APK build is sufficient (install intent handled client-side) |
 
-After auto-update, user data in `%APPDATA%\TouchedGrassYet\` (Windows) or app internal storage (Android) is preserved — only program files are replaced.
+After auto-update, user data in `%APPDATA%\Unscreen\` (Windows) or app internal storage (Android) is preserved — only program files are replaced.
 
 ### Release not created
 - Verify `version` in `pyproject.toml` was increased.

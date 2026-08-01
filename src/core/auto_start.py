@@ -14,7 +14,7 @@ else:
 logger = logging.getLogger(__name__)
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-VALUE_NAME = "TouchedGrassYet"
+VALUE_NAME = "Unscreen"
 
 
 def _get_target_path() -> str | None:

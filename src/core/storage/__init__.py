@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.device_identity import get_device_id
-from core.paths import get_data_dir
+from utils.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
 

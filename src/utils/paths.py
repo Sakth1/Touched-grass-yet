@@ -1,8 +1,8 @@
 import os
 import platform
 
-_DATA_DIR_NAME = "TouchedGrassYet"
-_ANDROID_PACKAGE = "com.mycompany.touched-grass-yet"
+_DATA_DIR_NAME = "Unscreen"
+_ANDROID_PACKAGE = "com.mycompany.unscreen"
 
 
 def get_data_dir() -> str:

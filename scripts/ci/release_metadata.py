@@ -130,9 +130,9 @@ def command_extract_release_metadata(args: argparse.Namespace) -> int:
 
     binary_name = (
         data.get("tool", {})
-        .get("touched-grass-yet", {})
+        .get("unscreen", {})
         .get("release", {})
-        .get("binary_name", "Touched-Grass-Yet")
+        .get("binary_name", "Unscreen")
     )
     artifact_stem = f"{binary_name}-{version}"
 

@@ -1,5 +1,5 @@
 [project]
-name = "touched-grass-yet"
+name = "unscreen"
 version = "0.4.1"
 description = "Cross-device app usage timeline tracker"
 readme = "README.md"
@@ -52,7 +52,7 @@ testpaths = ["tests"]
 
 [tool.flet]
 org = "com.mycompany"
-product = "touched-grass-yet"
+product = "unscreen"
 company = "Flet"
 copyright = "Copyright (C) 2023-2026 by Flet"
 
@@ -75,5 +75,5 @@ dependencies = [
 "android.permission.WRITE_EXTERNAL_STORAGE" = { maxSdkVersion = "28" }
 "android.permission.READ_EXTERNAL_STORAGE" = { maxSdkVersion = "32" }
 
-[tool.touched-grass-yet.release]
-binary_name = "Touched-Grass-Yet"
+[tool.unscreen.release]
+binary_name = "Unscreen"

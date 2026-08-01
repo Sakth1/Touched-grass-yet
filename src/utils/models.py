@@ -4,11 +4,17 @@ from enum import Enum
 from typing import Any
 
 
-class SystemType(Enum):
+class OSType(Enum):
     UNKNOWN = 0
     WINDOWS = 1
     ANDROID = 2
 
+
+class ScreenOrientation(Enum):
+    UNKNOWN = 0
+    LANDSCAPE_ONLY = 1
+    PORTAIT_ONLY = 2
+    AUTO = 3
 
 @dataclass
 class Tick:
@@ -45,8 +51,7 @@ class AppLayout:
     instance and pass it to each control.
     """
 
-    resolved_breakpoint: str
+    screen_orientation: ScreenOrientation
     width: float
     height: float
     padding: float
-    gap: float
