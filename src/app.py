@@ -35,19 +35,18 @@ class App:
 
         self.content = ft.Container(expand=True, content=self.dashboard_page)
 
-        self.page.views.append(self.content)
         self.page.update()
 
         self._initiate()
 
     def _schedule_maximize(self):
-            if self.page.platform.is_desktop():
-                self.page.run_task(self._maximize_after_delay, self.page)
+            if self.page.platform is not None and self.page.platform.is_desktop() is True:
+                self.page.run_task(self._maximize_after_delay)
 
-    async def _maximize_after_delay(self, page: ft.Page):
+    async def _maximize_after_delay(self):
         await asyncio.sleep(0.1)          # flet#6101: client window-state init must settle first
-        page.window.maximized = True
-        page.update(page.window)
+        self.page.window.maximized = True
+        self.page.update()
 
     def _initiate(self):
         if (
@@ -62,7 +61,10 @@ class App:
             if not check_usage_stats_permission():
                 show_permission_dialog(self.page)
 
-        self.layout: AppLayout = app_layout_resolver(self.page.width, self.page.height)
+        width = self.page.window.width if self.page.window.width is not None else 500
+        height = self.page.window.height if self.page.window.height is not None else 600
+
+        self.layout: AppLayout = app_layout_resolver(width, height)
         self._apply_layout(self.layout)
 
     def _apply_layout(self, layout: AppLayout):

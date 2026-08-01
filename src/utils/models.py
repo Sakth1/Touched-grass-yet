@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 
 
 class OSType(Enum):
@@ -51,7 +51,7 @@ class AppLayout:
     instance and pass it to each control.
     """
 
-    screen_orientation: ScreenOrientation
+    screen_orientation: ScreenOrientation | str
     width: float
     height: float
     padding: float
