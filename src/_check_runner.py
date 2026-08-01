@@ -11,10 +11,19 @@ def _step(name: str, *args: str) -> None:
 
 def main() -> None:
     _step("1. uv sync (frozen)", "uv", "sync", "--frozen")
-    _step("2. ruff check", "uv", "run", "ruff", "check", "src/", "tests/")
-    _step("3. pyright", "uv", "run", "pyright", "src/")
-    _step("4. pytest", "uv", "run", "pytest", "tests/", "-v", "--tb=short", "-q")
-    _step("5. black formating", "uv", "run", "black", "src/", "tests/", "--target-version", "py312")
+    _step(
+        "2. black formating",
+        "uv",
+        "run",
+        "black",
+        "src/",
+        "tests/",
+        "--target-version",
+        "py312",
+    )
+    _step("3. ruff check", "uv", "run", "ruff", "check", "src/", "tests/")
+    _step("4. pyright", "uv", "run", "pyright", "src/")
+    _step("5. pytest", "uv", "run", "pytest", "tests/", "-v", "--tb=short", "-q")
     print("\n=== All CI checks passed ===")
 
 
