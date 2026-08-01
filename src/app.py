@@ -9,7 +9,11 @@ from core.auto_start import is_enabled as is_auto_start_enabled
 from core.logging_setup import setup_file_logging
 from UI.dialogs import show_permission_dialog
 from UI.layout_manager import app_layout_resolver
+from UI.routing import RouteManager
+from UI.screens.analytics_screen import Analytics
 from UI.screens.dashboard_screen import Dashboard
+from UI.screens.settings_screen import Settings
+from UI.screens.timeline_screen import Timeline
 from utils.models import AppLayout, OSType
 
 logging.basicConfig(
@@ -32,10 +36,52 @@ class App:
 
         self.collection_manager = CollectionManager()
         self.dashboard_page = Dashboard()
+        self.timeline_page = Timeline()
+        self.analytics_page = Analytics()
+        self.settings_page = Settings()
 
-        self.content = ft.Container(expand=True, content=self.dashboard_page)
+        self.container = ft.Container(expand=True)
 
-        self.page.update()
+        route_to_index = {
+            "/dashboard": 0,
+            "/timeline": 1,
+            "/analytics": 2,
+            "/settings": 3,
+        }
+
+        route_views = {
+            "/dashboard": self.dashboard_page,
+            "/timeline": self.timeline_page,
+            "/analytics": self.analytics_page,
+            "/settings": self.settings_page,
+        }
+
+        self.route_manager = RouteManager(
+            page=self.page,
+            container=self.container,
+            route_views=route_views,
+            route_to_index=route_to_index,
+        )
+
+        self.page.navigation_bar = ft.NavigationBar(
+            destinations=[
+                ft.NavigationBarDestination(
+                    icon=ft.icons.Icons.DASHBOARD, label="Dashboard"
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.Icons.TIMELINE, label="Timeline"
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.Icons.ANALYTICS, label="Analytics"
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.icons.Icons.SETTINGS, label="Settings"
+                ),
+            ],
+            on_change=self._handle_navigation_change,
+        )
+
+        self.page.on_route_change = self.route_manager.handle_route_change
 
         self._initiate()
 
@@ -74,6 +120,9 @@ class App:
         self.page.width = layout.width
         self.page.height = layout.height
         self.page.update()
+
+    def _handle_navigation_change(self, event):
+        self.route_manager.handle_navigation_change(event)
 
 
 async def entrypoint(page: ft.Page):
