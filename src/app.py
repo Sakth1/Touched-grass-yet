@@ -26,7 +26,7 @@ class App:
         self.page.title = "Unscreen"
         self.page.theme_mode = ft.ThemeMode.SYSTEM
 
-        self._schedule_maximize() # REMOVE THIS BS OF A CODE WHEN flet #6101 IS FIXED
+        self._schedule_maximize()  # REMOVE THIS BS OF A CODE WHEN flet #6101 IS FIXED
 
         setup_file_logging()
 
@@ -40,11 +40,13 @@ class App:
         self._initiate()
 
     def _schedule_maximize(self):
-            if self.page.platform is not None and self.page.platform.is_desktop() is True:
-                self.page.run_task(self._maximize_after_delay)
+        if self.page.platform is not None and self.page.platform.is_desktop() is True:
+            self.page.run_task(self._maximize_after_delay)
 
     async def _maximize_after_delay(self):
-        await asyncio.sleep(0.1)          # flet#6101: client window-state init must settle first
+        await asyncio.sleep(
+            0.1
+        )  # flet#6101: client window-state init must settle first
         self.page.window.maximized = True
         self.page.update()
 

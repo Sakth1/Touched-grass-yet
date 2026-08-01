@@ -16,6 +16,7 @@ class ScreenOrientation(Enum):
     PORTAIT_ONLY = 2
     AUTO = 3
 
+
 @dataclass
 class Tick:
     watcher: str = ""

@@ -13,4 +13,3 @@ class BaseScreen(ft.Container):
         self,
     ):
         super().__init__()
-        
