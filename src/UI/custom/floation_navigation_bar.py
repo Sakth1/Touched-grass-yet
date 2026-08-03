@@ -54,7 +54,9 @@ class FloatingNavigationBar(ft.Container):
     inside a centered ``ft.Row``.
     """
 
-    destinations: list[FloatingNavigationBarDestination] = field(default_factory=list, metadata={"skip": True})
+    destinations: list[FloatingNavigationBarDestination] = field(
+        default_factory=list, metadata={"skip": True}
+    )
     selected_index: int = 0
     label_behavior: Optional[ft.NavigationBarLabelBehavior] = None
     on_change: Optional[Callable[[ft.Event], None]] = None

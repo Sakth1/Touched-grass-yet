@@ -67,9 +67,7 @@ class RouteManager:
             return
         self.navigate(route)
 
-    def handle_navigation_change(
-        self, event: ft.Event[FloatingNavigationBar]
-    ) -> None:
+    def handle_navigation_change(self, event: ft.Event[FloatingNavigationBar]) -> None:
         """Handle ``page.navigation_bar.on_change`` and navigate accordingly."""
         idx = getattr(event.control, "selected_index", None)
         route_by_index = {v: k for k, v in self._route_to_index.items()}

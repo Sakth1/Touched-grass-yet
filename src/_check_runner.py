@@ -13,7 +13,9 @@ def _step(name: str, *args: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(prog="check")
     parser.add_argument("--fix", action="store_true", help="run ruff with --fix")
-    parser.add_argument("--unsafe-fix", action="store_true", help="run ruff with --unsafe-fix")
+    parser.add_argument(
+        "--unsafe-fix", action="store_true", help="run ruff with --unsafe-fix"
+    )
     args = parser.parse_args()
 
     ruff_fix = "--fix" if args.fix else None

@@ -11,4 +11,6 @@ class Timeline(BaseScreen):
     def __init__(self):
         super().__init__()
         self.title = "Timeline"
-        self.content = ft.Row(ft.Text("Timeline", color=ft.Colors.WHITE), alignment=ft.Alignment.CENTER)
+        self.content = ft.Row(
+            ft.Text("Timeline", color=ft.Colors.WHITE), alignment=ft.Alignment.CENTER
+        )

@@ -1,4 +1,5 @@
 import logging
+
 import flet as ft
 
 from UI.screens.base_screen import BaseScreen

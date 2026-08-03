@@ -11,4 +11,6 @@ class Dashboard(BaseScreen):
     def __init__(self):
         super().__init__()
         self.title = "Dashboard"
-        self.content = ft.Container(content=ft.Text("Dashboard"), alignment=ft.Alignment.CENTER)
+        self.content = ft.Container(
+            content=ft.Text("Dashboard"), alignment=ft.Alignment.CENTER
+        )

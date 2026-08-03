@@ -7,6 +7,10 @@ from core.application.collection_manager import CollectionManager
 from core.auto_start import enable as enable_auto_start
 from core.auto_start import is_enabled as is_auto_start_enabled
 from core.logging_setup import setup_file_logging
+from UI.custom.floation_navigation_bar import (
+    FloatingNavigationBar,
+    FloatingNavigationBarDestination,
+)
 from UI.dialogs import show_permission_dialog
 from UI.layout_manager import app_layout_resolver
 from UI.routing import RouteManager
@@ -14,10 +18,6 @@ from UI.screens.analytics_screen import Analytics
 from UI.screens.dashboard_screen import Dashboard
 from UI.screens.settings_screen import Settings
 from UI.screens.timeline_screen import Timeline
-from UI.custom.floation_navigation_bar import (
-    FloatingNavigationBar,
-    FloatingNavigationBarDestination,
-)
 from utils.models import AppLayout, OSType
 
 logging.basicConfig(
