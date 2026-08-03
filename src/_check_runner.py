@@ -1,3 +1,4 @@
+import argparse
 import subprocess
 import sys
 
@@ -10,6 +11,15 @@ def _step(name: str, *args: str) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(prog="check")
+    parser.add_argument("--fix", action="store_true", help="run ruff with --fix")
+    parser.add_argument("--unsafe-fix", action="store_true", help="run ruff with --unsafe-fix")
+    args = parser.parse_args()
+
+    ruff_fix = "--fix" if args.fix else None
+    if args.unsafe_fix:
+        ruff_fix = "--unsafe-fix"
+
     _step("1. uv sync (frozen)", "uv", "sync", "--frozen")
     _step(
         "2. black formating",
@@ -21,7 +31,10 @@ def main() -> None:
         "--target-version",
         "py312",
     )
-    _step("3. ruff check", "uv", "run", "ruff", "check", "src/", "tests/")
+    ruff_args = ["uv", "run", "ruff", "check", "src/", "tests/"]
+    if ruff_fix:
+        ruff_args.append(ruff_fix)
+    _step("3. ruff check", *ruff_args)
     _step("4. pyright", "uv", "run", "pyright", "src/")
     _step("5. pytest", "uv", "run", "pytest", "tests/", "-v", "--tb=short", "-q")
     print("\n=== All CI checks passed ===")
