@@ -1,6 +1,12 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 import flet as ft
+
+if TYPE_CHECKING:
+    from UI.custom.floation_navigation_bar import FloatingNavigationBar
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +36,11 @@ class RouteManager:
             self.current_route = route
 
             idx = self._route_to_index.get(route, 0)
-            nav: ft.NavigationBar | None = getattr(self._page, "navigation_bar", None)
+            nav: FloatingNavigationBar | None = getattr(
+                self._page, "navigation_bar", None
+            )
             if nav is not None:
-                nav.selected_index = idx
+                nav.select_index(idx)
 
             navigate = getattr(self._page, "navigate", None)
             if callable(navigate):
@@ -59,7 +67,9 @@ class RouteManager:
             return
         self.navigate(route)
 
-    def handle_navigation_change(self, event: ft.Event[ft.NavigationBar]) -> None:
+    def handle_navigation_change(
+        self, event: ft.Event[FloatingNavigationBar]
+    ) -> None:
         """Handle ``page.navigation_bar.on_change`` and navigate accordingly."""
         idx = getattr(event.control, "selected_index", None)
         route_by_index = {v: k for k, v in self._route_to_index.items()}

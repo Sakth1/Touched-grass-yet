@@ -14,6 +14,10 @@ from UI.screens.analytics_screen import Analytics
 from UI.screens.dashboard_screen import Dashboard
 from UI.screens.settings_screen import Settings
 from UI.screens.timeline_screen import Timeline
+from UI.custom.floation_navigation_bar import (
+    FloatingNavigationBar,
+    FloatingNavigationBarDestination,
+)
 from utils.models import AppLayout, OSType
 
 logging.basicConfig(
@@ -63,21 +67,25 @@ class App:
             route_to_index=route_to_index,
         )
 
-        self.page.navigation_bar = ft.NavigationBar(
+        self.page.navigation_bar = FloatingNavigationBar(
             destinations=[
-                ft.NavigationBarDestination(
-                    icon=ft.icons.Icons.DASHBOARD, label="Dashboard"
+                FloatingNavigationBarDestination(
+                    icon=ft.icons.Icons.DASHBOARD, label="Dashboard", selected=True
                 ),
-                ft.NavigationBarDestination(
-                    icon=ft.icons.Icons.TIMELINE, label="Timeline"
+                FloatingNavigationBarDestination(
+                    icon=ft.icons.Icons.TIMELINE, label="Timeline", selected=False
                 ),
-                ft.NavigationBarDestination(
-                    icon=ft.icons.Icons.ANALYTICS, label="Analytics"
+                FloatingNavigationBarDestination(
+                    icon=ft.icons.Icons.ANALYTICS, label="Analytics", selected=False
                 ),
-                ft.NavigationBarDestination(
-                    icon=ft.icons.Icons.SETTINGS, label="Settings"
+                FloatingNavigationBarDestination(
+                    icon=ft.icons.Icons.SETTINGS, label="Settings", selected=False
                 ),
             ],
+            selected_index=1,
+            adaptive=True,
+            # bgcolor=ft.Colors.RED,
+            label_behavior=ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED,
             on_change=self._handle_navigation_change,
         )
 
@@ -116,12 +124,11 @@ class App:
         self._apply_layout(self.layout)
 
     def _apply_layout(self, layout: AppLayout):
-        print(f"Applying layout: {layout}")
         self.page.width = layout.width
         self.page.height = layout.height
         self.page.update()
 
-    def _handle_navigation_change(self, event):
+    def _handle_navigation_change(self, event: ft.Event[FloatingNavigationBar]):
         self.route_manager.handle_navigation_change(event)
 
 
