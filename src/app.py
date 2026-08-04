@@ -23,6 +23,7 @@ from UI.screens.dashboard_screen import Dashboard
 from UI.screens.settings_screen import Settings
 from UI.screens.timeline_screen import Timeline
 from utils.constants import (
+    ASSET_DIR,
     DEFAULT_PAGE_HEIGHT,
     DEFAULT_PAGE_WIDTH,
     MIN_PAGE_HEIGHT,
@@ -43,6 +44,7 @@ class App:
         self.page = page
         self.page.title = "Unscreen"
         self.page.theme_mode = ft.ThemeMode.SYSTEM
+        self._set_window_icon()
 
         self._schedule_maximize()  # REMOVE THIS BS OF A CODE WHEN flet #6101 IS FIXED
 
@@ -88,6 +90,12 @@ class App:
         self.page.add(self.shell)
 
         self._initiate()
+
+    def _set_window_icon(self) -> None:
+        if self.page.platform is not None and self.page.platform.is_desktop():
+            icon = ASSET_DIR / "icon_windows.ico"
+            if icon.exists():
+                self.page.window.icon = str(icon)
 
     def _schedule_maximize(self):
         if self.page.platform is not None and self.page.platform.is_desktop() is True:
