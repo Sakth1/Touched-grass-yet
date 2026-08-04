@@ -10,11 +10,11 @@ class OSType(Enum):
     ANDROID = 2
 
 
-class ScreenOrientation(Enum):
+class ScreenFormFactor(Enum):
     UNKNOWN = 0
-    LANDSCAPE_ONLY = 1
-    PORTAIT_ONLY = 2
-    AUTO = 3
+    MOBILE = 1
+    DESKTOP = 2
+    TABLET = 3
 
 
 @dataclass
@@ -52,7 +52,7 @@ class AppLayout:
     instance and pass it to each control.
     """
 
-    screen_orientation: ScreenOrientation | str
+    screen_form_factor: ScreenFormFactor
     width: float
     height: float
     padding: float

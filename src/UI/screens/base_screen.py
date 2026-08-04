@@ -10,3 +10,6 @@ class BaseScreen(ft.Container):
         self,
     ):
         super().__init__()
+
+    def _page_update(self):
+        self.page.update()

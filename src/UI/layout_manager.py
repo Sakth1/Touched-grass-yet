@@ -6,7 +6,7 @@ from utils.constants import (
     MOBILE_BREAKPOINT,
     TABLET_BREAKPOINT,
 )
-from utils.models import AppLayout
+from utils.models import AppLayout, ScreenFormFactor
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +29,17 @@ def app_layout_resolver(page_width: float, page_height: float, **kwargs) -> AppL
 
     # Mobile gets a stacked layout because the board needs most of the width.
     if width < MOBILE_BREAKPOINT:
-        screen_orientation = "mobile"
+        screen_orientation = ScreenFormFactor.MOBILE
         padding = 12
     elif width < TABLET_BREAKPOINT:
-        screen_orientation = "tablet"
+        screen_orientation = ScreenFormFactor.TABLET
         padding = 18
     else:
-        screen_orientation = "desktop"
+        screen_orientation = ScreenFormFactor.DESKTOP
         padding = 24
 
     return AppLayout(
-        screen_orientation=screen_orientation,
+        screen_form_factor=screen_orientation,
         width=width,
         height=height,
         padding=padding,
