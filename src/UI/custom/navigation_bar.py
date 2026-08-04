@@ -65,10 +65,14 @@ class CustomNavigationBar(ft.Container):
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
         self.border_radius = 24
         self.margin = ft.margin.Margin(left=16, right=16, bottom=24)
-        for i, dest in enumerate(self.destinations):
-            dest.on_select = lambda d, i=i: self._select(i)
+        self.final_destinations: list[CustomNavigationBarDestination] = [
+            x for x in self.destinations if x is not None
+        ]
+        for i, dest in enumerate(self.final_destinations):
+            if dest is not None:
+                dest.on_select = lambda d, i=i: self._select(i)
         self.content = ft.Row(
-            controls=self.destinations,
+            controls=self.final_destinations,
             alignment=ft.MainAxisAlignment.SPACE_EVENLY,
             tight=True,
             run_spacing=0,
@@ -94,7 +98,7 @@ class CustomNavigationBar(ft.Container):
 
     def _sync_selection(self) -> list[CustomNavigationBarDestination]:
         changed: list[CustomNavigationBarDestination] = []
-        for i, dest in enumerate(self.destinations):
-            if dest.set_selected(i == self.selected_index):
+        for i, dest in enumerate(self.final_destinations):
+            if dest is not None and dest.set_selected(i == self.selected_index):
                 changed.append(dest)
         return changed

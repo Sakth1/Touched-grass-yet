@@ -27,3 +27,10 @@ MOBILE_BREAKPOINT = 700
 
 #: Maximum viewport width, in pixels, treated as a tablet split layout.
 TABLET_BREAKPOINT = 1100
+
+
+# ── Other constants ──────────────────────────────────────────────────────────
+
+MIN_EXTENDED_DRAWER_WIDTH = 200
+
+MIN_UNEXTENDED_DRAWER_WIDTH = 100

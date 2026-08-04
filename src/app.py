@@ -11,6 +11,10 @@ from UI.custom.navigation_bar import (
     CustomNavigationBar,
     CustomNavigationBarDestination,
 )
+from UI.custom.navigation_drawer import (
+    CustomNavigationDrawer,
+    CustomNavigationDrawerDestination,
+)
 from UI.dialogs import show_permission_dialog
 from UI.layout_manager import app_layout_resolver
 from UI.routing import RouteManager
@@ -57,7 +61,6 @@ class App:
         self.content_container = ft.Container(expand=True)
 
         self.navigation_rail = None
-        self.rail_toggle_button = None
         self.shell = ft.Row(expand=True, controls=[self.content_container])
 
         route_to_index = {
@@ -211,52 +214,33 @@ class App:
         )
         self.page.on_route_change = self.route_manager.handle_route_change
 
-    def _ensure_rail(self, extended: bool) -> ft.NavigationRail:
+    def _ensure_rail(self, extended: bool) -> CustomNavigationDrawer:
         if self.navigation_rail is not None:
             return self.navigation_rail
 
-        self.rail_toggle_button = ft.IconButton(
-            icon=ft.icons.Icons.MENU if extended else ft.icons.Icons.MENU,
-            tooltip="Collapse" if extended else "Expand",
-            on_click=self._toggle_rail_extended,
-        )
-
-        self.navigation_rail = ft.NavigationRail(
-            leading=self.rail_toggle_button,
-            trailing=ft.IconButton(
+        self.navigation_rail = CustomNavigationDrawer(
+            trailing=CustomNavigationDrawerDestination(
                 icon=ft.icons.Icons.SETTINGS_OUTLINED,
+                label="Settings",
                 tooltip="Settings",
                 on_click=self._handle_settings_navigation,
             ),
-            pin_trailing_to_bottom=True,
             destinations=[
-                ft.NavigationRailDestination(
+                CustomNavigationDrawerDestination(
                     icon=ft.icons.Icons.DASHBOARD, label="Dashboard"
                 ),
-                ft.NavigationRailDestination(
+                CustomNavigationDrawerDestination(
                     icon=ft.icons.Icons.TIMELINE, label="Timeline"
                 ),
-                ft.NavigationRailDestination(
+                CustomNavigationDrawerDestination(
                     icon=ft.icons.Icons.ANALYTICS, label="Analytics"
                 ),
             ],
             selected_index=0,
-            label_type=ft.NavigationRailLabelType.NONE,
             extended=extended,
-            min_width=56,
-            min_extended_width=220,
             on_change=self._handle_navigation_change,
         )
         return self.navigation_rail
-
-    def _toggle_rail_extended(self, _event) -> None:
-        extended = not self.navigation_rail.extended
-        self.navigation_rail.extended = extended
-        self.rail_toggle_button.icon = (
-            ft.icons.Icons.MENU_OPEN if extended else ft.icons.Icons.MENU
-        )
-        self.rail_toggle_button.tooltip = "Collapse" if extended else "Expand"
-        self.page.update()
 
     def _handle_settings_navigation(self, _event) -> None:
         self.route_manager.navigate("/settings")
