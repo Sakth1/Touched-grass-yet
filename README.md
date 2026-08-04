@@ -1,4 +1,4 @@
-# Touched Grass Yet
+# Unscreen
 
 Cross-device app usage timeline tracker with idle detection. Privacy-first, local-only, no cloud.
 
@@ -56,7 +56,7 @@ Browser info (`browser`, `page_title`, `inferred_domain`, `url`) is populated wh
 
 ## Database Schema
 
-**Location:** `%APPDATA%\TouchedGrassYet\data.db`
+**Location:** `%APPDATA%\Unscreen\data.db`
 
 **Engine:** SQLite via APSW, WAL journal mode.
 
@@ -134,13 +134,57 @@ Uses `psutil.sensors_battery()` every 60s. Returns `null` values on desktops wit
 ## Device Identity
 
 - **Primary:** Machine GUID from `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`
-- **Fallback:** Generated UUID4 stored in `%APPDATA%\TouchedGrassYet\device.json`
+- **Fallback:** Generated UUID4 stored in `%APPDATA%\Unscreen\device.json`
 
 ## Setup
 
 ```bash
 uv run flet run           # desktop app
 uv run flet run --web     # web app
+```
+
+## App Icon & Assets
+
+All icon sources live in `src/assets/`. `flet build` picks them up automatically and regenerates every platform icon (launcher, favicon, taskbar, splash) from these files:
+
+| File | Used for | Recommended size |
+|---|---|---|
+| `icon.png` | Default icon (all platforms, splash fallback) | ≥ 1024×1024 |
+| `icon_windows.png` | Windows `.exe` icon (auto-converted to `.ico`) | 256×256 |
+| `icon_windows.ico` | Runtime window/taskbar icon (`page.window.icon`) | 256×256 |
+| `icon_android.png` | Android launcher (adaptive icon foreground) | ≥ 192×192 |
+| `icon_ios.png` | iOS/macOS app icon | ≥ 1024×1024 |
+| `icon_web.png` | Web favicon / PWA icons | ≥ 512×512 |
+| `icon_macos.png` | macOS app icon | ≥ 1024×1024 |
+
+Any missing platform-specific file falls back to `icon.png`, so replacing the app icon is a single edit:
+
+1. Replace `src/assets/icon.png` with your new artwork (1024×1024 PNG recommended).
+2. Rebuild: `uv run flet build windows` (or `flet build apk` for Android).
+
+`src/assets/android/`, `src/assets/ios/`, and `src/assets/web/` hold the platform-resized icons generated from the sources above; they are regenerated on every build.
+
+At runtime the desktop window icon is set from `src/assets/icon_windows.ico` in `App._set_window_icon()` (`src/app.py`).
+
+## Validation Pipeline
+
+The project uses a layered validation architecture to catch failures before runtime:
+
+| Layer | Tool | CI? | Catches |
+|---|---|---|---|
+| Lint | `ruff` (F, E, W, I, B, SIM) | Yes | Syntax, undefined names, imports, common bugs |
+| Type checking | `pyright` | Yes | Type mismatches, missing attributes |
+| Flet API compat | `pytest tests/test_flet_api_compat.py` | Yes | Removed/renamed APIs, invalid kwargs, deprecation |
+| Wiring validation | `python scripts/validate_wiring.py` | Yes | Missing callback methods (`_on_dismiss`-class bugs) |
+| Startup smoke | `pytest tests/test_startup.py` | Yes | Construction-time exceptions in any component |
+| Unit tests | `pytest tests/` (285+ tests) | Yes | Component logic (storage, scheduler, collectors, etc.) |
+
+Run locally:
+```bash
+uv run ruff check src/ tests/
+uv run pyright src/
+uv run pytest tests/ -q
+uv run python scripts/validate_wiring.py
 ```
 
 ## Dependencies
@@ -163,7 +207,6 @@ Each device writes to its own `events_{id}` table. Sync copies remote tables as 
 | macOS | Stub only, untested | AppleScript + JSONLZ4 session files |
 | Linux | Stub only, untested | AT-SPI2 / xdotool + SNSS/JSONLZ4 session files |
 
-**App deps:** `pip install touched-grass-yet[url]` for UIA (Windows), `[firefox]` for JSONLZ4.  
-**Prototype deps:** `pywinauto` (Windows UIA), `lz4` (Firefox JSONLZ4).
+**Prototype deps:** `pywinauto` (Windows UIA, auto-installed on Windows), `lz4` (Firefox JSONLZ4).
 
 Usage: `python prototypes/browser_url_extractor/cli.py --help`

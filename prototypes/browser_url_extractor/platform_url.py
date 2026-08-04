@@ -80,7 +80,7 @@ def _find_url_via_pywinauto() -> str | None:
 
 def _find_url_via_uiautomation() -> str | None:
     try:
-        import uiautomation as auto
+        import uiautomation as auto  # type: ignore
     except ImportError:
         return None
 
@@ -139,7 +139,13 @@ def _find_edit_by_name_windows(addr_names: list[str]) -> str | None:
         return None
 
     browser_classes = {
-        "Chrome_WidgetWin_1": ["Google Chrome", "Brave", "Microsoft Edge", "Opera", "Vivaldi"],
+        "Chrome_WidgetWin_1": [
+            "Google Chrome",
+            "Brave",
+            "Microsoft Edge",
+            "Opera",
+            "Vivaldi",
+        ],
         "MozillaWindowClass": ["Mozilla Firefox"],
     }
 
@@ -232,9 +238,10 @@ def get_url_macos_applescript() -> str | None:
 
 def get_url_linux_atspi() -> str | None:
     try:
-        import gi
+        import gi  # type: ignore
+
         gi.require_version("Atspi", "2.0")
-        from gi.repository import Atspi
+        from gi.repository import Atspi  # type: ignore
     except ImportError:
         pass
     else:
@@ -246,7 +253,10 @@ def get_url_linux_atspi() -> str | None:
                 if not name:
                     continue
                 name_lower = name.lower()
-                is_browser = any(b in name_lower for b in ["firefox", "chrome", "chromium", "brave", "edge"])
+                is_browser = any(
+                    b in name_lower
+                    for b in ["firefox", "chrome", "chromium", "brave", "edge"]
+                )
                 if not is_browser:
                     continue
                 for j in range(app.get_child_count()):

@@ -4,34 +4,53 @@ import platform
 
 BROWSER_INFO: dict[str, dict] = {
     "chrome": {
-        "windows": os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data"),
+        "windows": os.path.join(
+            os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data"
+        ),
         "darwin": os.path.expanduser("~/Library/Application Support/Google/Chrome"),
         "linux": os.path.expanduser("~/.config/google-chrome"),
     },
     "brave": {
-        "windows": os.path.join(os.environ.get("LOCALAPPDATA", ""), "BraveSoftware", "Brave-Browser", "User Data"),
-        "darwin": os.path.expanduser("~/Library/Application Support/BraveSoftware/Brave-Browser"),
+        "windows": os.path.join(
+            os.environ.get("LOCALAPPDATA", ""),
+            "BraveSoftware",
+            "Brave-Browser",
+            "User Data",
+        ),
+        "darwin": os.path.expanduser(
+            "~/Library/Application Support/BraveSoftware/Brave-Browser"
+        ),
         "linux": os.path.expanduser("~/.config/BraveSoftware/Brave-Browser"),
     },
     "edge": {
-        "windows": os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data"),
+        "windows": os.path.join(
+            os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "User Data"
+        ),
         "darwin": os.path.expanduser("~/Library/Application Support/Microsoft Edge"),
         "linux": os.path.expanduser("~/.config/microsoft-edge"),
     },
     "opera": {
-        "windows": os.path.join(os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable"),
-        "darwin": os.path.expanduser("~/Library/Application Support/com.operasoftware.Opera"),
+        "windows": os.path.join(
+            os.environ.get("APPDATA", ""), "Opera Software", "Opera Stable"
+        ),
+        "darwin": os.path.expanduser(
+            "~/Library/Application Support/com.operasoftware.Opera"
+        ),
         "linux": os.path.expanduser("~/.config/opera"),
     },
     "vivaldi": {
-        "windows": os.path.join(os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data"),
+        "windows": os.path.join(
+            os.environ.get("LOCALAPPDATA", ""), "Vivaldi", "User Data"
+        ),
         "darwin": os.path.expanduser("~/Library/Application Support/Vivaldi"),
         "linux": os.path.expanduser("~/.config/vivaldi"),
     },
 }
 
 FIREFOX_PATHS: dict[str, str] = {
-    "windows": os.path.join(os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"),
+    "windows": os.path.join(
+        os.environ.get("APPDATA", ""), "Mozilla", "Firefox", "Profiles"
+    ),
     "darwin": os.path.expanduser("~/Library/Application Support/Firefox/Profiles"),
     "linux": os.path.expanduser("~/.mozilla/firefox"),
 }
@@ -50,7 +69,9 @@ def _platform_key() -> str:
     return "linux"
 
 
-def find_chromium_session_dirs(browser_name: str | None = None) -> list[tuple[str, str]]:
+def find_chromium_session_dirs(
+    browser_name: str | None = None,
+) -> list[tuple[str, str]]:
     results: list[tuple[str, str]] = []
     pk = _platform_key()
 
@@ -66,6 +87,7 @@ def find_chromium_session_dirs(browser_name: str | None = None) -> list[tuple[st
         if os.path.isfile(local_state):
             try:
                 import json
+
                 with open(local_state, encoding="utf-8") as f:
                     data = json.load(f)
                 info = data.get("profile", {}).get("info_cache", {})

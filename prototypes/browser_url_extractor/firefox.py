@@ -38,14 +38,16 @@ def parse_recovery(data: bytes) -> list[dict]:
             entry_index = tab.get("index", 1) - 1
             if 0 <= entry_index < len(entries):
                 entry = entries[entry_index]
-                tabs_info.append({
-                    "window_index": win_index,
-                    "tab_index": tab_index,
-                    "is_active_window": win_index == active_win_index,
-                    "is_selected_tab": tab_index == sel_tab_index,
-                    "url": entry.get("url"),
-                    "title": entry.get("title"),
-                })
+                tabs_info.append(
+                    {
+                        "window_index": win_index,
+                        "tab_index": tab_index,
+                        "is_active_window": win_index == active_win_index,
+                        "is_selected_tab": tab_index == sel_tab_index,
+                        "url": entry.get("url"),
+                        "title": entry.get("title"),
+                    }
+                )
 
     active = [t for t in tabs_info if t["is_active_window"] and t["is_selected_tab"]]
     if active:

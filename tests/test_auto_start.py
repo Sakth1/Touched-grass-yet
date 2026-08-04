@@ -28,7 +28,7 @@ def test_enable_writes_run_key(mock_winreg):
     )
     mock_winreg.SetValueEx.assert_called_once_with(
         mock_winreg.OpenKey.return_value,
-        "TouchedGrassYet",
+        "Unscreen",
         0,
         1,
         "D:\\app.exe",
@@ -54,7 +54,7 @@ def test_disable_deletes_value(mock_winreg):
     assert result is True
     mock_winreg.OpenKey.assert_called_once()
     mock_winreg.DeleteValue.assert_called_once_with(
-        mock_winreg.OpenKey.return_value, "TouchedGrassYet"
+        mock_winreg.OpenKey.return_value, "Unscreen"
     )
 
 
@@ -92,7 +92,7 @@ def test_is_enabled_queries_value(mock_winreg):
         0x0001,
     )
     mock_winreg.QueryValueEx.assert_called_once_with(
-        mock_winreg.OpenKey.return_value, "TouchedGrassYet"
+        mock_winreg.OpenKey.return_value, "Unscreen"
     )
 
 
@@ -152,6 +152,7 @@ def test_get_target_path_dev_mode(tmp_path):
         from core.auto_start import _get_target_path
 
         result = _get_target_path()
+        assert result is not None
         assert "pythonw.exe" in result
         assert "main.py" in result
 
@@ -174,5 +175,6 @@ def test_get_target_path_dev_mode_falls_back_to_python_exe(tmp_path):
         from core.auto_start import _get_target_path
 
         result = _get_target_path()
+        assert result is not None
         assert "python.exe" in result
         assert "main.py" in result

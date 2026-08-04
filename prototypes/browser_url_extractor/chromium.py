@@ -104,14 +104,16 @@ def parse_session_file(path: str | os.PathLike) -> list[dict]:
             info = tabs.get(tab_id)
             if info:
                 is_active = win_id == active_window_id
-                result.append({
-                    "window_id": win_id,
-                    "tab_id": tab_id,
-                    "url": info["url"],
-                    "title": info["title"],
-                    "nav_index": info["nav_index"],
-                    "is_active_window": is_active,
-                })
+                result.append(
+                    {
+                        "window_id": win_id,
+                        "tab_id": tab_id,
+                        "url": info["url"],
+                        "title": info["title"],
+                        "nav_index": info["nav_index"],
+                        "is_active_window": is_active,
+                    }
+                )
     return result
 
 
@@ -122,9 +124,13 @@ def _is_recent(path: Path, max_age_s: float = 180) -> bool:
         return False
 
 
-def get_active_tab_url(browser_name: str, session_dir: str, max_stale_s: float = 300) -> str | None:
+def get_active_tab_url(
+    browser_name: str, session_dir: str, max_stale_s: float = 300
+) -> str | None:
     sess_path = Path(session_dir)
-    session_files = sorted(sess_path.glob("Session_*"), key=lambda f: f.stat().st_mtime, reverse=True)
+    session_files = sorted(
+        sess_path.glob("Session_*"), key=lambda f: f.stat().st_mtime, reverse=True
+    )
     if not session_files:
         return None
 
@@ -161,7 +167,9 @@ def get_active_tab_url(browser_name: str, session_dir: str, max_stale_s: float =
 
 def _try_tabs_file(session_dir: str, max_stale_s: float = 300) -> str | None:
     sess_path = Path(session_dir)
-    tabs_files = sorted(sess_path.glob("Tabs_*"), key=lambda f: f.stat().st_mtime, reverse=True)
+    tabs_files = sorted(
+        sess_path.glob("Tabs_*"), key=lambda f: f.stat().st_mtime, reverse=True
+    )
     for tf in tabs_files:
         if tf.stat().st_size == 0:
             continue

@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-from core.paths import get_data_dir
+from utils.paths import get_data_dir
 
 logger = logging.getLogger(__name__)
 

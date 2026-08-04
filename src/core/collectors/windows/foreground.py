@@ -55,14 +55,18 @@ class ForegroundWatcher:
                 )
 
                 normalized = self._url_processor.normalize(
-                    result.url, method=result.method, confidence=result.confidence,
+                    result.url,
+                    method=result.method,
+                    confidence=result.confidence,
                 )
 
                 if normalized.url is None:
                     title = browser_info.page_title
                     inferred = browser_info.inferred_domain if title else None
                     if inferred:
-                        normalized = self._url_processor.normalize(inferred, method=None, confidence="low")
+                        normalized = self._url_processor.normalize(
+                            inferred, method=None, confidence="low"
+                        )
 
                 if normalized.url:
                     window_data["url"] = normalized.url

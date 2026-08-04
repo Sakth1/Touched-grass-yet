@@ -113,7 +113,10 @@ class TestScreenMonitor:
 
         screen_states = [True, False, False, False, False, False]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
+            patch(
+                "core.collectors.android.usage_stats.is_screen_on",
+                side_effect=screen_states,
+            ),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -136,7 +139,10 @@ class TestScreenMonitor:
 
         screen_states = [False, True, True, True, True, True]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
+            patch(
+                "core.collectors.android.usage_stats.is_screen_on",
+                side_effect=screen_states,
+            ),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -158,7 +164,10 @@ class TestScreenMonitor:
 
         screen_states = [False, True, True, True, True, True]
         with (
-            patch("core.collectors.android.usage_stats.is_screen_on", side_effect=screen_states),
+            patch(
+                "core.collectors.android.usage_stats.is_screen_on",
+                side_effect=screen_states,
+            ),
         ):
             monitor = asyncio.create_task(cm._monitor_screen_state(interval=0.01))
             await asyncio.sleep(0.05)
@@ -186,15 +195,19 @@ class TestHealthMonitor:
         except asyncio.CancelledError:
             pass
 
-        cm._storage.check_integrity.assert_called()
-        cm._storage.auto_vacuum.assert_called()
+        # The health monitor calls check_integrity + auto_vacuum on the real
+        # storage; the interval is 0.01 so at least one cycle runs in 0.03 s.
+        cm._storage.check_integrity.assert_called()  # type: ignore  # Storage is a Mock at test time
+        cm._storage.auto_vacuum.assert_called()  # type: ignore
 
     async def test_health_monitor_cancelled_on_stop(self):
         from core.application.collection_manager import CollectionManager
 
         cm = CollectionManager()
         cm._running = True
-        cm._health_monitor_task = asyncio.create_task(cm._run_health_monitor(interval=3600))
+        cm._health_monitor_task = asyncio.create_task(
+            cm._run_health_monitor(interval=3600)
+        )
 
         cm._running = False
         if cm._health_monitor_task:

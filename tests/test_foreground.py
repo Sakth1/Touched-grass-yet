@@ -11,10 +11,20 @@ class TestInitialization:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
         ):
             w = AndroidForegroundWatcher()
             tick = await w.tick()
@@ -26,12 +36,22 @@ class TestInitialization:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.test.app", "event_type": 1, "time_stamp_ms": self.BASE_TIME - 5000},
+                    {
+                        "package_name": "com.test.app",
+                        "event_type": 1,
+                        "time_stamp_ms": self.BASE_TIME - 5000,
+                    },
                 ],
             ),
         ):
@@ -46,9 +66,17 @@ class TestInitialization:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
             patch("core.collectors.android.foreground.query_usage_stats") as mock_stats,
         ):
             mock_stats.return_value = {
@@ -82,12 +110,22 @@ class TestTransition:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.test.app", "event_type": 1, "time_stamp_ms": self.BASE_TIME - 5000},
+                    {
+                        "package_name": "com.test.app",
+                        "event_type": 1,
+                        "time_stamp_ms": self.BASE_TIME - 5000,
+                    },
                 ],
             ),
         ):
@@ -95,12 +133,22 @@ class TestTransition:
             await w.tick()
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.test.app", "event_type": 1, "time_stamp_ms": self.BASE_TIME + 5000},
+                    {
+                        "package_name": "com.test.app",
+                        "event_type": 1,
+                        "time_stamp_ms": self.BASE_TIME + 5000,
+                    },
                 ],
             ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
@@ -113,12 +161,22 @@ class TestTransition:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.app1", "event_type": 1, "time_stamp_ms": self.BASE_TIME - 5000},
+                    {
+                        "package_name": "com.app1",
+                        "event_type": 1,
+                        "time_stamp_ms": self.BASE_TIME - 5000,
+                    },
                 ],
             ),
         ):
@@ -126,12 +184,22 @@ class TestTransition:
             await w.tick()
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.app2", "event_type": 1, "time_stamp_ms": self.BASE_TIME + 5000},
+                    {
+                        "package_name": "com.app2",
+                        "event_type": 1,
+                        "time_stamp_ms": self.BASE_TIME + 5000,
+                    },
                 ],
             ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
@@ -153,18 +221,29 @@ class TestTransition:
         w._initialized = True
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
             patch(
                 "core.collectors.android.foreground.query_usage_events",
                 return_value=[
-                    {"package_name": "com.new.app", "event_type": 1, "time_stamp_ms": self.BASE_TIME + 5000},
+                    {
+                        "package_name": "com.new.app",
+                        "event_type": 1,
+                        "time_stamp_ms": self.BASE_TIME + 5000,
+                    },
                 ],
             ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
         ):
             tick = await w.tick()
 
+        assert tick is not None
         assert tick.data.keys() == {"package", "app_name"}
         assert "durations" not in tick.data
         assert "source" not in tick.data
@@ -182,10 +261,20 @@ class TestScreenAndIdle:
         w._initialized = True
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
         ):
             tick = await w.tick()
@@ -202,11 +291,23 @@ class TestScreenAndIdle:
         w._initialized = True
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
-            patch("core.collectors.android.foreground.is_screen_on", return_value=False),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
+            patch(
+                "core.collectors.android.foreground.is_screen_on", return_value=False
+            ),
         ):
             tick = await w.tick()
 
@@ -221,10 +322,20 @@ class TestScreenAndIdle:
         w._initialized = True
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
             patch("core.collectors.android.foreground.is_screen_on", return_value=True),
         ):
             tick = await w.tick()
@@ -239,8 +350,14 @@ class TestPermission:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=False),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=False,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
         ):
             w = AndroidForegroundWatcher()
             tick1 = await w.tick()
@@ -254,18 +371,34 @@ class TestPermission:
         from core.collectors.android.foreground import AndroidForegroundWatcher
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=False),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=False,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME,
+            ),
         ):
             w = AndroidForegroundWatcher()
             await w.tick()
             assert w._permission_lost
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=True),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 100_000),
-            patch("core.collectors.android.foreground.query_usage_stats", return_value={}),
-            patch("core.collectors.android.foreground.query_usage_events", return_value=[]),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=True,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 100_000,
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_stats", return_value={}
+            ),
+            patch(
+                "core.collectors.android.foreground.query_usage_events", return_value=[]
+            ),
         ):
             tick = await w.tick()
             assert not w._permission_lost
@@ -280,8 +413,14 @@ class TestPermission:
         w._initialized = True
 
         with (
-            patch("core.collectors.android.foreground.check_usage_stats_permission", return_value=False),
-            patch("core.collectors.android.foreground.get_current_time_ms", return_value=self.BASE_TIME + 10_000),
+            patch(
+                "core.collectors.android.foreground.check_usage_stats_permission",
+                return_value=False,
+            ),
+            patch(
+                "core.collectors.android.foreground.get_current_time_ms",
+                return_value=self.BASE_TIME + 10_000,
+            ),
         ):
             tick = await w.tick()
 

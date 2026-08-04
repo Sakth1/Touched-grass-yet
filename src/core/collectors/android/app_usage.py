@@ -28,7 +28,9 @@ class AndroidAppUsageWatcher:
 
         if not check_usage_stats_permission():
             if not self._permission_lost:
-                logger.warning("Usage Stats permission lost — pausing app usage watcher")
+                logger.warning(
+                    "Usage Stats permission lost — pausing app usage watcher"
+                )
                 self._permission_lost = True
                 self._last_foreground_ms.clear()
             return None

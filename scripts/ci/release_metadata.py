@@ -8,7 +8,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-import tomllib
+import tomllib  # type: ignore  # requires Python 3.11+
 
 SEMVER_PATTERN = re.compile(
     r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
@@ -65,7 +65,7 @@ def compare_semver(left: str, right: str) -> int:
         return 1
     if not right_pre:
         return -1
-    for left_ident, right_ident in zip(left_pre, right_pre):
+    for left_ident, right_ident in zip(left_pre, right_pre, strict=True):
         comp = compare_identifier(left_ident, right_ident)
         if comp != 0:
             return comp
@@ -130,9 +130,9 @@ def command_extract_release_metadata(args: argparse.Namespace) -> int:
 
     binary_name = (
         data.get("tool", {})
-        .get("touched-grass-yet", {})
+        .get("unscreen", {})
         .get("release", {})
-        .get("binary_name", "Touched-Grass-Yet")
+        .get("binary_name", "Unscreen")
     )
     artifact_stem = f"{binary_name}-{version}"
 
@@ -231,7 +231,9 @@ def command_detect_version_bump(args: argparse.Namespace) -> int:
                         f"version increased from {tag_version} to {current_version}"
                     )
                 elif comparison == 0:
-                    reason = f"version unchanged at {current_version} (tag already exists)"
+                    reason = (
+                        f"version unchanged at {current_version} (tag already exists)"
+                    )
                 else:
                     raise ValueError(
                         "project.version must increase on main/master. "

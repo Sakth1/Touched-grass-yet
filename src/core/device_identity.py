@@ -2,13 +2,17 @@ import json
 import os
 import uuid
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
-from core.paths import get_data_dir
+from utils.paths import get_data_dir
 
-try:
+if TYPE_CHECKING:
     import winreg
-except ImportError:
-    winreg = None
+else:
+    try:
+        import winreg
+    except ImportError:
+        winreg = None
 
 
 def _machine_guid() -> str | None:

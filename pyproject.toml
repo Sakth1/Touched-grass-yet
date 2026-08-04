@@ -1,6 +1,6 @@
 [project]
-name = "touched-grass-yet"
-version = "0.4.0"
+name = "unscreen"
+version = "0.4.1"
 description = "Cross-device app usage timeline tracker"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -8,26 +8,32 @@ authors = [
     { name = "Sakth1", email = "sakthimurugankgm@gmail.com" }
 ]
 dependencies = [
-    "flet>=0.85.3",
+    "flet>=0.86.2",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
-    "publicsuffixlist>=1.0",
+    "publicsuffixlist>=1.0.2",
     "rich>=15.0.0",
+    "lz4>=4.3",
+    'pywinauto>=0.6.8; platform_system=="Windows"',
 ]
-
-[project.optional-dependencies]
-url = ["pywinauto>=0.6.8"]
-firefox = ["lz4>=4.3"]
 
 [dependency-groups]
 dev = [
-    "flet-cli>=0.85.3",
-    "flet-desktop>=0.85.3",
-    "flet-web>=0.85.3",
-    "pytest>=8.3",
-    "pytest-asyncio>=0.24",
-    "ruff>=0.9",
+    "flet-cli>=0.86.2",
+    "flet-desktop>=0.86.2",
+    "flet-web>=0.86.2",
+    "pytest>=9.1",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.16.0",
+    "pyright>=1.1.0",
+    "black>=26.5.1",
 ]
+
+[project.scripts]
+check = "_check_runner:main"
+
+[tool.uv]
+package = true
 
 [tool.ruff]
 target-version = "py310"
@@ -35,7 +41,10 @@ line-length = 120
 exclude = ["src/trial and error"]
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "I"]
+select = ["F", "E", "W", "I", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B018", "SIM105", "SIM115", "SIM117"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -44,7 +53,7 @@ testpaths = ["tests"]
 
 [tool.flet]
 org = "com.mycompany"
-product = "touched-grass-yet"
+product = "unscreen"
 company = "Flet"
 copyright = "Copyright (C) 2023-2026 by Flet"
 
@@ -55,7 +64,7 @@ path = "src"
 split_per_abi = true
 compile_packages = true
 dependencies = [
-    "flet>=0.85.3",
+    "flet>=0.86.2",
     "orjson>=3.11.9",
     "psutil>=7.2.2",
     "pyjnius",
@@ -67,5 +76,5 @@ dependencies = [
 "android.permission.WRITE_EXTERNAL_STORAGE" = { maxSdkVersion = "28" }
 "android.permission.READ_EXTERNAL_STORAGE" = { maxSdkVersion = "32" }
 
-[tool.touched-grass-yet.release]
-binary_name = "Touched-Grass-Yet"
+[tool.unscreen.release]
+binary_name = "Unscreen"

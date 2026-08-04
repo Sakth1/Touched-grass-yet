@@ -1,16 +1,20 @@
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     import winreg
-except ImportError:
-    winreg = None
+else:
+    try:
+        import winreg
+    except ImportError:
+        winreg = None
 
 logger = logging.getLogger(__name__)
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-VALUE_NAME = "TouchedGrassYet"
+VALUE_NAME = "Unscreen"
 
 
 def _get_target_path() -> str | None:
@@ -22,10 +26,24 @@ def _get_target_path() -> str | None:
     if not pythonw.exists():
         pythonw = Path(sys.executable)
     script = Path(__file__).resolve().parent.parent / "main.py"
-    if not script.exists():
-        logger.warning("main.py not found for dev-mode auto-start")
-        return None
-    return f'"{pythonw}" "{script}"'
+    if script.exists():
+        return f'"{pythonw}" "{script}"'
+    launcher = _find_launcher_exe()
+    if launcher is not None:
+        return launcher
+    logger.warning("main.py not found for dev-mode auto-start")
+    return None
+
+
+def _find_launcher_exe() -> str | None:
+    for parent in Path(sys.executable).resolve().parents:
+        for exe in parent.glob("*.exe"):
+            name = exe.stem.lower()
+            if name not in ("python", "pythonw", "pip", "py", "python3"):
+                return str(exe)
+        if parent.parent == parent:
+            break
+    return None
 
 
 def enable() -> bool:
@@ -63,7 +81,9 @@ def is_enabled() -> bool:
     if winreg is None:
         return False
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_QUERY_VALUE)
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_QUERY_VALUE
+        )
         winreg.QueryValueEx(key, VALUE_NAME)
         winreg.CloseKey(key)
         return True

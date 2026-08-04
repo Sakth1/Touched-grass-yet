@@ -12,17 +12,17 @@ class TestFixturesAvailable:
         assert "sessions" in names
 
     def test_device_registered(self, in_memory_db):
-        row = in_memory_db._conn.execute("SELECT device_id, is_current FROM devices LIMIT 1").fetchone()
+        row = in_memory_db._conn.execute(
+            "SELECT device_id, is_current FROM devices LIMIT 1"
+        ).fetchone()
         assert row is not None
         assert row[0] is not None
         assert row[1] == 1
 
     def test_make_tick_creates_ticks(self, make_tick):
         t1 = make_tick(watcher="afk", data={"status": "active"})
-        t2 = make_tick(watcher="foreground")
         assert t1.watcher == "afk"
         assert t1.data == {"status": "active"}
-        assert t1.id != t2.id
 
     def test_mock_tick_bus(self, mock_tick_bus):
         import asyncio

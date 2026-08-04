@@ -103,7 +103,7 @@ class TestExtractDomain:
     def test_empty_host(self):
         p = UrlProcessor()
         assert p._extract_domain("") is None
-        assert p._extract_domain(None) is None
+        assert p._extract_domain(None) is None  # type: ignore
 
     def test_single_part(self):
         p = UrlProcessor()

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import platform
 from collections.abc import Callable
@@ -8,7 +9,7 @@ from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
 from core.storage import Storage
 from core.tick_bus import TickBus
-from utils.models import SystemType, Tick
+from utils.models import OSType, Tick
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ class CollectionManager:
         self._scheduler = Scheduler(self._bus)
         self._storage = Storage()
         self._runtime = None
-        self._system_type = SystemType.UNKNOWN
+        self._system_type = OSType.UNKNOWN
         self._running = False
         self._auto_paused = False
         self._screen_monitor_task: asyncio.Task | None = None
@@ -90,23 +91,25 @@ class CollectionManager:
         self._on_pause_changed = None
         self._event_bridge = _EventBridge(self._storage, "")
 
-    def detect_platform(self) -> SystemType:
+    def detect_platform(self) -> OSType:
         system = platform.system()
         match system:
             case "Windows":
-                return SystemType.WINDOWS
+                return OSType.WINDOWS
             case "Android" | "Linux":
-                return SystemType.ANDROID
+                return OSType.ANDROID
             case _:
-                return SystemType.UNKNOWN
+                return OSType.UNKNOWN
 
     def _create_runtime(self):
         match self._system_type:
-            case SystemType.WINDOWS:
+            case OSType.WINDOWS:
                 from core.collectors.windows.runtime import WindowsRuntime
+
                 return WindowsRuntime(self._config, storage=self._storage)
-            case SystemType.ANDROID:
+            case OSType.ANDROID:
                 from core.collectors.android.runtime import AndroidRuntime
+
                 return AndroidRuntime(self._config)
             case _:
                 raise RuntimeError(f"Unsupported platform: {self._system_type}")
@@ -134,8 +137,10 @@ class CollectionManager:
         self._health_monitor_task = asyncio.create_task(self._run_health_monitor())
         logger.info("Health monitor started")
 
-        if self._system_type == SystemType.ANDROID:
-            self._screen_monitor_task = asyncio.create_task(self._monitor_screen_state())
+        if self._system_type == OSType.ANDROID:
+            self._screen_monitor_task = asyncio.create_task(
+                self._monitor_screen_state()
+            )
             logger.info("Screen state monitor started")
 
         logger.info("Collection started")
@@ -145,17 +150,13 @@ class CollectionManager:
         self._auto_paused = False
         if self._health_monitor_task:
             self._health_monitor_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._health_monitor_task
-            except asyncio.CancelledError:
-                pass
             self._health_monitor_task = None
         if self._screen_monitor_task:
             self._screen_monitor_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._screen_monitor_task
-            except asyncio.CancelledError:
-                pass
             self._screen_monitor_task = None
         await self._scheduler.stop()
         if self._runtime:
@@ -243,7 +244,7 @@ class CollectionManager:
         return self._running
 
     @property
-    def system_type(self) -> SystemType:
+    def system_type(self) -> OSType:
         return self._system_type
 
     @property

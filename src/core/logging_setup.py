@@ -2,7 +2,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-from core.paths import get_data_dir
+from utils.paths import get_data_dir
 
 LOG_DIR = "logs"
 LOG_FILE = "app.log"

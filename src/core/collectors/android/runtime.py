@@ -38,7 +38,9 @@ class AndroidRuntime:
         watchers: list[Watcher] = []
         for name, cls in all_watchers.items():
             if name in enabled:
-                interval = self._config.get_interval(name, _DEFAULT_INTERVALS.get(name, 60.0))
+                interval = self._config.get_interval(
+                    name, _DEFAULT_INTERVALS.get(name, 60.0)
+                )
                 wc = WatcherConfig(name=name, interval_s=interval, enabled=True)
                 watchers.append(cls(wc))
         logger.info("Created %d Android watchers", len(watchers))

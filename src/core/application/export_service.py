@@ -20,7 +20,9 @@ class ExportService:
         filename = _make_filename("raw_events", "csv")
         buf = StringIO()
         w = csv.writer(buf)
-        w.writerow(["id", "event_type", "timestamp", "collected_at", "source", "payload"])
+        w.writerow(
+            ["id", "event_type", "timestamp", "collected_at", "source", "payload"]
+        )
         for r in rows:
             w.writerow(
                 [
@@ -54,12 +56,12 @@ class ExportService:
         return filename, data
 
 
-
-
 def _make_filename(prefix: str = "events", ext: str = "json") -> str:
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{prefix}_{ts}.{ext}"
 
 
 def _fmt_timestamp(ts: float) -> str:
-    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
+    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime(
+        "%Y-%m-%d %H:%M:%S.%f"
+    )

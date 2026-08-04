@@ -23,10 +23,11 @@ def _idle_seconds() -> float:
             return 0.0
         tick64 = _kernel32.GetTickCount64()
         tick_lower32 = tick64 & 0xFFFFFFFF
-        if tick_lower32 >= lii.dwTime:
-            diff_ms = tick_lower32 - lii.dwTime
-        else:
-            diff_ms = (0x100000000 - lii.dwTime) + tick_lower32
+        diff_ms = (
+            tick_lower32 - lii.dwTime
+            if tick_lower32 >= lii.dwTime
+            else 4294967296 - lii.dwTime + tick_lower32
+        )
         return diff_ms / 1000.0
     except Exception:
         logger.debug("Failed to read idle time, defaulting to 0")

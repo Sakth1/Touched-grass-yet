@@ -23,7 +23,14 @@ class TestPrepareRawEventsCsv:
         decoded = data.decode("utf-8")
         reader = csv.reader(StringIO(decoded))
         rows = list(reader)
-        assert rows[0] == ["id", "event_type", "timestamp", "collected_at", "source", "payload"]
+        assert rows[0] == [
+            "id",
+            "event_type",
+            "timestamp",
+            "collected_at",
+            "source",
+            "payload",
+        ]
         assert len(rows) == 1
 
     def test_single_row(self):

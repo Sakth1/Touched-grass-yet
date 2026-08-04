@@ -1,0 +1,21 @@
+{
+  "include": ["src", "tests"],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "src/trial and error"
+  ],
+  "typeCheckingMode": "standard",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportOptionalMemberAccess": false,
+  "reportArgumentType": false,
+  "reportAttributeAccessIssue": false,
+  "reportAssignmentType": false,
+  "pythonVersion": "3.12",
+  "pythonPlatform": "All",
+  "ignore": [
+    "src/core/collectors/android",
+    "src/core/collectors/windows/url_extractor.py"
+  ]
+}
