@@ -7,13 +7,13 @@ import flet as ft
 
 
 @ft.control
-class FloatingNavigationBarDestination(ft.Container):
+class CustomNavigationBarDestination(ft.Container):
     """One pill: icon when unselected, label when selected (toggleable)."""
 
     icon: str = ft.Icons.HELP
     label: str = ""
     selected: bool = False
-    on_select: Optional[Callable[["FloatingNavigationBarDestination"], None]] = None
+    on_select: Optional[Callable[["CustomNavigationBarDestination"], None]] = None
 
     def init(self):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
@@ -47,14 +47,14 @@ class FloatingNavigationBarDestination(ft.Container):
 
 
 @ft.control
-class FloatingNavigationBar(ft.Container):
+class CustomNavigationBar(ft.Container):
     """Floating pill-style bottom navigation bar.
 
     Renders each destination as a :class:`FloatingNavigationBarDestination`
     inside a centered ``ft.Row``.
     """
 
-    destinations: list[FloatingNavigationBarDestination] = field(
+    destinations: list[CustomNavigationBarDestination] = field(
         default_factory=list, metadata={"skip": True}
     )
     selected_index: int = 0
@@ -92,8 +92,8 @@ class FloatingNavigationBar(ft.Container):
     def _select(self, index: int) -> None:
         self.select_index(index)
 
-    def _sync_selection(self) -> list[FloatingNavigationBarDestination]:
-        changed: list[FloatingNavigationBarDestination] = []
+    def _sync_selection(self) -> list[CustomNavigationBarDestination]:
+        changed: list[CustomNavigationBarDestination] = []
         for i, dest in enumerate(self.destinations):
             if dest.set_selected(i == self.selected_index):
                 changed.append(dest)

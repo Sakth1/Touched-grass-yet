@@ -8,8 +8,8 @@ from core.auto_start import enable as enable_auto_start
 from core.auto_start import is_enabled as is_auto_start_enabled
 from core.logging_setup import setup_file_logging
 from UI.custom.floation_navigation_bar import (
-    FloatingNavigationBar,
-    FloatingNavigationBarDestination,
+    CustomNavigationBar,
+    CustomNavigationBarDestination,
 )
 from UI.dialogs import show_permission_dialog
 from UI.layout_manager import app_layout_resolver
@@ -137,17 +137,10 @@ class App:
         self.page.height = layout.height
 
         match layout.screen_form_factor:
-            case ScreenFormFactor.MOBILE:
+            case ScreenFormFactor.MOBILE | ScreenFormFactor.TABLET:
                 # NOTE: see how float nav bar still works when assigned to page.navbar even tho it is not a navbar class
+                self._ensure_navigation_bar()
                 self.shell.controls = [self.content_container]
-
-            case ScreenFormFactor.TABLET:
-                self.page.navigation_bar = None
-                self.shell.controls = [
-                    self._ensure_rail(extended=False),
-                    ft.VerticalDivider(width=1),
-                    self.content_container,
-                ]
 
             case ScreenFormFactor.DESKTOP:
                 self.page.navigation_bar = None
@@ -188,24 +181,24 @@ class App:
         return page_width, page_height
 
     def _ensure_navigation_bar(self):
-        self.page.navigation_bar = FloatingNavigationBar(
+        self.page.navigation_bar = CustomNavigationBar(
             destinations=[
-                FloatingNavigationBarDestination(
+                CustomNavigationBarDestination(
                     icon=ft.icons.Icons.DASHBOARD,
                     label="Dashboard",
                     selected=True,
                 ),
-                FloatingNavigationBarDestination(
+                CustomNavigationBarDestination(
                     icon=ft.icons.Icons.TIMELINE,
                     label="Timeline",
                     selected=False,
                 ),
-                FloatingNavigationBarDestination(
+                CustomNavigationBarDestination(
                     icon=ft.icons.Icons.ANALYTICS,
                     label="Analytics",
                     selected=False,
                 ),
-                FloatingNavigationBarDestination(
+                CustomNavigationBarDestination(
                     icon=ft.icons.Icons.SETTINGS,
                     label="Settings",
                     selected=False,
