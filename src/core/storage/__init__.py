@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,12 +43,47 @@ class Storage:
             os.makedirs(parent, exist_ok=True)
 
         self._path = path
-        self._conn = sqlite3.connect(
-            path, check_same_thread=False, isolation_level=None
-        )
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA synchronous=NORMAL")
+        try:
+            self._conn = self._connect()
+            self._run_migrations()
+            self._register_device()
+            self._run_startup_health_checks()
+        except sqlite3.DatabaseError as exc:
+            if path == ":memory:":
+                raise
+            logger.critical(
+                "Database %s is not usable (%s) — quarantining and rebuilding",
+                path,
+                exc,
+            )
+            self._rebuild_corrupt_database()
 
+    def _connect(self) -> sqlite3.Connection:
+        conn = None
+        try:
+            conn = sqlite3.connect(
+                self._path, check_same_thread=False, isolation_level=None
+            )
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            return conn
+        except Exception:
+            if conn is not None:
+                conn.close()
+            raise
+
+    def _rebuild_corrupt_database(self) -> None:
+        """Quarantine a corrupt DB file and start over with a fresh one."""
+        conn = getattr(self, "_conn", None)
+        if conn is not None:
+            conn.close()
+        quarantine = f"{self._path}.corrupt-{int(time.time())}"
+        os.replace(self._path, quarantine)
+        for suffix in ("-wal", "-shm"):
+            journal = f"{self._path}{suffix}"
+            if os.path.exists(journal):
+                os.replace(journal, f"{quarantine}{suffix}")
+        self._conn = self._connect()
         self._run_migrations()
         self._register_device()
         self._run_startup_health_checks()
@@ -266,8 +302,8 @@ class Storage:
             params.append(platform)
 
         sql = (
-            "SELECT id, device_id, platform, start_ts, end_ts, duration_s,"
-            "app_key, payload, session_type FROM sessions"
+            "SELECT id, device_id, platform, start_ts, end_ts,"
+            "duration_s,app_key, payload, session_type FROM sessions"
         )
         if filters:
             sql += " WHERE " + " AND ".join(filters)

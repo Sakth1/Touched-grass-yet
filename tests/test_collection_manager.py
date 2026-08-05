@@ -5,7 +5,7 @@ import pytest
 
 from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
-from core.tick_bus import TickBus
+from utils.bus import TickBus
 
 
 @pytest.fixture(autouse=True)

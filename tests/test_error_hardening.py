@@ -104,10 +104,10 @@ class TestWindowsPowerHardening:
 
 class TestAndroidForegroundHardening:
     async def test_day_start_ms_handles_bad_timestamp(self):
-        from core.collectors.android.foreground import _day_start_ms
+        from utils.time_utils import day_start_ms
 
-        result = _day_start_ms(-1)
+        result = day_start_ms(-1)
         assert result == -1
 
-        result = _day_start_ms(0)
+        result = day_start_ms(0)
         assert isinstance(result, int)

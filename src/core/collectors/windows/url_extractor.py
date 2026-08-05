@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from utils.net import is_trackable_url, normalize_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,59 +16,6 @@ class ExtractionResult:
     method: str | None  # "uia", "snss", or None
     confidence: str = "high"
 
-
-SKIP_PREFIXES = [
-    "about:",
-    "chrome://",
-    "edge://",
-    "chrome-extension://",
-    "view-source:",
-    "data:",
-    "brave://",
-    "opera://",
-    "vivaldi://",
-]
-
-SKIP_EXACT = {
-    "about:blank",
-    "about:newtab",
-    "about:home",
-    "about:welcome",
-    "chrome://newtab/",
-    "chrome://newtab",
-    "chrome://bookmarks/",
-    "chrome://history/",
-    "chrome://settings/",
-    "edge://newtab/",
-    "edge://newtab",
-    "edge://favorites/",
-    "edge://history/",
-    "edge://settings/",
-    "brave://newtab/",
-    "brave://newtab",
-    "brave://bookmarks/",
-    "brave://history/",
-    "brave://settings/",
-    "opera://newtab/",
-    "opera://newtab",
-    "opera://settings/",
-    "vivaldi://newtab/",
-    "vivaldi://newtab",
-    "vivaldi://settings/",
-}
-
-KNOWN_PREFIXES = (
-    "http://",
-    "https://",
-    "file://",
-    "about:",
-    "chrome://",
-    "edge://",
-    "data:",
-    "brave://",
-    "opera://",
-    "vivaldi://",
-)
 
 BROWSER_TO_DISCOVERY_KEY = {
     "Brave": "brave",
@@ -105,23 +54,6 @@ CMD_UPDATE_NAV = 6
 CMD_SEL_NAV_INDEX = 7
 CMD_SEL_TAB = 8
 CMD_SET_ACTIVE_WINDOW = 20
-
-
-def is_trackable_url(url: str | None) -> bool:
-    if not url or not url.strip():
-        return False
-    url = url.strip()
-    if url in SKIP_EXACT:
-        return False
-    url_lower = url.lower()
-    return not any(url_lower.startswith(prefix) for prefix in SKIP_PREFIXES)
-
-
-def normalize_url(url: str) -> str:
-    url = url.strip()
-    if url and not url.startswith(KNOWN_PREFIXES):
-        url = f"http://{url}"
-    return url
 
 
 def _align4(pos: int) -> int:

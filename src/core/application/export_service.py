@@ -1,9 +1,11 @@
 import csv
-import datetime
 import json
 import logging
 from io import StringIO
 from typing import Any
+
+from utils.files import timestamped_filename
+from utils.time_utils import fmt_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ class ExportService:
 
     @staticmethod
     def prepare_raw_events_csv(rows: list[dict[str, Any]]) -> tuple[str, bytes]:
-        filename = _make_filename("raw_events", "csv")
+        filename = timestamped_filename("raw_events", "csv")
         buf = StringIO()
         w = csv.writer(buf)
         w.writerow(
@@ -28,8 +30,8 @@ class ExportService:
                 [
                     r["id"],
                     r["event_type"],
-                    _fmt_timestamp(r["timestamp"]),
-                    _fmt_timestamp(r["collected_at"]),
+                    fmt_timestamp(r["timestamp"]),
+                    fmt_timestamp(r["collected_at"]),
                     r["source"],
                     json.dumps(r["payload"], ensure_ascii=False),
                 ]
@@ -38,15 +40,15 @@ class ExportService:
 
     @staticmethod
     def prepare_raw_events(rows: list[dict[str, Any]]) -> tuple[str, bytes]:
-        filename = _make_filename("raw_events", "json")
+        filename = timestamped_filename("raw_events", "json")
         out = [
             {
                 "id": r["id"],
                 "device_id": r["device_id"],
                 "platform": r["platform"],
                 "event_type": r["event_type"],
-                "timestamp": _fmt_timestamp(r["timestamp"]),
-                "collected_at": _fmt_timestamp(r["collected_at"]),
+                "timestamp": fmt_timestamp(r["timestamp"]),
+                "collected_at": fmt_timestamp(r["collected_at"]),
                 "payload": r["payload"],
                 "source": r["source"],
             }
@@ -54,14 +56,3 @@ class ExportService:
         ]
         data = json.dumps(out, indent=2, ensure_ascii=False).encode("utf-8")
         return filename, data
-
-
-def _make_filename(prefix: str = "events", ext: str = "json") -> str:
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"{prefix}_{ts}.{ext}"
-
-
-def _fmt_timestamp(ts: float) -> str:
-    return datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).strftime(
-        "%Y-%m-%d %H:%M:%S.%f"
-    )

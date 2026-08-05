@@ -23,6 +23,7 @@ class RouteManager:
         self._container: ft.Container = container
         self._route_views: dict[str, object] = route_views
         self._route_to_index: dict[str, int] | None = route_to_index
+        self.current_route: str = "/dashboard"
 
     def navigate(self, route: str) -> None:
         try:

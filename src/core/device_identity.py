@@ -2,20 +2,13 @@ import json
 import os
 import uuid
 from functools import lru_cache
-from typing import TYPE_CHECKING
 
 from utils.paths import get_data_dir
-
-if TYPE_CHECKING:
-    import winreg
-else:
-    try:
-        import winreg
-    except ImportError:
-        winreg = None
+from utils.platform import get_winreg
 
 
 def _machine_guid() -> str | None:
+    winreg = get_winreg()
     if winreg is None:
         return None
     try:

@@ -16,7 +16,6 @@ from UI.custom.navigation_drawer import (
     CustomNavigationDrawerDestination,
 )
 from UI.dialogs import show_permission_dialog
-from UI.layout_manager import app_layout_resolver
 from UI.routing import RouteManager
 from UI.screens.analytics_screen import Analytics
 from UI.screens.dashboard_screen import Dashboard
@@ -29,7 +28,9 @@ from utils.constants import (
     MIN_PAGE_HEIGHT,
     MIN_PAGE_WIDTH,
 )
+from utils.layout import app_layout_resolver
 from utils.models import AppLayout, OSType, ScreenFormFactor
+from utils.platform import detect_os
 
 logging.basicConfig(
     level=logging.INFO,
@@ -115,7 +116,7 @@ class App:
         ):
             enable_auto_start()
 
-        if self.collection_manager.detect_platform() == OSType.ANDROID:
+        if detect_os() == OSType.ANDROID:
             from core.collectors.android.usage_stats import check_usage_stats_permission
 
             if not check_usage_stats_permission():

@@ -1,15 +1,15 @@
 import asyncio
 import contextlib
 import logging
-import platform
 from collections.abc import Callable
-from datetime import datetime, timezone
 
 from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
 from core.storage import Storage
-from core.tick_bus import TickBus
+from utils.bus import TickBus
 from utils.models import OSType, Tick
+from utils.platform import detect_os
+from utils.time_utils import utc_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -91,16 +91,6 @@ class CollectionManager:
         self._on_pause_changed = None
         self._event_bridge = _EventBridge(self._storage, "")
 
-    def detect_platform(self) -> OSType:
-        system = platform.system()
-        match system:
-            case "Windows":
-                return OSType.WINDOWS
-            case "Android" | "Linux":
-                return OSType.ANDROID
-            case _:
-                return OSType.UNKNOWN
-
     def _create_runtime(self):
         match self._system_type:
             case OSType.WINDOWS:
@@ -115,7 +105,7 @@ class CollectionManager:
                 raise RuntimeError(f"Unsupported platform: {self._system_type}")
 
     async def start(self) -> None:
-        self._system_type = self.detect_platform()
+        self._system_type = detect_os()
         logger.info("Detected platform: %s", self._system_type)
 
         self._bus.subscribe(self._event_bridge)
@@ -206,7 +196,7 @@ class CollectionManager:
                 self._set_paused(True)
                 self._storage.write_event(
                     "screen_state_change",
-                    datetime.now(timezone.utc).timestamp(),
+                    utc_timestamp(),
                     {"screen_on": False},
                     "screen_monitor",
                 )
@@ -216,7 +206,7 @@ class CollectionManager:
                 self._set_paused(False)
                 self._storage.write_event(
                     "screen_state_change",
-                    datetime.now(timezone.utc).timestamp(),
+                    utc_timestamp(),
                     {"screen_on": True},
                     "screen_monitor",
                 )

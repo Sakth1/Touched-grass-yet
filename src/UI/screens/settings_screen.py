@@ -1,9 +1,7 @@
 import logging
 
-import flet as ft
-
-from UI.screens.base_screen import BaseScreen
 from core.update_checker import UpdateChecker
+from UI.screens.base_screen import BaseScreen
 
 logger = logging.getLogger(__name__)
 

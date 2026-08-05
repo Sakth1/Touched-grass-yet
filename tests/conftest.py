@@ -1,3 +1,5 @@
+import io
+import urllib.request
 import warnings
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -8,11 +10,64 @@ import pytest
 # in any test is immediately caught, not just in the compat gate.
 warnings.filterwarnings("error", category=DeprecationWarning)
 
-from core.tick_bus import TickBus  # noqa: E402
+from utils.bus import TickBus  # noqa: E402
 from utils.models import Tick, WatcherConfig  # noqa: E402
 
 
-@pytest.fixture(autouse=True, scope="session")
+class _FakeHTTPResponse(io.BytesIO):
+    """Stand-in for ``http.client.HTTPResponse`` with the attributes the app reads."""
+
+    def __init__(
+        self,
+        data: bytes = b"{}",
+        status: int = 200,
+        headers: dict | None = None,
+        url: str = "https://example.invalid/",
+    ):
+        super().__init__(data)
+        self.status = status
+        self.code = status
+        self.headers = headers or {}
+        self.url = url
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Never hit the real network: urllib is the app's only HTTP surface."""
+
+    def fake_urlopen(request, timeout=None):
+        return _FakeHTTPResponse()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+
+@pytest.fixture(autouse=True)
+def tmp_data_dir(tmp_path, monkeypatch):
+    """Redirect all app disk I/O (data dir, logs, exports) into a per-test tmp dir."""
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path / "data"))
+    monkeypatch.setattr("utils.paths.get_export_dir", lambda: str(tmp_path / "exports"))
+    return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def no_winreg():
+    """Never write the real Windows registry (auto-start enable/disable)."""
+    with patch("core.auto_start.winreg") as mock:
+        mock.HKEY_CURRENT_USER = "HKCU"
+        mock.KEY_SET_VALUE = 0x0002
+        mock.KEY_QUERY_VALUE = 0x0001
+        mock.REG_SZ = 1
+        yield mock
+
+
+@pytest.fixture
+def chdir_tmp(tmp_path, monkeypatch):
+    """Run inside an empty tmp dir so relative writes never touch the repo."""
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+@pytest.fixture(scope="session", autouse=True)
 def patch_device_id():
     with patch("core.device_identity.get_device_id") as mock:
         mock.return_value = "00000000-0000-0000-0000-000000000001"

@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from core.scheduler import Scheduler
-from core.tick_bus import TickBus
+from utils.bus import TickBus
 from utils.models import Tick, WatcherConfig
 
 
@@ -109,7 +109,11 @@ class TestSchedulerLifecycle:
         scheduler.register(working)
 
         await scheduler.start()
-        await asyncio.sleep(0.1)
+        deadline = asyncio.get_running_loop().time() + 5.0
+        while asyncio.get_running_loop().time() < deadline:
+            if working.tick_count > 0:
+                break
+            await asyncio.sleep(0.01)
         await scheduler.stop()
 
         assert working.tick_count > 0
@@ -132,7 +136,11 @@ class TestSchedulerLifecycle:
         scheduler.register(w)
 
         await scheduler.start()
-        await asyncio.sleep(0.15)
+        deadline = asyncio.get_running_loop().time() + 5.0
+        while asyncio.get_running_loop().time() < deadline:
+            if crash_count > 3:
+                break
+            await asyncio.sleep(0.01)
         await scheduler.stop()
 
         assert crash_count > 3
@@ -296,6 +304,14 @@ class TestSchedulerPauseResume:
 
 
 class TestCircuitBreaker:
+    async def _wait_for_paused(self, scheduler, name, timeout=5.0):
+        deadline = asyncio.get_running_loop().time() + timeout
+        while asyncio.get_running_loop().time() < deadline:
+            if name in scheduler.paused_watchers:
+                return
+            await asyncio.sleep(0.01)
+        raise AssertionError(f"watcher {name!r} was not paused within {timeout}s")
+
     async def test_pauses_after_threshold_failures(self, scheduler):
         class _AlwaysCrash:
             def __init__(self):
@@ -307,7 +323,7 @@ class TestCircuitBreaker:
         w = _AlwaysCrash()
         scheduler.register(w)
         await scheduler.start()
-        await asyncio.sleep(0.3)
+        await self._wait_for_paused(scheduler, "crashy")
 
         assert "crashy" in scheduler.paused_watchers
 
@@ -328,7 +344,11 @@ class TestCircuitBreaker:
         w = _CrashFew()
         scheduler.register(w)
         await scheduler.start()
-        await asyncio.sleep(0.15)
+        deadline = asyncio.get_running_loop().time() + 5.0
+        while asyncio.get_running_loop().time() < deadline:
+            if w.count > 3:
+                break
+            await asyncio.sleep(0.01)
         await scheduler.stop()
 
         assert "few" not in scheduler.paused_watchers
@@ -347,7 +367,7 @@ class TestCircuitBreaker:
         scheduler.register(crashing)
         scheduler.register(working)
         await scheduler.start()
-        await asyncio.sleep(0.3)
+        await self._wait_for_paused(scheduler, "crashy")
 
         assert "crashy" in scheduler.paused_watchers
         assert "working" not in scheduler.paused_watchers
@@ -366,7 +386,7 @@ class TestCircuitBreaker:
         w = _AlwaysCrash()
         scheduler.register(w)
         await scheduler.start()
-        await asyncio.sleep(0.25)
+        await self._wait_for_paused(scheduler, "crashy")
         assert "crashy" in scheduler.paused_watchers
 
         scheduler.resume_watcher("crashy")
@@ -390,7 +410,11 @@ class TestCircuitBreaker:
         w = _CrashThenSucceed()
         scheduler.register(w)
         await scheduler.start()
-        await asyncio.sleep(0.2)
+        deadline = asyncio.get_running_loop().time() + 5.0
+        while asyncio.get_running_loop().time() < deadline:
+            if w.count > 5:
+                break
+            await asyncio.sleep(0.01)
         await scheduler.stop()
 
         assert scheduler.failure_counts.get("recover", 0) == 0
@@ -410,7 +434,7 @@ class TestCircuitBreaker:
         w = _AlwaysCrash()
         scheduler.register(w)
         await scheduler.start()
-        await asyncio.sleep(0.3)
+        await self._wait_for_paused(scheduler, "noisy")
         await scheduler.stop()
 
         records = [r for r in caplog.records if r.name.startswith("core.scheduler")]

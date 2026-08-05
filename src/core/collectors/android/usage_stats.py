@@ -1,7 +1,7 @@
 import logging
-import os
 
 from core.collectors.android.package_resolver import resolve as resolve_package
+from utils.android import get_activity
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +16,6 @@ _activity = None
 _manager = None
 
 
-def _get_activity():
-    global _activity
-    if _activity is not None:
-        return _activity
-    activity_host_class = os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
-    if not activity_host_class:
-        logger.warning(
-            "MAIN_ACTIVITY_HOST_CLASS_NAME not set — not running under Flet/Android?"
-        )
-        return None
-    try:
-        from jnius import autoclass  # type: ignore
-
-        activity_host = autoclass(activity_host_class)
-        _activity = activity_host.mActivity
-        return _activity
-    except Exception as e:
-        logger.warning("Failed to get Android activity via jnius: %s", e)
-        return None
-
-
 def _ensure_jnius():
     global _Context, _UsageStatsManager, _UsageEvents, _UsageEventClass, _manager
     if _manager is not None:
@@ -49,7 +28,7 @@ def _ensure_jnius():
         _UsageEvents = autoclass("android.app.usage.UsageEvents")
         _UsageEventClass = autoclass("android.app.usage.UsageEvents$Event")
 
-        activity = _get_activity()
+        activity = get_activity()
         if activity is None:
             return False
         _manager = activity.getSystemService(_Context.USAGE_STATS_SERVICE)
@@ -61,7 +40,7 @@ def _ensure_jnius():
 
 def check_usage_stats_permission() -> bool:
     try:
-        activity = _get_activity()
+        activity = get_activity()
         if activity is None:
             return False
         from jnius import autoclass  # type: ignore
@@ -150,7 +129,7 @@ def query_usage_events(begin_ms: int, end_ms: int) -> list:
 
 def is_screen_on() -> bool:
     try:
-        activity = _get_activity()
+        activity = get_activity()
         if activity is None:
             return True
         power_manager = activity.getSystemService("power")
@@ -162,7 +141,7 @@ def is_screen_on() -> bool:
 
 def get_battery_info() -> dict:
     try:
-        activity = _get_activity()
+        activity = get_activity()
         if activity is None:
             return {"battery_pct": None, "charging": None}
 
@@ -194,15 +173,9 @@ def get_battery_info() -> dict:
         return {"battery_pct": None, "charging": None}
 
 
-def get_current_time_ms() -> int:
-    import time
-
-    return int(time.time() * 1000)
-
-
 def open_usage_access_settings() -> bool:
     try:
-        activity = _get_activity()
+        activity = get_activity()
         if activity is None:
             return False
         from jnius import autoclass  # type: ignore

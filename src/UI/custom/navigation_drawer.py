@@ -19,7 +19,9 @@ class CustomNavigationDrawerDestination(ft.Container):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
         self._display_label = True
-        self.content_controls = [self._icon, self._text] if self._display_label else [self._icon]
+        self.content_controls = (
+            [self._icon, self._text] if self._display_label else [self._icon]
+        )
         self.content = ft.Row(
             controls=self.content_controls,
             spacing=10,
@@ -31,11 +33,14 @@ class CustomNavigationDrawerDestination(ft.Container):
         self._render()
 
     def _render(self) -> None:
-        self.content_controls = [self._icon, self._text] if self._display_label else [self._icon]
-        self.content.update()
+        self.content.controls = (
+            [self._icon, self._text] if self._display_label else [self._icon]
+        )
         self.bgcolor = ft.Colors.WHITE_10 if self.selected else None
         self._icon.color = self._color()
         self._text.color = self._color()
+        if self.parent is not None:
+            self.update()
 
     def _color(self) -> str:
         return ft.Colors.WHITE if self.selected else ft.Colors.WHITE_54
@@ -110,9 +115,6 @@ class CustomNavigationDrawer(ft.Container):
         )
 
         self._sync_selection()
-
-        if self.on_change:
-            self.on_change(ft.Event(name="FloatingNavigationChange", control=self))
 
     def before_update(self):
         self._sync_selection()

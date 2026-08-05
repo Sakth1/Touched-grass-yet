@@ -4,16 +4,15 @@ from core.collectors.android.package_resolver import resolve as resolve_package
 from core.collectors.android.usage_stats import (
     _EVENT_TYPE_RESUMED,
     check_usage_stats_permission,
-    get_current_time_ms,
     is_screen_on,
     query_usage_events,
     query_usage_stats,
 )
 from utils.models import Tick, WatcherConfig
+from utils.time_utils import day_start_ms, get_current_time_ms
 
 logger = logging.getLogger(__name__)
 
-_MS_PER_S = 1000
 _EVENT_WINDOW_OVERLAP_MS = 120_000
 _EVENT_END_BUFFER_MS = 2_000
 
@@ -56,8 +55,8 @@ class AndroidForegroundWatcher:
     def _initialize(self, now_ms: int) -> Tick | None:
         app = self._resolve_current_foreground(now_ms)
         if app is None:
-            day_start_ms = _day_start_ms(now_ms)
-            stats = query_usage_stats(day_start_ms, now_ms)
+            start_of_day_ms = day_start_ms(now_ms)
+            stats = query_usage_stats(start_of_day_ms, now_ms)
             if stats:
                 top_pkg = max(stats, key=lambda p: stats[p]["total_time_foreground_ms"])
                 app = top_pkg
@@ -117,15 +116,3 @@ class AndroidForegroundWatcher:
             if ev["event_type"] == _EVENT_TYPE_RESUMED:
                 return ev["package_name"]
         return None
-
-
-def _day_start_ms(now_ms: int) -> int:
-    import datetime
-
-    try:
-        local_dt = datetime.datetime.fromtimestamp(now_ms / _MS_PER_S)
-        local_midnight = local_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        return int(local_midnight.timestamp() * _MS_PER_S)
-    except (OSError, OverflowError, ValueError):
-        logger.debug("Failed to compute day start for %d, defaulting to now", now_ms)
-        return now_ms

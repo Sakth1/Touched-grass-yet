@@ -1,12 +1,11 @@
 import logging
 
-from core.collectors.android.foreground import _day_start_ms
 from core.collectors.android.usage_stats import (
     check_usage_stats_permission,
-    get_current_time_ms,
     query_usage_stats,
 )
 from utils.models import Tick, WatcherConfig
+from utils.time_utils import day_start_ms, get_current_time_ms
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +44,8 @@ class AndroidAppUsageWatcher:
         return self._emit_intervals(now_ms)
 
     def _initialize(self, now_ms: int) -> Tick | None:
-        day_start_ms = _day_start_ms(now_ms)
-        stats = query_usage_stats(day_start_ms, now_ms)
+        start_of_day_ms = day_start_ms(now_ms)
+        stats = query_usage_stats(start_of_day_ms, now_ms)
         if stats:
             for pkg, stat in stats.items():
                 self._last_foreground_ms[pkg] = stat["total_time_foreground_ms"]
@@ -54,8 +53,8 @@ class AndroidAppUsageWatcher:
         return None
 
     def _emit_intervals(self, now_ms: int) -> Tick | None:
-        day_start_ms = _day_start_ms(now_ms)
-        stats = query_usage_stats(day_start_ms, now_ms)
+        start_of_day_ms = day_start_ms(now_ms)
+        stats = query_usage_stats(start_of_day_ms, now_ms)
         if not stats:
             return None
 

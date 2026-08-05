@@ -266,8 +266,7 @@ def _trial_construct_or_call(
             dotted = ".".join(chain)
             label = "constructor" if is_ctor else "call"
             issues.append(
-                f"{_rel(py_file)}:{lineno}  "
-                f"ft.{dotted} {label} is deprecated: {w.message}"
+                f"{_rel(py_file)}:{lineno}  ft.{dotted} {label} is deprecated: {w.message}"
             )
 
 
@@ -709,8 +708,7 @@ def _check_all_membership(
         if chain[0] not in adapter.all_names:
             dotted = ".".join(chain)
             issues.append(
-                f"{_rel(py_file)}  "
-                f"ft.{dotted} is not in ft.__all__ — may be unstable"
+                f"{_rel(py_file)}  ft.{dotted} is not in ft.__all__ — may be unstable"
             )
     return issues
 
@@ -731,21 +729,19 @@ def _check_typed_calls(
             if issubclass(w.category, (DeprecationWarning, FutureWarning)):
                 dotted = ".".join(ft_type)
                 issues.append(
-                    f"{_rel(py_file)}:{lineno}  "
-                    f"ft.{dotted} is deprecated (base type for method '{method}')"
+                    f"{_rel(py_file)}:{lineno}  ft.{dotted} is deprecated (base type for method '{method}')"
                 )
 
         if missing:
             prefix = ".".join(ft_type[:idx]) if idx else ""
             dotted = f"{prefix}.{missing}" if prefix else missing
             issues.append(
-                f"{_rel(py_file)}:{lineno}  "
-                f"ft.{dotted} does not exist (base type for method '{method}')"
+                f"{_rel(py_file)}:{lineno}  ft.{dotted} does not exist (base type for method '{method}')"
             )
         elif not hasattr(obj, method):
             dotted = ".".join(ft_type)
             issues.append(
-                f"{_rel(py_file)}:{lineno}  " f"ft.{dotted}.{method}() does not exist"
+                f"{_rel(py_file)}:{lineno}  ft.{dotted}.{method}() does not exist"
             )
     return issues
 
@@ -763,15 +759,14 @@ def _check_typed_assigns(
             prefix = ".".join(ft_type[:idx]) if idx else ""
             dotted = f"{prefix}.{missing}" if prefix else missing
             issues.append(
-                f"{_rel(py_file)}:{lineno}  "
-                f"ft.{dotted} does not exist (base type for property '{prop}')"
+                f"{_rel(py_file)}:{lineno}  ft.{dotted} does not exist (base type for property '{prop}')"
             )
         else:
             if adapter.accepts_postinit(obj, prop):
                 continue
             dotted = ".".join(ft_type)
             issues.append(
-                f"{_rel(py_file)}:{lineno}  " f"ft.{dotted}.{prop} does not exist"
+                f"{_rel(py_file)}:{lineno}  ft.{dotted}.{prop} does not exist"
             )
     return issues
 
@@ -792,8 +787,7 @@ def _check_calls(
             if issubclass(w.category, (DeprecationWarning, FutureWarning)):
                 dotted = ".".join(chain)
                 issues.append(
-                    f"{_rel(py_file)}:{lineno}  "
-                    f"ft.{dotted} is deprecated: {w.message}"
+                    f"{_rel(py_file)}:{lineno}  ft.{dotted} is deprecated: {w.message}"
                 )
 
         if obj is None or not kws:
@@ -805,8 +799,7 @@ def _check_calls(
             if kw not in valid:
                 dotted = ".".join(chain)
                 issues.append(
-                    f"{_rel(py_file)}:{lineno}  "
-                    f"ft.{dotted}({kw}=...) is not a valid parameter"
+                    f"{_rel(py_file)}:{lineno}  ft.{dotted}({kw}=...) is not a valid parameter"
                 )
 
         _trial_construct_or_call(obj, chain, lineno, issues, py_file, kws, valid)
@@ -828,8 +821,7 @@ def _check_typed_reads(
             continue
         dotted = ".".join(ft_type)
         issues.append(
-            f"{_rel(py_file)}:{lineno}  "
-            f"ft.{dotted}.{prop} does not exist (attribute read)"
+            f"{_rel(py_file)}:{lineno}  ft.{dotted}.{prop} does not exist (attribute read)"
         )
     return issues
 
@@ -875,7 +867,7 @@ def test_flet_api_compatibility():
     if issues:
         unique = sorted(set(issues))
         header = f"Found {len(unique)} Flet API compatibility issue(s):\n"
-        body = "\n".join(f"  {i+1}. {m}" for i, m in enumerate(unique))
+        body = "\n".join(f"  {i + 1}. {m}" for i, m in enumerate(unique))
         pytest.fail(header + body)
 
 

@@ -3,11 +3,11 @@ import logging
 from core.collectors.android.usage_stats import (
     _EVENT_TYPE_RESUMED,
     check_usage_stats_permission,
-    get_current_time_ms,
     is_screen_on,
     query_usage_events,
 )
 from utils.models import Tick, WatcherConfig
+from utils.time_utils import get_current_time_ms
 
 logger = logging.getLogger(__name__)
 

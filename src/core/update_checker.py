@@ -1,11 +1,9 @@
 import hashlib
-import importlib.metadata
 import json
 import logging
 import os
 import platform
 import subprocess
-import sys
 import tempfile
 import urllib.error
 import urllib.request
@@ -14,11 +12,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable
 
-from utils.constants import (
-    FALLBACK_APP_VERSION,
-    LATEST_RELEASE_REPO_URL,
-    RELEASES_PAGE_URL,
-)
+from utils.constants import LATEST_RELEASE_REPO_URL, RELEASES_PAGE_URL
+from utils.files import remove_file
+from utils.platform import is_packaged
+from utils.versions import compare_versions, get_current_version, normalize_version
 
 logger = logging.getLogger(__name__)
 
@@ -68,77 +65,6 @@ class UpdateInfo:
         return self.asset_url is None
 
 
-def normalize_version(version: str) -> str:
-    """Strip a leading ``v`` from a version/tag string."""
-    return version[1:] if version.startswith("v") else version
-
-
-def _parse_version(version: str) -> tuple[tuple[int, int, int], tuple[str, ...]] | None:
-    core = normalize_version(version)
-    prerelease: tuple[str, ...] = ()
-    if "-" in core:
-        core, _, prerelease_str = core.partition("-")
-        prerelease = tuple(prerelease_str.split("."))
-    parts = core.split(".")
-    if len(parts) != 3 or not all(part.isdigit() for part in parts):
-        return None
-    return (int(parts[0]), int(parts[1]), int(parts[2])), prerelease
-
-
-def compare_versions(left: str, right: str) -> int:
-    """Compare two semver strings; returns ``>0`` when ``left`` is newer.
-
-    Unparseable versions compare as equal (never report a bogus update).
-    """
-    left_parsed = _parse_version(left)
-    right_parsed = _parse_version(right)
-    if left_parsed is None or right_parsed is None:
-        logger.warning("Comparing unparseable versions: %r vs %r", left, right)
-        return 0
-    left_core, left_pre = left_parsed
-    right_core, right_pre = right_parsed
-    if left_core != right_core:
-        return (left_core > right_core) - (left_core < right_core)
-    if not left_pre and not right_pre:
-        return 0
-    if not left_pre:
-        return 1
-    if not right_pre:
-        return -1
-    for left_ident, right_ident in zip(left_pre, right_pre, strict=True):
-        if left_ident == right_ident:
-            continue
-        left_is_num = left_ident.isdigit()
-        right_is_num = right_ident.isdigit()
-        if left_is_num and right_is_num:
-            return (int(left_ident) > int(right_ident)) - (
-                int(left_ident) < int(right_ident)
-            )
-        if left_is_num:
-            return -1
-        if right_is_num:
-            return 1
-        return (left_ident > right_ident) - (left_ident < right_ident)
-    return (len(left_pre) > len(right_pre)) - (len(left_pre) < len(right_pre))
-
-
-def get_current_version() -> str:
-    """Return the installed app version, falling back to a constant."""
-    try:
-        return importlib.metadata.version("unscreen")
-    except importlib.metadata.PackageNotFoundError:
-        logger.debug("unscreen package metadata not found; using fallback version")
-        return FALLBACK_APP_VERSION
-
-
-def _is_packaged() -> bool:
-    """True when running from a bundled executable (not from source)."""
-    if getattr(sys, "frozen", False):
-        return True
-    exe = Path(sys.executable).name.lower()
-    return exe.endswith(".exe") and not exe.startswith(("python", "flet"))
-
-
 def _parse_digest(digest: str | None) -> str | None:
     """Extract the hex sha256 from a GitHub asset digest (``sha256:...``)."""
     if not digest:
@@ -183,13 +109,6 @@ def _api_request(url: str, timeout: float) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-def _remove_file(path: Path) -> None:
-    try:
-        path.unlink(missing_ok=True)
-    except OSError:
-        logger.warning("Could not remove file %s", path)
-
-
 class UpdateChecker:
     def __init__(
         self,
@@ -219,9 +138,7 @@ class UpdateChecker:
             if error.code == 404:
                 logger.warning("No releases found at %s", self._api_url)
                 return None
-            raise UpdateCheckError(
-                f"GitHub API returned HTTP {error.code}"
-            ) from error
+            raise UpdateCheckError(f"GitHub API returned HTTP {error.code}") from error
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             raise UpdateCheckError(f"Could not reach GitHub API: {error}") from error
         except json.JSONDecodeError as error:
@@ -231,9 +148,7 @@ class UpdateChecker:
         if compare_versions(update.version, self._current_version) <= 0:
             logger.info("No update available (current %s)", self._current_version)
             return None
-        logger.info(
-            "Update available: %s -> %s", self._current_version, update.version
-        )
+        logger.info("Update available: %s -> %s", self._current_version, update.version)
         return update
 
     def _build_update_info(self, release: dict) -> UpdateInfo:
@@ -266,8 +181,7 @@ class UpdateChecker:
         """
         if not update.asset_url or not update.asset_name:
             raise DownloadError(
-                f"Release {update.version} has no downloadable asset "
-                "for this platform"
+                f"Release {update.version} has no downloadable asset for this platform"
             )
         destination_dir = destination_dir or tempfile.gettempdir()
         directory = Path(destination_dir)
@@ -281,9 +195,10 @@ class UpdateChecker:
         downloaded = 0
         total = update.asset_size
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as response, (
-                destination.open("wb")
-            ) as fp:
+            with (
+                urllib.request.urlopen(request, timeout=self._timeout) as response,
+                destination.open("wb") as fp,
+            ):
                 while True:
                     chunk = response.read(CHUNK_SIZE)
                     if not chunk:
@@ -293,24 +208,20 @@ class UpdateChecker:
                     if progress is not None:
                         progress(downloaded, total)
         except (urllib.error.URLError, TimeoutError, OSError) as error:
-            _remove_file(destination)
+            remove_file(destination)
             raise DownloadError(
                 f"Failed to download {update.asset_name}: {error}"
             ) from error
 
         if total is not None and downloaded != total:
-            _remove_file(destination)
-            raise DownloadError(
-                f"Incomplete download: {downloaded} of {total} bytes"
-            )
+            remove_file(destination)
+            raise DownloadError(f"Incomplete download: {downloaded} of {total} bytes")
         self._verify_digest(destination, update.asset_digest)
         return destination
 
     def _verify_digest(self, path: Path, expected: str | None) -> None:
         if not expected:
-            logger.warning(
-                "No sha256 digest for %s; skipping verification", path.name
-            )
+            logger.warning("No sha256 digest for %s; skipping verification", path.name)
             return
         hasher = hashlib.sha256()
         with path.open("rb") as fp:
@@ -318,23 +229,24 @@ class UpdateChecker:
                 hasher.update(chunk)
         if hasher.hexdigest() != expected:
             logger.error("sha256 mismatch for %s", path)
-            _remove_file(path)
+            remove_file(path)
             raise DigestMismatchError(
                 f"Downloaded {path.name} failed sha256 verification"
             )
         logger.info("sha256 verified for %s", path.name)
 
-    def apply(self, update: UpdateInfo, installer_path: str | os.PathLike) -> ApplyResult:
+    def apply(
+        self, update: UpdateInfo, installer_path: str | os.PathLike
+    ) -> ApplyResult:
         """Apply the downloaded update for the current platform.
 
         Windows spawns the Inno Setup installer silently; the caller is
         responsible for exiting the app afterwards. Android attempts an
         ``ACTION_VIEW`` install intent and falls back to manual install.
         """
-        if not _is_packaged():
+        if not is_packaged():
             raise ApplyError(
-                "Cannot apply an update when running from source; "
-                "run the packaged app"
+                "Cannot apply an update when running from source; run the packaged app"
             )
         system = platform.system()
         if system == "Windows":
@@ -402,6 +314,10 @@ if __name__ == "__main__":
         print(f"Update available: {info.version}")
         print(info.release_notes)
 
-        installer_path = uc.download(info, destination_dir=r"E:\Files", progress=lambda d, t: print(f"Downloaded {d}/{t}"))
+        installer_path = uc.download(
+            info,
+            destination_dir=r"E:\Files",
+            progress=lambda d, t: print(f"Downloaded {d}/{t}"),
+        )
 
         print(uc.apply(info, installer_path))

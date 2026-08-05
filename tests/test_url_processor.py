@@ -1,4 +1,5 @@
 from core.url_processor import UrlProcessor
+from utils.net import extract_domain
 
 
 class TestNormalize:
@@ -83,28 +84,22 @@ class TestNormalize:
 
 class TestExtractDomain:
     def test_standard_domain(self):
-        p = UrlProcessor()
-        assert p._extract_domain("github.com") == "github.com"
+        assert extract_domain("github.com") == "github.com"
 
     def test_subdomain(self):
-        p = UrlProcessor()
-        assert p._extract_domain("news.ycombinator.com") == "ycombinator.com"
+        assert extract_domain("news.ycombinator.com") == "ycombinator.com"
 
     def test_co_uk(self):
-        p = UrlProcessor()
-        domain = p._extract_domain("example.co.uk")
+        domain = extract_domain("example.co.uk")
         assert domain == "example.co.uk" or domain == "co.uk"
 
     def test_ip_address(self):
-        p = UrlProcessor()
-        result = p._extract_domain("192.168.1.1")
+        result = extract_domain("192.168.1.1")
         assert result is not None
 
     def test_empty_host(self):
-        p = UrlProcessor()
-        assert p._extract_domain("") is None
-        assert p._extract_domain(None) is None  # type: ignore
+        assert extract_domain("") is None
+        assert extract_domain(None) is None  # type: ignore
 
     def test_single_part(self):
-        p = UrlProcessor()
-        assert p._extract_domain("localhost") == "localhost"
+        assert extract_domain("localhost") == "localhost"

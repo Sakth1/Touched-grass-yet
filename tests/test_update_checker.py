@@ -19,9 +19,9 @@ from core.update_checker import (
     UpdateInfo,
     _api_request,
     _select_asset,
-    compare_versions,
+)
+from utils.versions import (
     get_current_version,
-    normalize_version,
 )
 
 RELEASE = {
@@ -85,29 +85,8 @@ def _update(
 
 
 # ── version helpers ────────────────────────────────────────────────────────
-
-
-def test_normalize_version_strips_v_prefix():
-    assert normalize_version("v0.4.2") == "0.4.2"
-    assert normalize_version("0.4.2") == "0.4.2"
-
-
-def test_compare_versions_orders_core():
-    assert compare_versions("0.4.3", "0.4.2") > 0
-    assert compare_versions("0.4.2", "0.4.3") < 0
-    assert compare_versions("0.4.2", "v0.4.2") == 0
-    assert compare_versions("1.0.0", "0.9.9") > 0
-
-
-def test_compare_versions_orders_prereleases():
-    assert compare_versions("1.0.0-rc.1", "1.0.0") < 0
-    assert compare_versions("1.0.0-rc.1", "1.0.0-rc.2") < 0
-    assert compare_versions("1.0.0-rc.2", "1.0.0-rc.1") > 0
-    assert compare_versions("1.0.0-beta", "1.0.0-alpha") > 0
-
-
-def test_compare_versions_treats_garbage_as_equal():
-    assert compare_versions("not-a-version", "0.4.2") == 0
+# Version ordering contracts live in tests/test_utils.py; only the
+# update-checker-specific get_current_version behavior belongs here.
 
 
 def test_get_current_version_reads_metadata():
@@ -130,18 +109,24 @@ def test_get_current_version_falls_back_without_metadata():
 
 def test_select_asset_windows_prefers_installer():
     with patch("core.update_checker.platform.system", return_value="Windows"):
-        assert _select_asset(RELEASE)["name"] == "0.4.2-setup.exe"
+        selected = _select_asset(RELEASE)
+        assert selected is not None
+        assert selected["name"] == "0.4.2-setup.exe"
 
 
 def test_select_asset_windows_falls_back_to_portable():
     with patch("core.update_checker.platform.system", return_value="Windows"):
         portable_only = {**RELEASE, "assets": RELEASE["assets"][1:]}
-        assert _select_asset(portable_only)["name"] == "0.4.2-portable.zip"
+        selected = _select_asset(portable_only)
+        assert selected is not None
+        assert selected["name"] == "0.4.2-portable.zip"
 
 
 def test_select_asset_android_picks_apk():
     with patch("core.update_checker.platform.system", return_value="Android"):
-        assert _select_asset(RELEASE)["name"] == "0.4.2.apk"
+        selected = _select_asset(RELEASE)
+        assert selected is not None
+        assert selected["name"] == "0.4.2.apk"
 
 
 def test_select_asset_returns_none_when_no_match():
@@ -234,9 +219,7 @@ def test_api_request_parses_json_with_headers():
         captured["timeout"] = timeout
         return _FakeResponse([json.dumps(RELEASE).encode()])
 
-    with patch(
-        "core.update_checker.urllib.request.urlopen", side_effect=fake_urlopen
-    ):
+    with patch("core.update_checker.urllib.request.urlopen", side_effect=fake_urlopen):
         data = _api_request("https://api.github.com/x", 5)
 
     assert data == RELEASE
@@ -333,7 +316,7 @@ def test_apply_refuses_in_dev_mode(tmp_path):
     checker = UpdateChecker(current_version="0.4.2")
     installer = tmp_path / "setup.exe"
     installer.write_bytes(b"x")
-    with patch("core.update_checker._is_packaged", return_value=False):
+    with patch("core.update_checker.is_packaged", return_value=False):
         with pytest.raises(ApplyError, match="running from source"):
             checker.apply(_update(), installer)
 
@@ -343,7 +326,7 @@ def test_apply_windows_launches_silent_installer(tmp_path):
     installer = tmp_path / "setup.exe"
     installer.write_bytes(b"x")
     with (
-        patch("core.update_checker._is_packaged", return_value=True),
+        patch("core.update_checker.is_packaged", return_value=True),
         patch("core.update_checker.platform.system", return_value="Windows"),
         patch("core.update_checker.subprocess.Popen") as popen,
     ):
@@ -361,7 +344,7 @@ def test_apply_windows_launches_silent_installer(tmp_path):
 def test_apply_windows_missing_installer_raises(tmp_path):
     checker = UpdateChecker(current_version="0.4.2")
     with (
-        patch("core.update_checker._is_packaged", return_value=True),
+        patch("core.update_checker.is_packaged", return_value=True),
         patch("core.update_checker.platform.system", return_value="Windows"),
     ):
         with pytest.raises(ApplyError, match="Installer not found"):
@@ -373,7 +356,7 @@ def test_apply_android_manual_without_jnius(tmp_path):
     apk = tmp_path / "0.4.2.apk"
     apk.write_bytes(b"x")
     with (
-        patch("core.update_checker._is_packaged", return_value=True),
+        patch("core.update_checker.is_packaged", return_value=True),
         patch("core.update_checker.platform.system", return_value="Android"),
         patch.dict(sys.modules, {"jnius": None}),
     ):
@@ -397,13 +380,12 @@ def test_apply_android_triggers_install_intent(tmp_path):
     apk = tmp_path / "0.4.2.apk"
     apk.write_bytes(b"x")
     with (
-        patch("core.update_checker._is_packaged", return_value=True),
+        patch("core.update_checker.is_packaged", return_value=True),
         patch("core.update_checker.platform.system", return_value="Android"),
         patch.dict(sys.modules, {"jnius": jnius}),
     ):
         assert (
-            checker.apply(_update(asset_name="0.4.2.apk"), apk)
-            == ApplyResult.APPLIED
+            checker.apply(_update(asset_name="0.4.2.apk"), apk) == ApplyResult.APPLIED
         )
     assert activity.mActivity.startActivity.called
 
@@ -413,7 +395,7 @@ def test_apply_unsupported_platform_is_not_applicable(tmp_path):
     installer = tmp_path / "setup"
     installer.write_bytes(b"x")
     with (
-        patch("core.update_checker._is_packaged", return_value=True),
+        patch("core.update_checker.is_packaged", return_value=True),
         patch("core.update_checker.platform.system", return_value="Linux"),
     ):
         assert checker.apply(_update(), installer) == ApplyResult.NOT_APPLICABLE

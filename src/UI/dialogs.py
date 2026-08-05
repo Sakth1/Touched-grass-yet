@@ -1,10 +1,8 @@
-import contextlib
-import logging
 from typing import Callable, Optional
 
 import flet as ft
 
-logger = logging.getLogger(__name__)
+from utils.flet_helpers import safe_pop_dialog, safe_update
 
 
 def show_alert_dialog(
@@ -35,24 +33,6 @@ def _handle_alert_close(page: ft.Page, on_close: Optional[Callable]) -> None:
     safe_pop_dialog(page)
     if on_close is not None:
         on_close()
-
-
-def safe_pop_dialog(page: ft.Page) -> None:
-    """Close the topmost dialog while tolerating detached-control errors."""
-    with contextlib.suppress(IndexError, RuntimeError):
-        page.pop_dialog()
-
-
-def safe_update(control: ft.Control) -> None:
-    """Update a Flet control while tolerating detached-control errors."""
-    try:
-        control.update()
-    except RuntimeError as exc:
-        logger.debug("safe_update suppressed RuntimeError: %s", exc, exc_info=True)
-    except Exception as exc:
-        logger.warning(
-            "safe_update suppressed unexpected error: %s", exc, exc_info=True
-        )
 
 
 def show_permission_dialog(page: ft.Page):

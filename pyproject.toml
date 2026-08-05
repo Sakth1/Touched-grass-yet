@@ -27,6 +27,12 @@ dev = [
     "ruff>=0.16.0",
     "pyright>=1.1.0",
     "black>=26.5.1",
+    "pytest-cov>=7.1.0",
+]
+e2e = [
+    "numpy>=2.2.6",
+    "pillow>=12.3.0",
+    "scikit-image>=0.25.2",
 ]
 
 [project.scripts]
@@ -48,8 +54,23 @@ select = ["F", "E", "W", "I", "B", "SIM"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
 testpaths = ["tests"]
+addopts = [
+    "--ignore=tests/e2e",
+    "--strict-markers",
+    "--cov=src",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-fail-under=60",
+]
+markers = [
+    "e2e: end-to-end UI tests driven by flet.testing (require a Flutter test host; run via the e2e dependency group)",
+]
+
+[tool.coverage.run]
+omit = [
+    "src/UIold/*",
+]
 
 [tool.flet]
 org = "com.mycompany"
