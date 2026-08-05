@@ -34,3 +34,12 @@ TABLET_BREAKPOINT = 1100
 MIN_EXTENDED_DRAWER_WIDTH = 200
 
 MIN_UNEXTENDED_DRAWER_WIDTH = 100
+
+#: GitHub API endpoint returning the latest release of the app repository.
+LATEST_RELEASE_REPO_URL = "https://api.github.com/repos/sakth1/Unscreen/releases/latest"
+
+#: Human-readable releases page, used as the manual-update fallback.
+RELEASES_PAGE_URL = "https://github.com/sakth1/Unscreen/releases/latest"
+
+#: Version reported when package metadata is unavailable (e.g. unbundled runs).
+FALLBACK_APP_VERSION = "0.4.2"

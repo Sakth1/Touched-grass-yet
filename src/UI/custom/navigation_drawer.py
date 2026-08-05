@@ -19,8 +19,11 @@ class CustomNavigationDrawerDestination(ft.Container):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
         self._display_label = True
-        self.padding = ft.padding.Padding.only(top=8, bottom=8, left=8, right=8)
-        self.margin = ft.margin.Margin.only(right=10)
+        self.content_controls = [self._icon, self._text] if self._display_label else [self._icon]
+        self.content = ft.Row(
+            controls=self.content_controls,
+            spacing=10,
+        )
         self.border_radius = 20
         self.ink = True
         self.animate = 200
@@ -28,9 +31,8 @@ class CustomNavigationDrawerDestination(ft.Container):
         self._render()
 
     def _render(self) -> None:
-        self.content = ft.Row(
-            [self._icon, self._text] if self._display_label else [self._icon]
-        )
+        self.content_controls = [self._icon, self._text] if self._display_label else [self._icon]
+        self.content.update()
         self.bgcolor = ft.Colors.WHITE_10 if self.selected else None
         self._icon.color = self._color()
         self._text.color = self._color()
@@ -69,8 +71,6 @@ class CustomNavigationDrawer(ft.Container):
 
     def init(self):
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
-        self.border_radius = 24
-        self.padding = ft.padding.Padding.only(top=8, bottom=8, left=8, right=8)
 
         for i, dest in enumerate(self.destinations):
             dest.on_select = lambda d, i=i: self._select(i)
@@ -146,7 +146,5 @@ class CustomNavigationDrawer(ft.Container):
         for dest in self.final_destinations:
             dest.toggle_label()
         if self.trailing is not None:
-            print(self.trailing._display_label)
             self.trailing.toggle_label()
-            print(self.trailing._display_label)
         self.extended = not self.extended

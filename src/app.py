@@ -157,7 +157,6 @@ class App:
                 self.page.navigation_bar = None
                 self.shell.controls = [
                     self._ensure_rail(extended=True),
-                    ft.VerticalDivider(width=1),
                     self.content_container,
                 ]
 
