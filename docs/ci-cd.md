@@ -54,6 +54,7 @@ push (master/dev) or PR
 - Run `pytest -v --tb=long tests/test_storage.py -k "TestSchemaMigration"` to isolate.
 
 ### Tests fail in CI but pass locally
+- Run `uv run python scripts/ci/local_ci.py` — replicates the CI environment exactly (fresh checkout copy + fresh `uv sync --frozen` venv), so environment-only failures (stale `.pyc` caches masking compile-time warnings) surface locally. The pre-push hook runs this automatically.
 - CI uses shallow clone (`fetch-depth: 0` in lint/test jobs ensures full history).
 - CI runs on Windows Server 2022, Python 3.12.x (patch may differ).
 - Check for environment-dependent behavior (file paths, permissions, timezone).

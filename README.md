@@ -178,6 +178,7 @@ The project uses a layered validation architecture to catch failures before runt
 | Wiring validation | `python scripts/validate_wiring.py` | Yes | Missing callback methods (`_on_dismiss`-class bugs) |
 | Startup smoke | `pytest tests/test_startup.py` | Yes | Construction-time exceptions in any component |
 | Unit tests | `pytest tests/` (285+ tests) | Yes | Component logic (storage, scheduler, collectors, etc.) |
+| Cloud CI replication | `python scripts/ci/local_ci.py` | Yes | Environment-only failures masked by local `.pyc` caches (fresh checkout + fresh venv) |
 
 Run locally:
 ```bash
@@ -185,6 +186,7 @@ uv run ruff check src/ tests/
 uv run pyright src/
 uv run pytest tests/ -q
 uv run python scripts/validate_wiring.py
+uv run python scripts/ci/local_ci.py   # full cloud-CI replication (also runs on pre-push)
 ```
 
 ## Dependencies
