@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
+from core.state.app_state import get_app_state
+
 if TYPE_CHECKING:
     from UI.custom.navigation_bar import CustomNavigationBar
 
@@ -35,6 +37,7 @@ class RouteManager:
 
             self._container.content = new_view
             self.current_route = route
+            get_app_state().set_route(route)
 
             idx = self._route_to_index.get(route, 0)
             nav: CustomNavigationBar | None = getattr(

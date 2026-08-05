@@ -7,6 +7,7 @@ from core.application.collection_manager import CollectionManager
 from core.auto_start import enable as enable_auto_start
 from core.auto_start import is_enabled as is_auto_start_enabled
 from core.logging_setup import setup_file_logging
+from core.state.app_state import get_app_state
 from UI.custom.navigation_bar import (
     CustomNavigationBar,
     CustomNavigationBarDestination,
@@ -147,6 +148,7 @@ class App:
     def _apply_layout(self, layout: AppLayout):
         self.page.width = layout.width
         self.page.height = layout.height
+        get_app_state().set_layout(layout)
 
         match layout.screen_form_factor:
             case ScreenFormFactor.MOBILE | ScreenFormFactor.TABLET:

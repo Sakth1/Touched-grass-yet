@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 from core.config_manager import ConfigManager
 from core.scheduler import Scheduler
+from core.state.app_state import get_app_state
 from core.storage import Storage
 from utils.bus import TickBus
 from utils.models import OSType, Tick
@@ -82,6 +83,7 @@ class CollectionManager:
         self._bus = TickBus()
         self._scheduler = Scheduler(self._bus)
         self._storage = Storage()
+        self._app_state = get_app_state()
         self._runtime = None
         self._system_type = OSType.UNKNOWN
         self._running = False
@@ -107,21 +109,27 @@ class CollectionManager:
     async def start(self) -> None:
         self._system_type = detect_os()
         logger.info("Detected platform: %s", self._system_type)
+        self._app_state.set_os_type(self._system_type)
 
         self._bus.subscribe(self._event_bridge)
+        self._bus.subscribe(self._on_tick_state)
 
         self._runtime = self._create_runtime()
 
         watchers = self._runtime.create_watchers()
         for w in watchers:
             self._scheduler.register(w)
+            self._app_state.ensure_watcher(w.config.name)
             logger.info("Registered watcher: %s", w.config.name)
 
         await self._scheduler.start()
         self._running = True
+        self._app_state.set_collection_running(True)
+        self._app_state.set_collection_started_at()
 
         if not self._config.collection_enabled:
             self._scheduler.pause()
+            self._app_state.set_collection_paused(True)
             logger.info("Collection started in paused state (from saved config)")
 
         self._health_monitor_task = asyncio.create_task(self._run_health_monitor())
@@ -138,6 +146,9 @@ class CollectionManager:
     async def stop(self) -> None:
         self._running = False
         self._auto_paused = False
+        self._app_state.set_collection_running(False)
+        self._app_state.set_collection_paused(False)
+        self._app_state.set_collection_auto_paused(False)
         if self._health_monitor_task:
             self._health_monitor_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -152,18 +163,21 @@ class CollectionManager:
         if self._runtime:
             self._runtime.shutdown()
         self._bus.unsubscribe(self._event_bridge)
+        self._bus.unsubscribe(self._on_tick_state)
         logger.info("Collection stopped")
 
     def pause(self) -> None:
         if self._scheduler.is_paused:
             return
         self._auto_paused = False
+        self._app_state.set_collection_auto_paused(False)
         self._set_paused(True)
 
     def resume(self) -> None:
         if not self._scheduler.is_paused:
             return
         self._auto_paused = False
+        self._app_state.set_collection_auto_paused(False)
         self._set_paused(False)
 
     @property
@@ -179,8 +193,17 @@ class CollectionManager:
             self._config.collection_enabled = True
             self._config.save()
             self._scheduler.resume()
+        self._app_state.set_collection_paused(paused)
         if self._on_pause_changed:
             self._on_pause_changed(paused)
+
+    def _on_tick_state(self, tick: Tick) -> None:
+        """Mirror each successful tick into app state for live UI reads."""
+        self._app_state.set_watcher_health(
+            tick.watcher,
+            paused=tick.watcher in self._scheduler.paused_watchers,
+        )
+        self._app_state.record_tick(tick)
 
     async def _monitor_screen_state(self, interval: float = 5.0) -> None:
         from core.collectors.android.usage_stats import is_screen_on
@@ -193,6 +216,7 @@ class CollectionManager:
             now_on = is_screen_on()
             if was_on and not now_on:
                 self._auto_paused = True
+                self._app_state.set_collection_auto_paused(True)
                 self._set_paused(True)
                 self._storage.write_event(
                     "screen_state_change",
@@ -203,6 +227,7 @@ class CollectionManager:
                 logger.info("Screen turned off — collection auto-paused")
             elif not was_on and now_on and self._auto_paused:
                 self._auto_paused = False
+                self._app_state.set_collection_auto_paused(False)
                 self._set_paused(False)
                 self._storage.write_event(
                     "screen_state_change",

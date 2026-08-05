@@ -74,6 +74,16 @@ def patch_device_id():
         yield
 
 
+@pytest.fixture(autouse=True)
+def reset_app_state():
+    """Isolate the app state singleton between tests."""
+    from core.state.app_state import reset_app_state
+
+    reset_app_state()
+    yield
+    reset_app_state()
+
+
 @pytest.fixture
 def in_memory_db():
     from core.storage import Storage

@@ -37,10 +37,9 @@ src/UI/
 │   ├── update_checker.py     # GitHub Releases API client
 │   ├── android_updater.py    # APK download + install intent
 │   └── windows_updater.py    # Inno Setup silent download + install
-└── state/
-    ├── __init__.py
-    └── app_state.py          # Singleton shared state (nav, collection, theme, update)
 ```
+
+Shared runtime state lives in the core layer, not under `UI/`: `src/core/state/app_state.py` — it holds platform/device facts, collection health, UI layout/route, and update status, and is consumed by both core and UI code.
 
 ## Design System
 
@@ -104,24 +103,21 @@ Filled cards: `RoundedRectangleBorder(radius=12)` for dashboard status cards
 
 ## State Management
 
-### AppState Singleton
-Simple property + callback pattern (not reactive):
+### AppState Singleton — `src/core/state/app_state.py`
 
-- Current navigation index
-- Collection running/paused state
-- Theme mode
-- Update check status (latest version, download progress, installing flag)
-- Watcher config (watchers_enabled, url_extraction_enabled)
+Simple property + callback pattern (not reactive). Reads go through public
+attributes; mutations go through `set_*` / `record_*` methods that notify
+subscribers registered via `on_change(key, callback)`:
 
-### Observable Pattern
-```python
-class AppState:
-    _instance = None
-    _observers: dict[str, list[Callable]]
-    
-    def on_change(self, key: str, callback: Callable)
-    def _notify(self, key: str)
-```
+- Environment: OS type, platform name, packaged flag, app version, device ID, data dir
+- Collection: running / paused / auto-paused flags, start time, per-watcher health (failures, paused, last tick), latest tick per watcher
+- UI: resolved layout (`AppLayout`), current route
+- Update: status (IDLE/CHECKING/AVAILABLE/DOWNLOADING/READY/APPLYING/FAILED), release info, download progress, error
+
+`get_app_state()` returns the process-wide singleton; `reset_app_state()`
+replaces it (used by tests). Wiring: `CollectionManager` pushes collection
+state and ticks, `RouteManager` pushes the route, `App` pushes the layout.
+Update-state writes are wired when the update UI ships.
 
 ## Auto-Update Architecture
 
