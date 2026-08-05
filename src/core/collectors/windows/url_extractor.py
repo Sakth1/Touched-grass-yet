@@ -2,6 +2,7 @@ import logging
 import os
 import struct
 import time
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -189,7 +190,9 @@ class UrlExtractor:
         window_pid: int | None = None,
     ) -> str | None:
         try:
-            from pywinauto import Application
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", SyntaxWarning)
+                from pywinauto import Application
         except ImportError:
             return None
 
