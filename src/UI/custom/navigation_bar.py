@@ -21,7 +21,7 @@ class CustomNavigationBarDestination(ft.Container):
     def init(self):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
-        self.padding = ft.padding.Padding.only(top=8, bottom=8, left=8, right=8)
+        self.padding = ft.padding.Padding.only(top=4, bottom=4, left=8, right=8)
         self.border_radius = 12
         self.ink = True
         self.animate = 200
@@ -92,12 +92,12 @@ class CustomNavigationBar(ft.Container):
             tight=True,
             run_spacing=0,
         )
-        self._sync_selection()
+        self._select(self.selected_index, app_init=True)
 
     def before_update(self):
         self._sync_selection()
 
-    def select_index(self, index: int) -> None:
+    def select_index(self, index: int, app_init: bool = False) -> None:
         if index == self.selected_index:
             return
         self.selected_index = index
@@ -108,8 +108,8 @@ class CustomNavigationBar(ft.Container):
         if self.on_change:
             self.on_change(ft.Event(name="FloatingNavigationChange", control=self))
 
-    def _select(self, index: int) -> None:
-        self.select_index(index)
+    def _select(self, index: int, app_init: bool = False) -> None:
+        self.select_index(index, app_init)
 
     def _sync_selection(self) -> list[CustomNavigationBarDestination]:
         changed: list[CustomNavigationBarDestination] = []

@@ -49,10 +49,10 @@ MEDIUM_HEIGHT_BREAKPOINT = 900
 MINI_RAIL_WIDTH = 60
 
 #: Lower bound of the extended drawer width (tablet landscape).
-EXTENDED_RAIL_MIN_WIDTH = 150
+EXTENDED_RAIL_MIN_WIDTH = 120
 
 #: Upper bound of the extended drawer width (desktop).
-EXTENDED_RAIL_MAX_WIDTH = 300
+EXTENDED_RAIL_MAX_WIDTH = 200
 
 #: GitHub API endpoint returning the latest release of the app repository.
 LATEST_RELEASE_REPO_URL = "https://api.github.com/repos/sakth1/Unscreen/releases/latest"

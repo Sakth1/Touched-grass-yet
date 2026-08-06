@@ -24,17 +24,17 @@ class TestDrawerMetrics:
     def test_tablet_landscape_extended_width_scales_with_viewport(self):
         from UI.layout.metrics import resolve_drawer_metrics
 
-        layout = app_layout_resolver(960, 600)
+        layout = app_layout_resolver(900, 600)
         metrics = resolve_drawer_metrics(layout)
-        assert 200 <= metrics.width <= 300
-        assert metrics.width == 960 * 0.22
+        assert 120 <= metrics.width <= 200
+        assert metrics.width == 900 * 0.22
 
     def test_desktop_extended_width_capped_at_max(self):
         from UI.layout.metrics import resolve_drawer_metrics
 
         layout = app_layout_resolver(3000, 1600)
         metrics = resolve_drawer_metrics(layout)
-        assert metrics.width == 300
+        assert metrics.width == 200
 
     def test_extended_uses_roomier_padding_on_wide_layouts(self):
         from UI.layout.metrics import resolve_drawer_metrics

@@ -276,17 +276,22 @@ class App:
                 icon=ft.icons.Icons.SETTINGS_OUTLINED,
                 label="Settings",
                 tooltip="Settings",
-                on_click=self._handle_settings_navigation,
             ),
             destinations=[
                 CustomNavigationDrawerDestination(
-                    icon=ft.icons.Icons.DASHBOARD, label="Dashboard"
+                    icon=ft.icons.Icons.DASHBOARD,
+                    label="Dashboard",
+                    tooltip="Dashboard",
                 ),
                 CustomNavigationDrawerDestination(
-                    icon=ft.icons.Icons.TIMELINE, label="Timeline"
+                    icon=ft.icons.Icons.TIMELINE,
+                    label="Timeline",
+                    tooltip="Timeline",
                 ),
                 CustomNavigationDrawerDestination(
-                    icon=ft.icons.Icons.ANALYTICS, label="Analytics"
+                    icon=ft.icons.Icons.ANALYTICS,
+                    label="Analytics",
+                    tooltip="Analytics",
                 ),
             ],
             selected_index=0,
@@ -294,9 +299,6 @@ class App:
             on_change=self._handle_navigation_change,
         )
         return self.navigation_rail
-
-    def _handle_settings_navigation(self, _event) -> None:
-        self.route_manager.navigate("/settings")
 
     def _handle_navigation_change(self, event: ft.ControlEvent):
         self.route_manager.handle_navigation_change(event)

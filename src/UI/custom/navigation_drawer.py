@@ -94,15 +94,19 @@ class CustomNavigationDrawer(ft.Container):
     def init(self):
         self._layout: Optional[AppLayout] = None
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
-        for i, dest in enumerate(self.destinations):
-            dest.on_select = lambda d, i=i: self._select(i)
-
-        if self.trailing is not None:
-            self.trailing.on_select = lambda d: self._select(len(self.destinations))
 
         self.final_destinations: list[CustomNavigationDrawerDestination] = [
             i for i in self.destinations if i is not None
         ]
+
+        self.all_destinations: list[CustomNavigationDrawerDestination] = [
+            *self.final_destinations,
+            self.trailing,
+        ]
+        self.all_destinations = [d for d in self.all_destinations if d is not None]
+
+        for i, dest in enumerate(self.all_destinations):
+            dest.on_select = lambda d, i=i: self._select(i)
 
         self.drawer_content = [
             i
@@ -123,13 +127,13 @@ class CustomNavigationDrawer(ft.Container):
         )
 
         self._apply_metrics()
-        self._sync_selection()
+        self._select(self.selected_index, app_init=True)
 
     def before_update(self):
         self._sync_selection()
 
-    def select_index(self, index: int) -> None:
-        if index == self.selected_index:
+    def select_index(self, index: int, app_init: bool = False) -> None:
+        if index == self.selected_index and not app_init:
             return
         self.selected_index = index
         changed = self._sync_selection()
@@ -139,12 +143,12 @@ class CustomNavigationDrawer(ft.Container):
         if self.on_change:
             self.on_change(ft.Event(name="FloatingNavigationChange", control=self))
 
-    def _select(self, index: int) -> None:
-        self.select_index(index)
+    def _select(self, index: int, app_init: bool = False) -> None:
+        self.select_index(index, app_init)
 
     def _sync_selection(self) -> list[CustomNavigationDrawerDestination]:
         changed: list[CustomNavigationDrawerDestination] = []
-        for i, dest in enumerate(self.destinations):
+        for i, dest in enumerate(self.all_destinations):
             if dest.set_selected(i == self.selected_index):
                 changed.append(dest)
         return changed
@@ -162,10 +166,8 @@ class CustomNavigationDrawer(ft.Container):
         if extended == self.extended:
             return
         self.extended = extended
-        for dest in self.final_destinations:
+        for dest in self.all_destinations:
             dest.toggle_label()
-        if self.trailing is not None:
-            self.trailing.toggle_label()
 
     def _current_metrics(self) -> DrawerMetrics:
         if self.extended and self._layout is not None:
@@ -186,7 +188,5 @@ class CustomNavigationDrawer(ft.Container):
         metrics = self._current_metrics()
         self.width = metrics.width
         self.content.run_spacing = metrics.item_spacing
-        for dest in self.final_destinations:
+        for dest in self.all_destinations:
             dest.apply_metrics(metrics)
-        if self.trailing is not None:
-            self.trailing.apply_metrics(metrics)
