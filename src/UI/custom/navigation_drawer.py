@@ -85,8 +85,8 @@ class CustomNavigationDrawer(ft.Container):
     )
     extended: bool = True
     layout: Optional[AppLayout] = field(default=None, metadata={"skip": True})
-    trailing: CustomNavigationDrawerDestination = field(
-        default_factory=list, metadata={"skip": True}
+    trailing: Optional[CustomNavigationDrawerDestination] = field(
+        default=None, metadata={"skip": True}
     )
     selected_index: int = 0
     on_change: Optional[Callable[[ft.Event], None]] = None
@@ -103,6 +103,7 @@ class CustomNavigationDrawer(ft.Container):
             *self.final_destinations,
             self.trailing,
         ]
+        self.all_destinations = [d for d in self.all_destinations if d is not None]
 
         for i, dest in enumerate(self.all_destinations):
             dest.on_select = lambda d, i=i: self._select(i)

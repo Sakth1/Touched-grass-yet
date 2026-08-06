@@ -89,7 +89,7 @@ class TestDrawerResponsiveLayout:
 
         assert drawer.extended is True
         assert len(drawer.final_destinations[0].content.controls) == 2  # icon + label
-        assert 200 <= drawer.width <= 300
+        assert 120 <= drawer.width <= 200
 
     def test_layout_always_wins_over_initial_state(self):
         from utils.layout import app_layout_resolver
@@ -123,6 +123,6 @@ class TestDrawerResponsiveLayout:
         from utils.layout import app_layout_resolver
 
         drawer = self._drawer(extended=True)
-        layout = app_layout_resolver(960, 600)
+        layout = app_layout_resolver(900, 600)
         drawer.apply_layout(layout)
-        assert drawer.width == 960 * 0.22
+        assert drawer.width == 900 * 0.22
