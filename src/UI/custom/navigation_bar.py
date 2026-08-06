@@ -21,7 +21,7 @@ class CustomNavigationBarDestination(ft.Container):
     def init(self):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
-        self.padding = ft.padding.Padding.only(top=8, bottom=8, left=8, right=8)
+        self.padding = ft.padding.Padding.only(top=4, bottom=4, left=8, right=8)
         self.border_radius = 12
         self.ink = True
         self.animate = 200

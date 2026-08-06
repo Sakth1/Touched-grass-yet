@@ -12,5 +12,5 @@ class Timeline(BaseScreen):
         super().__init__()
         self.title = "Timeline"
         self.content = ft.Container(
-                    content=ft.Text("Timeline"), alignment=ft.Alignment.CENTER
-                )
+            content=ft.Text("Timeline"), alignment=ft.Alignment.CENTER
+        )

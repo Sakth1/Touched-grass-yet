@@ -13,6 +13,6 @@ class Settings(BaseScreen):
         super().__init__()
         self.title = "Settings"
         self.content = ft.Container(
-                    content=ft.Text("Settings"), alignment=ft.Alignment.CENTER
-                )
+            content=ft.Text("Settings"), alignment=ft.Alignment.CENTER
+        )
         self.update_checker = UpdateChecker()

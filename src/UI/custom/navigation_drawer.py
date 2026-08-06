@@ -94,17 +94,18 @@ class CustomNavigationDrawer(ft.Container):
     def init(self):
         self._layout: Optional[AppLayout] = None
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
-        for i, dest in enumerate(self.destinations):
-            dest.on_select = lambda d, i=i: self._select(i)
-
-        if self.trailing is not None:
-            self.trailing.on_select = lambda d: self._select(len(self.destinations))
 
         self.final_destinations: list[CustomNavigationDrawerDestination] = [
             i for i in self.destinations if i is not None
         ]
 
-        self.all_destinations: list[CustomNavigationDrawerDestination] = [*self.final_destinations, self.trailing]
+        self.all_destinations: list[CustomNavigationDrawerDestination] = [
+            *self.final_destinations,
+            self.trailing,
+        ]
+
+        for i, dest in enumerate(self.all_destinations):
+            dest.on_select = lambda d, i=i: self._select(i)
 
         self.drawer_content = [
             i
@@ -166,8 +167,6 @@ class CustomNavigationDrawer(ft.Container):
         self.extended = extended
         for dest in self.all_destinations:
             dest.toggle_label()
-        if self.trailing is not None:
-            self.trailing.toggle_label()
 
     def _current_metrics(self) -> DrawerMetrics:
         if self.extended and self._layout is not None:
@@ -190,5 +189,3 @@ class CustomNavigationDrawer(ft.Container):
         self.content.run_spacing = metrics.item_spacing
         for dest in self.all_destinations:
             dest.apply_metrics(metrics)
-        if self.trailing is not None:
-            self.trailing.apply_metrics(metrics)
