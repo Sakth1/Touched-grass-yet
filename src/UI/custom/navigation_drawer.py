@@ -127,13 +127,12 @@ class CustomNavigationDrawer(ft.Container):
         )
 
         self._apply_metrics()
-        self._select(self.selected_index, app_init=True)
 
     def before_update(self):
         self._sync_selection()
 
-    def select_index(self, index: int, app_init: bool = False) -> None:
-        if index == self.selected_index and not app_init:
+    def select_index(self, index: int) -> None:
+        if index == self.selected_index:
             return
         self.selected_index = index
         changed = self._sync_selection()
@@ -143,8 +142,8 @@ class CustomNavigationDrawer(ft.Container):
         if self.on_change:
             self.on_change(ft.Event(name="FloatingNavigationChange", control=self))
 
-    def _select(self, index: int, app_init: bool = False) -> None:
-        self.select_index(index, app_init)
+    def _select(self, index: int) -> None:
+        self.select_index(index)
 
     def _sync_selection(self) -> list[CustomNavigationDrawerDestination]:
         changed: list[CustomNavigationDrawerDestination] = []
