@@ -247,3 +247,4 @@ class TestRouteManagerWiring:
         rm = RouteManager(page, container, views, {"/dashboard": 0, "/timeline": 1})
         rm.navigate("/timeline")
         assert get_app_state().current_route == "/timeline"
+        assert container.update.called
