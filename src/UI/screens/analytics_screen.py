@@ -11,4 +11,6 @@ class Analytics(BaseScreen):
     def __init__(self):
         super().__init__()
         self.title = "Analytics"
-        self.content = ft.Text("Analytics")
+        self.content = ft.Container(
+                    content=ft.Text("Analytics"), alignment=ft.Alignment.CENTER
+                )

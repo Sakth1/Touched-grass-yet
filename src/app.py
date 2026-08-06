@@ -276,7 +276,7 @@ class App:
                 icon=ft.icons.Icons.SETTINGS_OUTLINED,
                 label="Settings",
                 tooltip="Settings",
-                on_click=self._handle_settings_navigation,
+                #on_click=self._handle_settings_navigation,
             ),
             destinations=[
                 CustomNavigationDrawerDestination(
