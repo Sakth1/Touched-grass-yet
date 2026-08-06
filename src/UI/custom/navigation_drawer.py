@@ -5,7 +5,9 @@ from typing import Callable, Optional
 
 import flet as ft
 
-from utils.constants import MIN_EXTENDED_DRAWER_WIDTH, MIN_UNEXTENDED_DRAWER_WIDTH
+from UI.layout.metrics import DrawerMetrics, resolve_drawer_metrics
+from utils.constants import EXTENDED_RAIL_MIN_WIDTH, MINI_RAIL_WIDTH
+from utils.models import AppLayout, NavigationPattern
 
 
 @ft.control
@@ -18,15 +20,13 @@ class CustomNavigationDrawerDestination(ft.Container):
     def init(self):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
+        self.padding = ft.padding.Padding.only(top=4, bottom=4, left=8, right=8)
         self._display_label = True
-        self.content_controls = (
+        self.content_controls: list[ft.Control] = (
             [self._icon, self._text] if self._display_label else [self._icon]
         )
-        self.content = ft.Row(
-            controls=self.content_controls,
-            spacing=10,
-        )
-        self.border_radius = 20
+        self.content: Optional[ft.Control] = ft.Row(controls=self.content_controls)
+        self.border_radius = 10
         self.ink = True
         self.animate = 200
         self.on_click = self._handle_click
@@ -60,14 +60,31 @@ class CustomNavigationDrawerDestination(ft.Container):
         self._render()
         return True
 
+    def apply_metrics(self, metrics: DrawerMetrics) -> None:
+        self.padding = ft.padding.Padding.only(
+            top=4,
+            bottom=4,
+            left=metrics.destination_padding,
+            right=metrics.destination_padding,
+        )
+        if self.content is not None:
+            if self._display_label:
+                self.content.alignment = ft.MainAxisAlignment.START
+                self.content.spacing = metrics.item_spacing
+            else:
+                self.content.alignment = ft.MainAxisAlignment.CENTER
+                self.content.spacing = 0
+        if self.parent is not None:
+            self.update()
+
 
 @ft.control
 class CustomNavigationDrawer(ft.Container):
     destinations: list[CustomNavigationDrawerDestination] = field(
         default_factory=list, metadata={"skip": True}
     )
-    include_hamburger: bool = True
     extended: bool = True
+    layout: Optional[AppLayout] = field(default=None, metadata={"skip": True})
     trailing: Optional[CustomNavigationDrawerDestination] = field(
         default=None, metadata={"skip": True}
     )
@@ -75,8 +92,8 @@ class CustomNavigationDrawer(ft.Container):
     on_change: Optional[Callable[[ft.Event], None]] = None
 
     def init(self):
+        self._layout: Optional[AppLayout] = None
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
-
         for i, dest in enumerate(self.destinations):
             dest.on_select = lambda d, i=i: self._select(i)
 
@@ -86,19 +103,10 @@ class CustomNavigationDrawer(ft.Container):
         self.final_destinations: list[CustomNavigationDrawerDestination] = [
             i for i in self.destinations if i is not None
         ]
-        self.hamburger_button = ft.IconButton(
-            icon=ft.icons.Icons.MENU if self.extended else ft.icons.Icons.MENU,
-            tooltip="Collapse" if self.extended else "Expand",
-            on_click=self._toggle_drawer,
-            visible=self.include_hamburger,
-            margin=ft.margin.Margin.only(left=10),
-            padding=ft.padding.Padding.only(left=8, right=8),
-        )
 
         self.drawer_content = [
             i
             for i in [
-                self.hamburger_button,
                 *self.final_destinations,
                 ft.Container(expand=True),
                 self.trailing,
@@ -114,6 +122,7 @@ class CustomNavigationDrawer(ft.Container):
             run_spacing=0,
         )
 
+        self._apply_metrics()
         self._sync_selection()
 
     def before_update(self):
@@ -140,13 +149,44 @@ class CustomNavigationDrawer(ft.Container):
                 changed.append(dest)
         return changed
 
-    def _toggle_drawer(self):
-        if self.extended is True:
-            self.width = MIN_UNEXTENDED_DRAWER_WIDTH
+    def apply_layout(self, layout: AppLayout) -> None:
+        """Re-derive width, padding, spacing, and label mode from a layout."""
+        self._layout = layout
+        if layout.navigation is NavigationPattern.MINI_RAIL:
+            self._apply_extended(False)
         else:
-            self.width = MIN_EXTENDED_DRAWER_WIDTH
+            self._apply_extended(True)
+        self._apply_metrics()
+
+    def _apply_extended(self, extended: bool) -> None:
+        if extended == self.extended:
+            return
+        self.extended = extended
         for dest in self.final_destinations:
             dest.toggle_label()
         if self.trailing is not None:
             self.trailing.toggle_label()
-        self.extended = not self.extended
+
+    def _current_metrics(self) -> DrawerMetrics:
+        if self.extended and self._layout is not None:
+            return resolve_drawer_metrics(self._layout)
+        if self.extended:
+            return DrawerMetrics(
+                width=float(EXTENDED_RAIL_MIN_WIDTH),
+                destination_padding=12.0,
+                item_spacing=8.0,
+            )
+        return DrawerMetrics(
+            width=float(MINI_RAIL_WIDTH),
+            destination_padding=8.0,
+            item_spacing=4.0,
+        )
+
+    def _apply_metrics(self) -> None:
+        metrics = self._current_metrics()
+        self.width = metrics.width
+        self.content.run_spacing = metrics.item_spacing
+        for dest in self.final_destinations:
+            dest.apply_metrics(metrics)
+        if self.trailing is not None:
+            self.trailing.apply_metrics(metrics)

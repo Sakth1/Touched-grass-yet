@@ -14,21 +14,23 @@ from utils.constants import (
     LATEST_RELEASE_REPO_URL,
     MIN_PAGE_HEIGHT,
     MIN_PAGE_WIDTH,
-    MOBILE_BREAKPOINT,
     RELEASES_PAGE_URL,
     ROOT_DIR,
-    TABLET_BREAKPOINT,
 )
 from utils.files import remove_file, timestamped_filename
 from utils.flet_helpers import safe_pop_dialog, safe_update
 from utils.layout import app_layout_resolver
 from utils.models import (
     AppLayout,
+    NavigationPattern,
+    Orientation,
     OSType,
     RawEvent,
     ScreenFormFactor,
     Tick,
     WatcherConfig,
+    WindowHeightClass,
+    WindowWidthClass,
 )
 from utils.net import extract_domain, is_trackable_url, normalize_url
 from utils.paths import get_data_dir, get_export_dir
@@ -56,16 +58,18 @@ __all__ = [
     "LATEST_RELEASE_REPO_URL",
     "MIN_PAGE_HEIGHT",
     "MIN_PAGE_WIDTH",
-    "MOBILE_BREAKPOINT",
+    "NavigationPattern",
+    "Orientation",
     "OSType",
     "RawEvent",
     "RELEASES_PAGE_URL",
     "ROOT_DIR",
     "ScreenFormFactor",
-    "TABLET_BREAKPOINT",
     "Tick",
     "TickBus",
     "WatcherConfig",
+    "WindowHeightClass",
+    "WindowWidthClass",
     "app_layout_resolver",
     "compare_versions",
     "day_start_ms",

@@ -22,18 +22,37 @@ MIN_PAGE_WIDTH = 320.0
 #: Minimum viewport height enforced after safe-area padding is subtracted.
 MIN_PAGE_HEIGHT = 480.0
 
-#: Maximum viewport width, in pixels, treated as a stacked mobile layout.
-MOBILE_BREAKPOINT = 700
+# ── Responsive breakpoints (Material 3 window size classes) ──────────────────
 
-#: Maximum viewport width, in pixels, treated as a tablet split layout.
-TABLET_BREAKPOINT = 1100
+#: Width below which the window is classified as compact (phones portrait).
+COMPACT_BREAKPOINT = 600
+
+#: Width below which the window is classified as medium (tablets portrait).
+MEDIUM_BREAKPOINT = 840
+
+#: Width below which the window is classified as expanded (tablets landscape).
+EXPANDED_BREAKPOINT = 1200
+
+#: Width below which the window is classified as large.
+LARGE_BREAKPOINT = 1600
+
+#: Height below which the window is classified as compact-height (phone landscape).
+COMPACT_HEIGHT_BREAKPOINT = 480
+
+#: Height below which the window is classified as medium-height.
+MEDIUM_HEIGHT_BREAKPOINT = 900
 
 
 # ── Other constants ──────────────────────────────────────────────────────────
 
-MIN_EXTENDED_DRAWER_WIDTH = 200
+#: Width of the collapsed mini rail (icon-only, tablet portrait).
+MINI_RAIL_WIDTH = 60
 
-MIN_UNEXTENDED_DRAWER_WIDTH = 100
+#: Lower bound of the extended drawer width (tablet landscape).
+EXTENDED_RAIL_MIN_WIDTH = 150
+
+#: Upper bound of the extended drawer width (desktop).
+EXTENDED_RAIL_MAX_WIDTH = 300
 
 #: GitHub API endpoint returning the latest release of the app repository.
 LATEST_RELEASE_REPO_URL = "https://api.github.com/repos/sakth1/Unscreen/releases/latest"

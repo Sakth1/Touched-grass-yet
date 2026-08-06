@@ -68,12 +68,37 @@ Filled cards: `RoundedRectangleBorder(radius=12)` for dashboard status cards
 
 ## Layout Architecture
 
-### Responsive Breakpoints
-| Range | Width | Navigation | Shell Pattern |
-|-------|-------|------------|---------------|
-| Compact | <600dp | NavigationBar (bottom tabs) | Full-screen content |
-| Medium | 600-839dp | NavigationRail (icon+label) | Side nav + content |
-| Expanded | 840dp+ | NavigationRail (extended) | Side nav + content |
+### Responsive Breakpoints — Material 3 Window Size Classes
+Width and height are classified separately (per M3 adaptive guidance); the
+width class drives layout, the height class matters for phone-landscape and
+two-pane feasibility. The custom navigation chrome (drawer/rail/nav bar)
+re-derives its widths, paddings, and margins from the resolved
+`AppLayout` (`src/utils/layout.py` → `src/UI/layout/metrics.py`) on every
+resize and orientation change (`page.on_resize` + `page.on_media_change`).
+
+| Width class | Range | Height class | Range | Form factor | Navigation |
+|-------------|-------|--------------|-------|-------------|------------|
+| Compact | <600dp | Compact | <480dp | MOBILE | NavigationBar (bottom pill) |
+| Medium | 600–839dp | Compact | <480dp | MOBILE (phone landscape) | NavigationBar (bottom pill, lower/wider) |
+| Medium | 600–839dp | Medium+ | ≥480dp | TABLET_PORTRAIT | Mini rail (icon-only, 80dp) |
+| Expanded | 840–1199dp | any | — | TABLET_LANDSCAPE | Extended drawer (scales 200–300dp) |
+| Large | 1200–1599dp | any | — | DESKTOP | Extended drawer |
+| Extra-large | ≥1600dp | any | — | DESKTOP | Extended drawer |
+
+Derived metrics (all layout-driven, never hardcoded in controls):
+- **Page padding:** 12 / 16 / 20 / 24 dp per form factor.
+- **Safe area:** system insets from `page.media.padding` are merged into
+  `AppLayout.safe_padding`; the bottom bar clears the Android gesture bar
+  automatically; the content container pads past notches/status bars.
+- **Content cap:** screens are centered and capped at 1000dp (tablet
+  landscape) / 1200dp (desktop); mobile/tablet portrait use full width.
+- **Spacing grid:** 4dp (compact) / 8dp (wide) gaps between nav items.
+- **Drawer width:** 80dp mini rail; extended scales with viewport between
+  200 and 300dp. The extended/collapsed mode is fully layout-driven (no
+  manual hamburger toggle) — mini rail for tablet portrait, extended for
+  tablet landscape and desktop.
+- **Orientation:** from `page.media.orientation`, falling back to aspect
+  ratio (width ≥ height → landscape) for headless runs.
 
 ### Navigation Destinations
 1. Dashboard — live AFK status, foreground card, top apps, battery

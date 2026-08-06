@@ -5,6 +5,9 @@ from typing import Callable, Optional
 
 import flet as ft
 
+from UI.layout.metrics import NavBarMetrics, resolve_navbar_metrics
+from utils.models import AppLayout
+
 
 @ft.control
 class CustomNavigationBarDestination(ft.Container):
@@ -19,7 +22,7 @@ class CustomNavigationBarDestination(ft.Container):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
         self.padding = ft.padding.Padding.only(top=8, bottom=8, left=8, right=8)
-        self.border_radius = 20
+        self.border_radius = 12
         self.ink = True
         self.animate = 200
         self.on_click = self._handle_click
@@ -45,13 +48,23 @@ class CustomNavigationBarDestination(ft.Container):
         if self.on_select:
             self.on_select(self)
 
+    def apply_metrics(self, metrics: NavBarMetrics) -> None:
+        self.padding = ft.padding.Padding.only(
+            top=8,
+            bottom=8,
+            left=metrics.destination_padding,
+            right=metrics.destination_padding,
+        )
+
 
 @ft.control
 class CustomNavigationBar(ft.Container):
     """Floating pill-style bottom navigation bar.
 
-    Renders each destination as a :class:`FloatingNavigationBarDestination`
-    inside a centered ``ft.Row``.
+    Renders each destination as a :class:`CustomNavigationBarDestination`
+    inside a centered ``ft.Row``. Margins and paddings are re-derived from
+    the resolved :class:`AppLayout` via :meth:`apply_layout`, so the pill
+    keeps clearing the system gesture area on every platform.
     """
 
     destinations: list[CustomNavigationBarDestination] = field(
@@ -59,11 +72,13 @@ class CustomNavigationBar(ft.Container):
     )
     selected_index: int = 0
     label_behavior: Optional[ft.NavigationBarLabelBehavior] = None
+    layout: Optional[AppLayout] = field(default=None, metadata={"skip": True})
     on_change: Optional[Callable[[ft.Event], None]] = None
 
     def init(self):
+        self._layout: Optional[AppLayout] = None
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
-        self.border_radius = 24
+        self.border_radius = 12
         self.margin = ft.margin.Margin(left=16, right=16, bottom=24)
         self.final_destinations: list[CustomNavigationBarDestination] = [
             x for x in self.destinations if x is not None
@@ -102,3 +117,16 @@ class CustomNavigationBar(ft.Container):
             if dest is not None and dest.set_selected(i == self.selected_index):
                 changed.append(dest)
         return changed
+
+    def apply_layout(self, layout: AppLayout) -> None:
+        """Re-derive margin and destination padding from a resolved layout."""
+        self._layout = layout
+        metrics = resolve_navbar_metrics(layout)
+        self.margin = ft.margin.Margin(
+            left=metrics.margin_left,
+            right=metrics.margin_right,
+            bottom=metrics.margin_bottom,
+        )
+        for dest in self.final_destinations:
+            if dest is not None:
+                dest.apply_metrics(metrics)

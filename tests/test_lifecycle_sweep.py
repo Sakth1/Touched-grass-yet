@@ -210,15 +210,28 @@ class TestAppHeadlessBoot:
         app = App(self._page(1280, 800))
         assert app.layout.screen_form_factor is ScreenFormFactor.DESKTOP
         assert app.navigation_rail is not None
+        assert app.navigation_rail.extended is True
         assert len(app.shell.controls) == 2
         assert app.page.navigation_bar is None
 
-    def test_tablet_boot(self):
+    def test_tablet_portrait_boot(self):
+        from app import App
+
+        app = App(self._page(800, 1280))
+        assert app.layout.screen_form_factor is ScreenFormFactor.TABLET_PORTRAIT
+        assert app.page.navigation_bar is None
+        assert app.navigation_rail is not None
+        assert app.navigation_rail.extended is False  # mini rail
+        assert app.route_manager.current_route == "/dashboard"
+
+    def test_tablet_landscape_boot(self):
         from app import App
 
         app = App(self._page(960, 800))
-        assert app.layout.screen_form_factor is ScreenFormFactor.TABLET
-        assert app.page.navigation_bar is not None
+        assert app.layout.screen_form_factor is ScreenFormFactor.TABLET_LANDSCAPE
+        assert app.page.navigation_bar is None
+        assert app.navigation_rail is not None
+        assert app.navigation_rail.extended is True
         assert app.route_manager.current_route == "/dashboard"
 
     def test_mobile_boot(self):

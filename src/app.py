@@ -30,7 +30,7 @@ from utils.constants import (
     MIN_PAGE_WIDTH,
 )
 from utils.layout import app_layout_resolver
-from utils.models import AppLayout, OSType, ScreenFormFactor
+from utils.models import AppLayout, NavigationPattern, OSType
 from utils.platform import detect_os
 
 logging.basicConfig(
@@ -60,7 +60,9 @@ class App:
         self.settings_page = Settings()
 
         self.dashboard_view = ft.Container(
-            content=ft.ResponsiveRow([self.dashboard_page])
+            content=ft.ResponsiveRow(
+                [self.dashboard_page], alignment=ft.MainAxisAlignment.CENTER
+            )
         )
         self.content_container = ft.Container(expand=True)
 
@@ -89,6 +91,7 @@ class App:
         )
 
         self.page.on_resize = self._handle_page_resize
+        self.page.on_media_change = self._handle_media_change
         self.page.add(self.shell)
 
         self._initiate()
@@ -134,38 +137,61 @@ class App:
             else DEFAULT_PAGE_HEIGHT
         )
 
-        self.layout: AppLayout = app_layout_resolver(width, height)
+        self.layout: AppLayout = app_layout_resolver(
+            width, height, media=getattr(self.page, "media", None)
+        )
         self._apply_layout(self.layout)
 
     def _handle_page_resize(self, _event):
         self._apply_responsive_layout()
 
+    def _handle_media_change(self, _event):
+        self._apply_responsive_layout()
+
     def _apply_responsive_layout(self):
         page_width, page_height = self._resolve_page_dimensions()
-        self.layout = app_layout_resolver(page_width, page_height)
-        self._apply_layout(self.layout)
+        layout = app_layout_resolver(
+            page_width, page_height, media=getattr(self.page, "media", None)
+        )
+        if self.layout is not None and layout == self.layout:
+            return
+        self.layout = layout
+        self._apply_layout(layout)
 
     def _apply_layout(self, layout: AppLayout):
         self.page.width = layout.width
         self.page.height = layout.height
         get_app_state().set_layout(layout)
 
-        match layout.screen_form_factor:
-            case ScreenFormFactor.MOBILE | ScreenFormFactor.TABLET:
-                # NOTE: see how float nav bar still works when assigned to page.navbar even tho it is not a navbar class
-                self._ensure_navigation_bar()
+        match layout.navigation:
+            case NavigationPattern.BOTTOM_BAR:
+                nav = self._ensure_navigation_bar()
+                nav.apply_layout(layout)
                 self.shell.controls = [self.content_container]
 
-            case ScreenFormFactor.DESKTOP:
+            case NavigationPattern.MINI_RAIL:
                 self.page.navigation_bar = None
+                self._ensure_rail(extended=False).apply_layout(layout)
                 self.shell.controls = [
-                    self._ensure_rail(extended=True),
+                    self.navigation_rail,
+                    self.content_container,
+                ]
+
+            case NavigationPattern.EXTENDED_RAIL:
+                self.page.navigation_bar = None
+                self._ensure_rail(extended=True).apply_layout(layout)
+                self.shell.controls = [
+                    self.navigation_rail,
                     self.content_container,
                 ]
 
             case _:
                 raise NotImplementedError
 
+        self._apply_content_padding(layout)
+        view = self.content_container.content
+        if view is not None and hasattr(view, "apply_layout"):
+            view.apply_layout(layout)  # type: ignore[attr-defined]
         self.page.update()
 
     def _resolve_page_dimensions(self) -> tuple[float, float]:
@@ -192,6 +218,22 @@ class App:
                 page_height - (getattr(self.page.navigation_bar, "height", 0) or 0),
             )
         return page_width, page_height
+
+    def _apply_content_padding(self, layout: AppLayout) -> None:
+        """Pad the content area with design spacing plus system safe insets.
+
+        The floating bottom bar already clears the gesture area on its own,
+        so with a bottom bar the content does not need the extra bottom inset.
+        """
+        base = layout.padding
+        safe_left, safe_top, safe_right, safe_bottom = layout.safe_padding
+        bottom_bar = layout.navigation is NavigationPattern.BOTTOM_BAR
+        self.content_container.padding = ft.padding.Padding.only(
+            left=base + safe_left,
+            top=base + safe_top,
+            right=base + safe_right,
+            bottom=base + (0.0 if bottom_bar else safe_bottom),
+        )
 
     def _ensure_navigation_bar(self):
         self.page.navigation_bar = CustomNavigationBar(
@@ -223,6 +265,7 @@ class App:
             on_change=self._handle_navigation_change,
         )
         self.page.on_route_change = self.route_manager.handle_route_change
+        return self.page.navigation_bar
 
     def _ensure_rail(self, extended: bool) -> CustomNavigationDrawer:
         if self.navigation_rail is not None:
