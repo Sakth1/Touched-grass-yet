@@ -227,6 +227,7 @@ def app_layout_resolver(
     page_height: float,
     *,
     media=None,
+    is_mobile: bool = False,
     **kwargs,
 ) -> AppLayout:
     """Return a responsive layout tuned to the available viewport.
@@ -242,6 +243,11 @@ def app_layout_resolver(
         media: Optional ``page.media`` object exposing ``orientation`` and
             ``padding`` (left, top, right, bottom system insets). ``None`` is
             tolerated for headless runs and early page loads.
+        is_mobile: True when the app runs on a phone platform. Phones always
+            use the mobile form factor (bottom bar + inline sections); the
+            reported window size is unreliable there (mobile windows report
+            no size), so it must never reclassify a phone as a tablet or
+            desktop layout.
 
     Returns:
         A complete immutable layout snapshot for the current page size.
@@ -264,7 +270,11 @@ def app_layout_resolver(
         media_orientation = getattr(media, "orientation", None)
     orientation = _resolve_orientation(width, height, media_orientation)
 
-    form_factor = _resolve_form_factor(width_class, height_class, orientation)
+    form_factor = (
+        ScreenFormFactor.MOBILE
+        if is_mobile
+        else _resolve_form_factor(width_class, height_class, orientation)
+    )
 
     safe_padding = (0.0, 0.0, 0.0, 0.0)
     if media is not None:

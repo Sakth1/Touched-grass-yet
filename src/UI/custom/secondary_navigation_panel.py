@@ -176,9 +176,7 @@ class SecondaryNavigationPanel(ft.Container):
     def _select(self, index: int) -> None:
         self.select_index(index)
 
-    def _destination_at(
-        self, index: int
-    ) -> Optional[SecondaryNavigationDestination]:
+    def _destination_at(self, index: int) -> Optional[SecondaryNavigationDestination]:
         if 0 <= index < len(self.final_destinations):
             return self.final_destinations[index]
         return None

@@ -64,6 +64,7 @@ def mock_page() -> unittest.mock.MagicMock:
     page = unittest.mock.MagicMock(spec=ft.Page)
     page.platform = unittest.mock.MagicMock()
     page.platform.is_desktop.return_value = False
+    page.platform.is_mobile.return_value = False
     page.window = unittest.mock.MagicMock()
     page.width = None
     page.height = None

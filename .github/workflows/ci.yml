@@ -152,48 +152,13 @@ jobs:
             throw "No application .exe output found."
           }
           $bundleDir = $exe.DirectoryName
-          $portableName = "${{ needs.detect-version-bump.outputs.version }}-portable.zip"
+          $appVersion = "${{ needs.detect-version-bump.outputs.version }}"
+          $portableName = "Unscreen-$appVersion-portable.zip"
           if (Test-Path $portableName) {
             Remove-Item $portableName -Force
           }
           Compress-Archive -Path (Join-Path $bundleDir "*") -DestinationPath $portableName -CompressionLevel Optimal
-          $installerBase = "${{ needs.detect-version-bump.outputs.version }}-setup"
-          $installerName = "$installerBase.exe"
-          $issPath = Join-Path $PWD "installer.iss"
-          $appName = "Unscreen"
-          $appVersion = "${{ needs.detect-version-bump.outputs.version }}"
-          $exeName = $exe.Name
-          @"
-          #define MyAppName "$appName"
-          #define MyAppVersion "$appVersion"
-          #define MyAppPublisher "Flet"
-          #define MyAppExeName "$exeName"
-          [Setup]
-          AppId={{D2E3F4A5-B6C7-48D9-A0B1-C2D3E4F5A6B7}
-          AppName={#MyAppName}
-          AppVersion={#MyAppVersion}
-          AppPublisher={#MyAppPublisher}
-          DefaultDirName={autopf}\{#MyAppName}
-          DefaultGroupName={#MyAppName}
-          OutputDir=$($PWD.Path)
-          OutputBaseFilename=$installerBase
-          Compression=lzma
-          SolidCompression=yes
-          WizardStyle=modern
-          ArchitecturesAllowed=x64compatible
-          ArchitecturesInstallIn64BitMode=x64compatible
-          [Languages]
-          Name: "english"; MessagesFile: "compiler:Default.isl"
-          [Tasks]
-          Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-          [Files]
-          Source: "$bundleDir\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-          [Icons]
-          Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-          Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-          [Run]
-          Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-          "@ | Set-Content -Path $issPath -Encoding UTF8
+          $installerName = "Unscreen-$appVersion-setup.exe"
           $isccPath = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $isccPath)) {
             $isccFromPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
@@ -203,7 +168,7 @@ jobs:
               throw "ISCC.exe not found after installing Inno Setup."
             }
           }
-          & $isccPath $issPath
+          & $isccPath "/DMyAppVersion=$appVersion" "/DMyAppExeName=$($exe.Name)" "/DBundleDir=$bundleDir" "/O$($PWD.Path)" packaging\windows\installer.iss
           if (-not (Test-Path $installerName)) {
             throw "Installer was not produced at expected path: $installerName"
           }
@@ -310,7 +275,7 @@ jobs:
       - name: Collect APK
         id: collect
         run: |
-          $newApkName = "${{ needs.detect-version-bump.outputs.version }}.apk"
+          $newApkName = "Unscreen-${{ needs.detect-version-bump.outputs.version }}.apk"
           if (-not (Test-Path "signed.apk")) {
             throw "Signed APK not found."
           }

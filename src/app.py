@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from contextlib import suppress
 
 import flet as ft
 
@@ -37,6 +38,8 @@ from utils.constants import (
     DEFAULT_PAGE_WIDTH,
     MIN_PAGE_HEIGHT,
     MIN_PAGE_WIDTH,
+    MOBILE_DEFAULT_HEIGHT,
+    MOBILE_DEFAULT_WIDTH,
     RELEASES_PAGE_URL,
 )
 from utils.models import (
@@ -71,6 +74,14 @@ class App:
     def __init__(self, page: ft.Page):
         self.page = page
         self.page.title = "Unscreen"
+
+        platform_obj = getattr(page, "platform", None)
+        if platform_obj is not None and callable(
+            getattr(platform_obj, "is_mobile", None)
+        ):
+            self._is_mobile = bool(platform_obj.is_mobile())
+        else:
+            self._is_mobile = detect_os() == OSType.ANDROID
 
         self.config = ConfigManager()
         self.config.load()
@@ -191,19 +202,26 @@ class App:
             if not check_usage_stats_permission():
                 show_permission_dialog(self.page)
 
-        width = (
-            self.page.window.width
-            if self.page.window.width is not None
-            else DEFAULT_PAGE_WIDTH
-        )
-        height = (
-            self.page.window.height
-            if self.page.window.height is not None
-            else DEFAULT_PAGE_HEIGHT
-        )
+        if self._is_mobile:
+            width = MOBILE_DEFAULT_WIDTH
+            height = MOBILE_DEFAULT_HEIGHT
+        else:
+            width = (
+                self.page.window.width
+                if self.page.window.width is not None
+                else DEFAULT_PAGE_WIDTH
+            )
+            height = (
+                self.page.window.height
+                if self.page.window.height is not None
+                else DEFAULT_PAGE_HEIGHT
+            )
 
         self.layout: AppLayout = app_layout_resolver(
-            width, height, media=getattr(self.page, "media", None)
+            width,
+            height,
+            media=getattr(self.page, "media", None),
+            is_mobile=self._is_mobile,
         )
         self._apply_layout(self.layout)
 
@@ -222,8 +240,10 @@ class App:
             on_action=lambda _e: self.page.launch_url(RELEASES_PAGE_URL),
             open=True,
         )
-        self.page.overlay.append(snack)
-        self.page.update()
+        with suppress(RuntimeError):
+            # The overlay may not be attached yet (bridge races during boot).
+            self.page.overlay.append(snack)
+            self.page.update()
 
     def _handle_page_resize(self, _event):
         self._apply_responsive_layout()
@@ -234,7 +254,10 @@ class App:
     def _apply_responsive_layout(self):
         page_width, page_height = self._resolve_page_dimensions()
         layout = app_layout_resolver(
-            page_width, page_height, media=getattr(self.page, "media", None)
+            page_width,
+            page_height,
+            media=getattr(self.page, "media", None),
+            is_mobile=self._is_mobile,
         )
         if self.layout is not None and layout == self.layout:
             return
@@ -242,8 +265,6 @@ class App:
         self._apply_layout(layout)
 
     def _apply_layout(self, layout: AppLayout):
-        self.page.width = layout.width
-        self.page.height = layout.height
         get_app_state().set_layout(layout)
 
         self._update_layout()
@@ -435,8 +456,11 @@ class App:
             self.route_manager.navigate(destinations[index].route)
 
     def _resolve_page_dimensions(self) -> tuple[float, float]:
-        page_width = getattr(self.page, "width", 0) or DEFAULT_PAGE_WIDTH
-        page_height = getattr(self.page, "height", 0) or DEFAULT_PAGE_HEIGHT
+        if self._is_mobile:
+            page_width, page_height = MOBILE_DEFAULT_WIDTH, MOBILE_DEFAULT_HEIGHT
+        else:
+            page_width = getattr(self.page, "width", 0) or DEFAULT_PAGE_WIDTH
+            page_height = getattr(self.page, "height", 0) or DEFAULT_PAGE_HEIGHT
         media = getattr(self.page, "media", None)
         padding = getattr(media, "padding", None)
         if padding is not None:
