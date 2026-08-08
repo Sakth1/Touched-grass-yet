@@ -93,6 +93,7 @@ class App:
             config=self.config,
             collection_manager=self.collection_manager,
             page=self.page,
+            on_back=self._go_back,
         )
 
         self.content_container = ft.Container(expand=True)
@@ -399,6 +400,15 @@ class App:
         )
         self.secondary_navigation_panel.apply_layout(self.layout)
         self._panel_view = self.current_view
+
+    def _go_back(self) -> None:
+        """Leave the current section and return to its parent route."""
+        parent = self.route_manager._parent_for(self.route_manager.current_route)
+        if parent is not None:
+            self.route_manager.navigate(parent)
+            # Re-render the layout so inline pickers / section views reflect
+            # the parent route (matches the flow in _handle_navigation_change).
+            self._update_layout()
 
     def _handle_secondary_change(self, event: ft.ControlEvent):
         """Navigate to the section behind the pill the user selected.

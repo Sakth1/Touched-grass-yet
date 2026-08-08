@@ -2,6 +2,7 @@ import logging
 import types
 from unittest.mock import MagicMock, patch
 
+import flet as ft
 import pytest
 
 from core.config_manager import ConfigManager
@@ -381,3 +382,47 @@ class TestSettingsScreen:
         assert screen.general_section.content is not None
         assert screen.data_section.content is not None
         assert screen.app_info_section.content is not None
+
+    def test_sections_scroll_and_wrap_content(self, tmp_path):
+        from UI.screens.settings_screen import Settings
+
+        screen = Settings(config=_config(tmp_path))
+        for section in (
+            screen.general_section,
+            screen.data_section,
+            screen.app_info_section,
+        ):
+            assert section.content.scroll is not None
+            assert len(section.content.controls) == 2  # header row + cards column
+
+    def test_on_back_callback_adds_back_button(self, tmp_path):
+        from UI.screens.settings_screen import Settings
+
+        screen = Settings(config=_config(tmp_path), on_back=lambda: None)
+        for section in (
+            screen.general_section,
+            screen.data_section,
+            screen.app_info_section,
+        ):
+            header = section.content.controls[0]
+            assert isinstance(header, ft.Row)
+            assert any(c.icon == ft.Icons.ARROW_BACK for c in header.controls)
+
+    def test_section_back_button_triggers_callback(self, tmp_path):
+        from UI.screens.settings_screen import Settings
+
+        clicked = []
+        screen = Settings(config=_config(tmp_path), on_back=lambda: clicked.append(1))
+        header = screen.general_section.content.controls[0]
+        back = next(c for c in header.controls if c.icon == ft.Icons.ARROW_BACK)
+        back.on_click(None)
+        assert clicked == [1]
+
+    def test_no_on_back_means_no_back_button(self, tmp_path):
+        from UI.screens.settings_screen import Settings
+
+        screen = Settings(config=_config(tmp_path))
+        header = screen.general_section.content.controls[0]
+        assert all(
+            getattr(c, "icon", None) != ft.Icons.ARROW_BACK for c in header.controls
+        )

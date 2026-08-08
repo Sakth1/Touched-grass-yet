@@ -307,6 +307,46 @@ class TestAppHeadlessBoot:
         assert app.navigation_rail is not None
         assert page.navigation_bar is None
 
+    def test_section_back_returns_to_parent(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings/data")
+        app._go_back()
+
+        assert app.route_manager.current_route == "/settings"
+        assert app.content_container.content is app.settings_page
+
+    def test_back_button_navigates_to_parent(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings/data")
+        header = app.settings_page.data_section.content.controls[0]
+        back = next(c for c in header.controls if c.icon == ft.Icons.ARROW_BACK)
+        back.on_click(None)
+
+        assert app.route_manager.current_route == "/settings"
+
+    def test_section_back_on_mobile_restores_picker(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings/data")
+        app._go_back()
+
+        assert app.route_manager.current_route == "/settings"
+        assert isinstance(app.content_container.content, SettingsCard)
+
+    def test_go_back_is_noop_on_top_level_route(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app._go_back()
+
+        assert app.route_manager.current_route == "/dashboard"
+
     def test_navigate_every_route(self):
         from app import App
 

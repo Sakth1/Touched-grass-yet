@@ -16,16 +16,24 @@ class Settings(BaseScreen):
         config: Any = None,
         collection_manager: Any = None,
         page: ft.Page | None = None,
+        on_back: Any = None,
     ):
         super().__init__(secondary_options=True)
         self.title = "Settings"
+        self._on_back = on_back
         self.general_section = General(
-            config=config, collection_manager=collection_manager, page=page
+            config=config,
+            collection_manager=collection_manager,
+            page=page,
+            on_back=on_back,
         )
         self.data_section = DataDiagnostics(
-            config=config, collection_manager=collection_manager, page=page
+            config=config,
+            collection_manager=collection_manager,
+            page=page,
+            on_back=on_back,
         )
-        self.app_info_section = AppInfo(config=config, page=page)
+        self.app_info_section = AppInfo(config=config, page=page, on_back=on_back)
         self.content = self.general_section
 
     def _get_secondary_options(self) -> list[NavigationDestination]:

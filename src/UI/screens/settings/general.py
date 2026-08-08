@@ -1,10 +1,11 @@
 import logging
-from typing import Any
+from typing import Any, Callable, Optional
 
 import flet as ft
 
 import core.auto_start as auto_start
 from core.config_manager import ConfigManager
+from UI.screens.settings.builders import section_scaffold
 from UI.screens.settings.settings_card import SettingsCard
 from utils.flet_helpers import show_snack_bar
 from utils.models import OSType
@@ -63,6 +64,7 @@ class General(ft.Container):
         config: ConfigManager,
         collection_manager: Any = None,
         page: ft.Page | None = None,
+        on_back: Optional[Callable[[], None]] = None,
     ):
         super().__init__()
         self._config = config or ConfigManager()
@@ -154,7 +156,7 @@ class General(ft.Container):
                 )
             )
 
-        self.content = ft.Column(spacing=16, controls=cards)
+        self.content = section_scaffold("General settings", cards, on_back=on_back)
 
     # ── Control builders ──────────────────────────────────────────────────
 

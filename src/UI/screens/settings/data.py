@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any
+from typing import Any, Callable, Optional
 
 import flet as ft
 
@@ -12,6 +12,7 @@ from core.logging_setup import (
     get_log_path,
     read_log_lines,
 )
+from UI.screens.settings.builders import section_scaffold
 from UI.screens.settings.settings_card import SettingsCard
 from utils.flet_helpers import safe_update, show_snack_bar
 from utils.paths import get_export_dir
@@ -35,6 +36,7 @@ class DataDiagnostics(ft.Container):
         config: ConfigManager,
         collection_manager: Any = None,
         page: ft.Page | None = None,
+        on_back: Optional[Callable[[], None]] = None,
     ):
         super().__init__()
         self._config = config or ConfigManager()
@@ -84,45 +86,41 @@ class DataDiagnostics(ft.Container):
             on_click=self._confirm_clear_all_data,
         )
 
-        self.content = ft.Column(
-            spacing=16,
-            controls=[
-                SettingsCard(
-                    "Logging",
-                    [
-                        self._log_level_dropdown,
-                        ft.Text(
-                            f"Log file: {get_log_path() or 'not created yet'}", size=12
-                        ),
-                    ],
-                ),
-                SettingsCard(
-                    "Export",
-                    [
-                        ft.Text("Download all collected raw events to a file."),
-                        ft.Row(
-                            controls=[self._export_csv_btn, self._export_json_btn],
-                            wrap=True,
-                        ),
-                    ],
-                ),
-                SettingsCard(
-                    "Logs",
-                    [self._view_logs_btn, self._clear_logs_btn],
-                ),
-                SettingsCard(
-                    "Danger zone",
-                    [
-                        ft.Text(
-                            "Permanently delete all locally stored usage data. "
-                            "This cannot be undone.",
-                            size=12,
-                        ),
-                        self._clear_data_btn,
-                    ],
-                ),
-            ],
-        )
+        cards = [
+            SettingsCard(
+                "Logging",
+                [
+                    self._log_level_dropdown,
+                    ft.Text(
+                        f"Log file: {get_log_path() or 'not created yet'}", size=12
+                    ),
+                ],
+            ),
+            SettingsCard(
+                "Export",
+                [
+                    ft.Text("Download all collected raw events to a file."),
+                    ft.Row(controls=[self._export_csv_btn, self._export_json_btn]),
+                ],
+            ),
+            SettingsCard(
+                "Logs",
+                [self._view_logs_btn, self._clear_logs_btn],
+            ),
+            SettingsCard(
+                "Danger zone",
+                [
+                    ft.Text(
+                        "Permanently delete all locally stored usage data. "
+                        "This cannot be undone.",
+                        size=12,
+                    ),
+                    self._clear_data_btn,
+                ],
+            ),
+        ]
+
+        self.content = section_scaffold("Data & diagnostics", cards, on_back=on_back)
 
     # ── Handlers ──────────────────────────────────────────────────────────
 
@@ -182,11 +180,17 @@ class DataDiagnostics(ft.Container):
                 width=600,
                 height=400,
                 padding=8,
-                content=ft.Text(
-                    content,
-                    font_family="monospace",
-                    size=12,
-                    selectable=True,
+                content=ft.Column(
+                    scroll=ft.ScrollMode.AUTO,
+                    expand=True,
+                    controls=[
+                        ft.Text(
+                            content,
+                            font_family="monospace",
+                            size=12,
+                            selectable=True,
+                        )
+                    ],
                 ),
             ),
             actions=[

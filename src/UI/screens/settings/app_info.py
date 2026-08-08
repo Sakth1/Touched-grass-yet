@@ -1,11 +1,13 @@
 import asyncio
 import logging
+from typing import Callable, Optional
 
 import flet as ft
 
 from core.config_manager import ConfigManager
 from core.update_checker import UpdateChecker, UpdateCheckError
 from UI.dialogs import show_alert_dialog
+from UI.screens.settings.builders import section_scaffold
 from UI.screens.settings.settings_card import SettingsCard
 from utils.constants import RELEASES_PAGE_URL
 from utils.flet_helpers import show_snack_bar
@@ -18,7 +20,7 @@ def _info_row(label: str, value: str) -> ft.Row:
     return ft.Row(
         controls=[
             ft.Text(label, width=160),
-            ft.Text(value, selectable=True),
+            ft.Text(value, selectable=True, expand=True),
         ],
     )
 
@@ -30,6 +32,7 @@ class AppInfo(ft.Container):
         self,
         config: ConfigManager,
         page: ft.Page | None = None,
+        on_back: Optional[Callable[[], None]] = None,
     ):
         super().__init__()
         self._config = config or ConfigManager()
@@ -62,42 +65,38 @@ class AppInfo(ft.Container):
             url=RELEASES_PAGE_URL,
         )
 
-        self.content = ft.Column(
-            spacing=16,
-            controls=[
-                SettingsCard(
-                    "Updates",
-                    [
-                        ft.Text(f"Installed version: {self._version}"),
-                        self._auto_update_switch,
-                        ft.Row(
-                            controls=[self._check_btn, self._open_releases_btn],
-                            wrap=True,
-                        ),
-                    ],
-                ),
-                SettingsCard(
-                    "About",
-                    [
-                        _info_row("Version", self._version),
-                        _info_row("Platform", self._platform),
-                        _info_row("Device ID", self._device_id),
-                        _info_row("Data directory", self._data_dir),
-                    ],
-                ),
-                SettingsCard(
-                    "Privacy",
-                    [
-                        ft.Text(
-                            "Unscreen is privacy-first: all collected data stays "
-                            "on this device. Nothing is uploaded, no account is "
-                            "required, and no analytics are collected.",
-                            size=12,
-                        ),
-                    ],
-                ),
-            ],
-        )
+        cards = [
+            SettingsCard(
+                "Updates",
+                [
+                    ft.Text(f"Installed version: {self._version}"),
+                    self._auto_update_switch,
+                    ft.Row(controls=[self._check_btn, self._open_releases_btn]),
+                ],
+            ),
+            SettingsCard(
+                "About",
+                [
+                    _info_row("Version", self._version),
+                    _info_row("Platform", self._platform),
+                    _info_row("Device ID", self._device_id),
+                    _info_row("Data directory", self._data_dir),
+                ],
+            ),
+            SettingsCard(
+                "Privacy",
+                [
+                    ft.Text(
+                        "Unscreen is privacy-first: all collected data stays "
+                        "on this device. Nothing is uploaded, no account is "
+                        "required, and no analytics are collected.",
+                        size=12,
+                    ),
+                ],
+            ),
+        ]
+
+        self.content = section_scaffold("App info", cards, on_back=on_back)
 
     # ── Handlers ──────────────────────────────────────────────────────────
 
