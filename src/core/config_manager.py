@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from copy import deepcopy
 from pathlib import Path
 
 from utils.paths import get_data_dir
@@ -14,27 +15,32 @@ DEFAULT_CONFIG = {
     "watchers_enabled": ["foreground", "afk"],
     "log_level": "INFO",
     "auto_start_enabled": False,
+    "theme_mode": "system",
+    "auto_update_enabled": True,
+    "start_maximized": True,
+    "afk_idle_threshold_s": 60.0,
+    "afk_away_threshold_s": 300.0,
 }
 
 
 class ConfigManager:
     def __init__(self, path: str | Path | None = None):
         self._path = Path(path or os.path.join(get_data_dir(), "config.json"))
-        self._data: dict = dict(DEFAULT_CONFIG)
+        self._data: dict = deepcopy(DEFAULT_CONFIG)
 
     def load(self) -> None:
         if self._path.exists():
             try:
                 with open(self._path) as f:
                     loaded = json.load(f)
-                self._data = {**DEFAULT_CONFIG, **loaded}
+                self._data = {**deepcopy(DEFAULT_CONFIG), **loaded}
                 logger.info("Config loaded from %s", self._path)
             except Exception:
                 logger.exception("Failed to load config, using defaults")
-                self._data = dict(DEFAULT_CONFIG)
+                self._data = deepcopy(DEFAULT_CONFIG)
         else:
             logger.info("No config file at %s, using defaults", self._path)
-            self._data = dict(DEFAULT_CONFIG)
+            self._data = deepcopy(DEFAULT_CONFIG)
 
     def save(self) -> None:
         try:
@@ -56,9 +62,20 @@ class ConfigManager:
         overrides = self._data.get("tick_interval_overrides", {})
         return overrides.get(watcher_name, default)
 
+    def set_interval(self, watcher_name: str, seconds: float) -> None:
+        overrides = self._data.setdefault("tick_interval_overrides", {})
+        if seconds > 0:
+            overrides[watcher_name] = seconds
+        else:
+            overrides.pop(watcher_name, None)
+
     @property
     def watchers_enabled(self) -> list[str]:
         return self._data.get("watchers_enabled", ["foreground", "afk"])
+
+    @watchers_enabled.setter
+    def watchers_enabled(self, value: list[str]) -> None:
+        self._data["watchers_enabled"] = list(value)
 
     @property
     def url_extraction_enabled(self) -> bool:
@@ -79,3 +96,47 @@ class ConfigManager:
     @property
     def log_level(self) -> str:
         return self._data.get("log_level", "INFO")
+
+    @log_level.setter
+    def log_level(self, value: str) -> None:
+        self._data["log_level"] = value.upper()
+
+    @property
+    def theme_mode(self) -> str:
+        return self._data.get("theme_mode", "system")
+
+    @theme_mode.setter
+    def theme_mode(self, value: str) -> None:
+        self._data["theme_mode"] = value
+
+    @property
+    def auto_update_enabled(self) -> bool:
+        return self._data.get("auto_update_enabled", True)
+
+    @auto_update_enabled.setter
+    def auto_update_enabled(self, value: bool) -> None:
+        self._data["auto_update_enabled"] = value
+
+    @property
+    def start_maximized(self) -> bool:
+        return self._data.get("start_maximized", True)
+
+    @start_maximized.setter
+    def start_maximized(self, value: bool) -> None:
+        self._data["start_maximized"] = value
+
+    @property
+    def afk_idle_threshold_s(self) -> float:
+        return float(self._data.get("afk_idle_threshold_s", 60.0))
+
+    @afk_idle_threshold_s.setter
+    def afk_idle_threshold_s(self, value: float) -> None:
+        self._data["afk_idle_threshold_s"] = max(0.0, float(value))
+
+    @property
+    def afk_away_threshold_s(self) -> float:
+        return float(self._data.get("afk_away_threshold_s", 300.0))
+
+    @afk_away_threshold_s.setter
+    def afk_away_threshold_s(self, value: float) -> None:
+        self._data["afk_away_threshold_s"] = max(0.0, float(value))

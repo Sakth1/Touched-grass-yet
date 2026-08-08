@@ -35,6 +35,37 @@ def _handle_alert_close(page: ft.Page, on_close: Optional[Callable]) -> None:
         on_close()
 
 
+def show_confirm_dialog(
+    page: ft.Page,
+    title: str,
+    message: str,
+    on_confirm: Callable[[], None],
+    confirm_text: str = "Delete",
+    cancel_text: str = "Cancel",
+) -> None:
+    """Show a modal yes/no dialog; ``on_confirm`` runs after the dialog closes."""
+
+    def _confirm(_) -> None:
+        safe_pop_dialog(page)
+        on_confirm()
+
+    def _cancel(_) -> None:
+        safe_pop_dialog(page)
+
+    dialog = ft.AlertDialog(
+        modal=True,
+        title=ft.Text(title, weight=ft.FontWeight.BOLD),
+        content=ft.Text(message, text_align=ft.TextAlign.CENTER),
+        actions=[
+            ft.TextButton(cancel_text, on_click=_cancel),
+            ft.Button(confirm_text, on_click=_confirm),
+        ],
+        actions_alignment=ft.MainAxisAlignment.CENTER,
+    )
+    page.show_dialog(dialog)
+    safe_update(page)
+
+
 def show_permission_dialog(page: ft.Page):
     dlg = ft.AlertDialog(
         title=ft.Text("Usage Access Required"),

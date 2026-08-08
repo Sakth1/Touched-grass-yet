@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from utils.layout import app_layout_resolver
+from UI.layout.layout_resolver import app_layout_resolver
 from utils.models import (
     AppLayout,
     NavigationPattern,

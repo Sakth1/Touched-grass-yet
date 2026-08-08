@@ -4,17 +4,24 @@ from utils.constants import (
     COMPACT_BREAKPOINT,
     COMPACT_HEIGHT_BREAKPOINT,
     EXPANDED_BREAKPOINT,
+    EXTENDED_RAIL_MAX_WIDTH,
+    EXTENDED_RAIL_MIN_WIDTH,
     LARGE_BREAKPOINT,
     MEDIUM_BREAKPOINT,
     MEDIUM_HEIGHT_BREAKPOINT,
     MIN_PAGE_HEIGHT,
     MIN_PAGE_WIDTH,
+    MINI_RAIL_WIDTH,
 )
 from utils.models import (
     AppLayout,
+    DrawerMetrics,
+    NavBarMetrics,
     NavigationPattern,
     Orientation,
     ScreenFormFactor,
+    SecondaryDrawerMetrics,
+    SecondaryNavigationPattern,
     WindowHeightClass,
     WindowWidthClass,
 )
@@ -80,6 +87,22 @@ def _resolve_navigation(form_factor: ScreenFormFactor) -> NavigationPattern:
             return NavigationPattern.BOTTOM_BAR
 
 
+def _resolve_secondary_navigation(
+    form_factor: ScreenFormFactor,
+) -> SecondaryNavigationPattern:
+    match form_factor:
+        case ScreenFormFactor.MOBILE:
+            return SecondaryNavigationPattern.INLINE
+        case ScreenFormFactor.TABLET_PORTRAIT:
+            return SecondaryNavigationPattern.INLINE
+        case ScreenFormFactor.TABLET_LANDSCAPE:
+            return SecondaryNavigationPattern.SIDE_PANEL
+        case ScreenFormFactor.DESKTOP:
+            return SecondaryNavigationPattern.SIDE_PANEL
+        case _:
+            return SecondaryNavigationPattern.INLINE
+
+
 def _resolve_padding(form_factor: ScreenFormFactor) -> float:
     match form_factor:
         case ScreenFormFactor.MOBILE:
@@ -118,6 +141,85 @@ def _resolve_spacing(form_factor: ScreenFormFactor) -> float:
             return 8
         case _:
             return 4
+
+
+def resolve_drawer_metrics(
+    navigation: NavigationPattern, width: float, padding: float
+) -> DrawerMetrics:
+    """Derive drawer/rail metrics from the navigation pattern and viewport.
+
+    Mini rail (tablet portrait): fixed narrow width — icons only, labels
+    hidden. Extended rail (tablet landscape and desktop): width scales with
+    the viewport between :data:`EXTENDED_RAIL_MIN_WIDTH` and
+    :data:`EXTENDED_RAIL_MAX_WIDTH`, with a roomier destination padding on
+    wide layouts.
+    """
+    if navigation is NavigationPattern.MINI_RAIL:
+        return DrawerMetrics(
+            width=float(MINI_RAIL_WIDTH),
+            destination_padding=8.0,
+            item_spacing=4.0,
+        )
+
+    width = min(max(width * 0.22, EXTENDED_RAIL_MIN_WIDTH), EXTENDED_RAIL_MAX_WIDTH)
+    wide = padding >= 20  # tablet landscape / desktop spacing scale
+    return DrawerMetrics(
+        width=float(width),
+        destination_padding=12.0 if wide else 8.0,
+        item_spacing=8.0 if wide else 4.0,
+    )
+
+
+def resolve_secondary_drawer_metrics(
+    navigation: SecondaryNavigationPattern, width: float, padding: float
+) -> SecondaryDrawerMetrics:
+    """Derive secondary side-panel metrics from the navigation pattern and viewport.
+
+    Only side-panel form factors (tablet landscape and desktop) render a real
+    panel; inline sections render no panel, so their metrics are zeroed.
+    """
+    if navigation is SecondaryNavigationPattern.INLINE:
+        return SecondaryDrawerMetrics(
+            width=0.0,
+            destination_padding=8.0,
+            item_spacing=4.0,
+        )
+
+    width = min(max(width * 0.18, EXTENDED_RAIL_MIN_WIDTH), EXTENDED_RAIL_MAX_WIDTH)
+    wide = padding >= 20
+    return SecondaryDrawerMetrics(
+        width=float(width),
+        destination_padding=12.0 if wide else 8.0,
+        item_spacing=8.0 if wide else 4.0,
+    )
+
+
+def resolve_navbar_metrics(
+    safe_padding: tuple[float, float, float, float],
+    width: float,
+    height_class: WindowHeightClass,
+) -> NavBarMetrics:
+    """Derive floating bottom bar metrics from the viewport and safe insets.
+
+    The bottom margin always clears the system gesture area (safe inset),
+    so the pill never collides with the Android navigation bar. Phone
+    landscape (compact height) sits lower and wider.
+    """
+    _, _, _, safe_bottom = safe_padding
+    compact_height = height_class is WindowHeightClass.COMPACT
+    wide = width >= COMPACT_BREAKPOINT
+
+    margin_h = 24.0 if wide else 16.0
+    margin_bottom = (16.0 if compact_height else 24.0) + safe_bottom
+    destination_padding = 10.0 if wide else 8.0
+
+    return NavBarMetrics(
+        margin_left=margin_h,
+        margin_right=margin_h,
+        margin_bottom=margin_bottom,
+        destination_padding=destination_padding,
+        item_spacing=4.0,
+    )
 
 
 def app_layout_resolver(
@@ -175,16 +277,35 @@ def app_layout_resolver(
                 getattr(padding, "bottom", 0.0) or 0.0,
             )
 
+    padding: float = _resolve_padding(form_factor)
+    navigation: NavigationPattern = _resolve_navigation(form_factor)
+    secondary_navigation: SecondaryNavigationPattern = _resolve_secondary_navigation(
+        form_factor
+    )
+    content_max_width: float = _resolve_content_max_width(form_factor)
+    spacing: float = _resolve_spacing(form_factor)
+    drawer_metrics: DrawerMetrics = resolve_drawer_metrics(navigation, width, padding)
+    secondary_navigation_metrics: SecondaryDrawerMetrics = (
+        resolve_secondary_drawer_metrics(secondary_navigation, width, padding)
+    )
+    nav_bar_metrics: NavBarMetrics = resolve_navbar_metrics(
+        safe_padding, width, height_class
+    )
+
     return AppLayout(
         screen_form_factor=form_factor,
         width=width,
         height=height,
-        padding=_resolve_padding(form_factor),
+        padding=padding,
         orientation=orientation,
         width_class=width_class,
         height_class=height_class,
-        navigation=_resolve_navigation(form_factor),
+        navigation=navigation,
+        secondary_navigation=secondary_navigation,
         safe_padding=safe_padding,
-        content_max_width=_resolve_content_max_width(form_factor),
-        spacing=_resolve_spacing(form_factor),
+        content_max_width=content_max_width,
+        spacing=spacing,
+        drawer_metrics=drawer_metrics,
+        secondary_navigation_metrics=secondary_navigation_metrics,
+        nav_bar_metrics=nav_bar_metrics,
     )

@@ -40,6 +40,30 @@ class _VariableReturnWatcher:
         return None
 
 
+class TestUpdateInterval:
+    def test_updates_running_watcher_config_in_place(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=2.0))
+        scheduler.register(w)
+
+        assert scheduler.update_interval("fg", 5.0) is True
+        assert w.config.interval_s == 5.0
+
+    def test_unknown_watcher_returns_false(self, scheduler):
+        assert scheduler.update_interval("nope", 1.0) is False
+
+    def test_interval_floor(self, scheduler):
+        w = _CountingWatcher(WatcherConfig(name="fg", interval_s=2.0))
+        scheduler.register(w)
+
+        scheduler.update_interval("fg", 0.0)
+        assert w.config.interval_s == 0.1
+
+    def test_watcher_names_lists_registered(self, scheduler):
+        scheduler.register(_CountingWatcher(WatcherConfig(name="fg", interval_s=1.0)))
+        scheduler.register(_CountingWatcher(WatcherConfig(name="afk", interval_s=1.0)))
+        assert scheduler.watcher_names == ["fg", "afk"]
+
+
 @pytest.fixture
 def bus():
     return TickBus()

@@ -40,6 +40,9 @@ class WindowsRuntime:
                     watchers.append(
                         fw(wc, app_config=self._config, storage=self._storage)
                     )
+                elif name == "afk":
+                    aw = cast(type[AfkWatcher], cls)
+                    watchers.append(aw(wc, app_config=self._config))
                 else:
                     watchers.append(cls(wc))
         logger.info("Created %d Windows watchers: %s", len(watchers), enabled)

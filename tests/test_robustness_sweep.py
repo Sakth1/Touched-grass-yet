@@ -157,9 +157,7 @@ class TestAppAutoStartWiring:
             patch("app.detect_os", return_value=OSType.WINDOWS),
             patch("app.enable_auto_start") as enable,
             patch("app.is_auto_start_enabled", return_value=False),
-            patch(
-                "core.application.collection_manager.ConfigManager", return_value=config
-            ),
+            patch("app.ConfigManager", return_value=config),
         ):
             from app import App
 
@@ -181,9 +179,7 @@ class TestAppAutoStartWiring:
             patch("app.detect_os", return_value=OSType.WINDOWS),
             patch("app.enable_auto_start") as enable,
             patch("app.is_auto_start_enabled", return_value=True),
-            patch(
-                "core.application.collection_manager.ConfigManager", return_value=config
-            ),
+            patch("app.ConfigManager", return_value=config),
         ):
             from app import App
 

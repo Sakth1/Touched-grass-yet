@@ -1,6 +1,7 @@
 import ctypes
 import logging
 
+from core.config_manager import ConfigManager
 from utils.models import Tick, WatcherConfig
 
 logger = logging.getLogger(__name__)
@@ -35,20 +36,31 @@ def _idle_seconds() -> float:
 
 
 class AfkWatcher:
-    def __init__(self, config: WatcherConfig | None = None):
+    def __init__(
+        self,
+        config: WatcherConfig | None = None,
+        app_config: ConfigManager | None = None,
+    ):
         self.config = config or WatcherConfig(
             name="afk",
             interval_s=5.0,
             enabled=True,
         )
+        self._app_config = app_config
 
     async def tick(self) -> Tick | None:
         try:
             idle = _idle_seconds()
+            idle_threshold = (
+                self._app_config.afk_idle_threshold_s if self._app_config else 60.0
+            )
+            away_threshold = (
+                self._app_config.afk_away_threshold_s if self._app_config else 300.0
+            )
             status = "active"
-            if idle > 300:
+            if idle > away_threshold:
                 status = "away"
-            elif idle > 60:
+            elif idle > idle_threshold:
                 status = "idle"
             return Tick(
                 watcher="afk",

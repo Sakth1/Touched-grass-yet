@@ -242,6 +242,111 @@ class TestAppHeadlessBoot:
         assert app.page.navigation_bar is not None
         assert app.navigation_rail is None
 
+    def test_mobile_settings_renders_inline_picker(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+
+        content = app.content_container.content
+        assert isinstance(content, SettingsCard)
+        tiles = content.content.content.controls[1:]
+        assert [tile.title.value for tile in tiles] == ["General", "Data", "App Info"]
+
+    def test_mobile_picker_tile_navigates_to_section(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+
+        tiles = app.content_container.content.content.content.controls[1:]
+        tiles[1].on_click(None)  # Data
+
+        assert app.route_manager.current_route == "/settings/data"
+        assert app.content_container.content is app.settings_page.data_section
+
+    def test_mobile_section_stays_open_after_layout_refresh(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings/data")
+        app._update_layout()
+
+        assert app.content_container.content is app.settings_page.data_section
+        assert not isinstance(app.content_container.content, SettingsCard)
+
+    def test_mobile_picker_not_shown_for_plain_routes(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app._update_layout()
+
+        assert app.content_container.content is app.dashboard_page
+        assert not isinstance(app.content_container.content, SettingsCard)
+
+    def test_desktop_resize_restores_screen_from_inline_picker(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+
+        page = app.page
+        page.width = 1280
+        page.height = 800
+        page.media = None
+        page.navigation_bar = None
+        app._handle_page_resize(None)
+
+        assert app.content_container.content is app.settings_page
+        assert app.navigation_rail is not None
+        assert page.navigation_bar is None
+
+    def test_section_back_returns_to_parent(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings/data")
+        app._go_back()
+
+        assert app.route_manager.current_route == "/settings"
+        assert app.content_container.content is app.settings_page
+
+    def test_back_button_navigates_to_parent(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings/data")
+        header = app.settings_page.data_section.content.controls[0]
+        back = next(c for c in header.controls if c.icon == ft.Icons.ARROW_BACK)
+        back.on_click(None)
+
+        assert app.route_manager.current_route == "/settings"
+
+    def test_section_back_on_mobile_restores_picker(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings/data")
+        app._go_back()
+
+        assert app.route_manager.current_route == "/settings"
+        assert isinstance(app.content_container.content, SettingsCard)
+
+    def test_go_back_is_noop_on_top_level_route(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app._go_back()
+
+        assert app.route_manager.current_route == "/dashboard"
+
     def test_navigate_every_route(self):
         from app import App
 
@@ -274,6 +379,48 @@ class TestAppHeadlessBoot:
         assert app.content_container.content is app.analytics_page
         assert app.route_manager.current_route == "/analytics"
 
+    def test_navigation_bar_reused_across_layout_updates(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        bar = app.page.navigation_bar
+
+        app._update_layout()
+        app._update_layout()
+
+        assert app.page.navigation_bar is bar
+
+    def test_navigation_bar_selection_survives_click_cycle(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.page.navigation_bar.select_index(2)
+        assert app.page.navigation_bar.selected_index == 2
+
+        app.page.navigation_bar.select_index(3)
+        assert app.page.navigation_bar.selected_index == 3
+        assert app.route_manager.current_route == "/settings"
+        assert isinstance(app.content_container.content, SettingsCard)
+
+    def test_navigation_bar_seeded_from_current_route(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/analytics")
+        app.page.navigation_bar = None
+        app._update_layout()
+
+        assert app.page.navigation_bar.selected_index == 2
+
+    def test_route_lookup_resolves_screen(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        assert app.route_manager.view_for("/dashboard") is app.dashboard_page
+        assert app.route_manager.view_for("/settings") is app.settings_page
+        assert app.route_manager.view_for("/nope") is None
+
     def test_navigation_rail_select_switches_view(self):
         from app import App
 
@@ -291,15 +438,77 @@ class TestAppHeadlessBoot:
         assert app.content_container.content is app.settings_page
         assert app.route_manager.current_route == "/settings"
 
-    def test_unknown_route_falls_back_to_home(self, caplog):
+    def test_secondary_panel_builds_with_sections(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        panel = app.secondary_navigation_panel
+        assert panel is not None
+        assert [d.label for d in panel.final_destinations] == [
+            "General",
+            "Data",
+            "App Info",
+        ]
+        assert panel.selected_index == 0
+        assert app.settings_page.content is app.settings_page.general_section
+
+    def test_secondary_panel_select_navigates_to_section(self):
+        from app import App
+        from utils.models import SecondaryNavigationChangeData
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        event = ft.Event(
+            name="SecondaryNavigationChange",
+            control=app.secondary_navigation_panel,
+            data=SecondaryNavigationChangeData(
+                index=1, label="Data", route="/settings/data"
+            ),
+        )
+        app._handle_secondary_change(event)
+        assert app.route_manager.current_route == "/settings/data"
+        assert app.content_container.content is app.settings_page.data_section
+
+    def test_secondary_panel_index_fallback_navigates_to_section(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        control = type("PanelStub", (), {"selected_index": 1})()
+        event = ft.Event(
+            name="SecondaryNavigationChange",
+            control=control,
+        )
+        app._handle_secondary_change(event)
+        assert app.route_manager.current_route == "/settings/data"
+
+    def test_secondary_panel_change_out_of_range_ignored(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        control = type("PanelStub", (), {"selected_index": 9})()
+        event = ft.Event(
+            name="SecondaryNavigationChange",
+            control=control,
+        )
+        app._handle_secondary_change(event)
+        assert app.route_manager.current_route == "/settings"
+
+    def test_unknown_route_falls_back_to_dashboard(self, caplog):
         from app import App
 
         app = App(self._page(1280, 800))
         with caplog.at_level(logging.WARNING, logger="UI.routing"):
             app.route_manager.navigate("/nope")
         assert "Unknown route" in caplog.text
-        assert app.content_container.content is None
-        assert app.route_manager.current_route == "/home"
+        assert app.content_container.content is app.dashboard_page
+        assert app.route_manager.current_route == "/dashboard"
 
     def test_resize_switches_form_factor(self):
         from app import App

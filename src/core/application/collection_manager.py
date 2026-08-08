@@ -143,6 +143,19 @@ class CollectionManager:
 
         logger.info("Collection started")
 
+    async def restart(self) -> None:
+        """Stop collection and rebuild watchers from the current config.
+
+        Used by settings to apply watcher enable/disable and interval
+        changes without restarting the app. No-op when not running.
+        """
+        if not self._running:
+            logger.info("Collection not running; restart skipped")
+            return
+        logger.info("Restarting collection with current config")
+        await self.stop()
+        await self.start()
+
     async def stop(self) -> None:
         self._running = False
         self._auto_paused = False

@@ -5,8 +5,7 @@ from typing import Callable, Optional
 
 import flet as ft
 
-from UI.layout.metrics import NavBarMetrics, resolve_navbar_metrics
-from utils.models import AppLayout
+from utils.models import AppLayout, NavBarMetrics, NavigationChangeData
 
 
 @ft.control
@@ -105,8 +104,22 @@ class CustomNavigationBar(ft.Container):
         for dest in changed:
             if dest.parent is not None:
                 dest.update()
-        if self.on_change:
-            self.on_change(ft.Event(name="FloatingNavigationChange", control=self))
+        if self.on_change and not app_init:
+            dest = self._destination_at(index)
+            self.on_change(
+                ft.Event(
+                    name="FloatingNavigationChange",
+                    control=self,
+                    data=NavigationChangeData(
+                        index=index, label=dest.label if dest is not None else ""
+                    ),
+                )
+            )
+
+    def _destination_at(self, index: int) -> Optional[CustomNavigationBarDestination]:
+        if 0 <= index < len(self.final_destinations):
+            return self.final_destinations[index]
+        return None
 
     def _select(self, index: int, app_init: bool = False) -> None:
         self.select_index(index, app_init)
@@ -121,7 +134,7 @@ class CustomNavigationBar(ft.Container):
     def apply_layout(self, layout: AppLayout) -> None:
         """Re-derive margin and destination padding from a resolved layout."""
         self._layout = layout
-        metrics = resolve_navbar_metrics(layout)
+        metrics: NavBarMetrics = layout.nav_bar_metrics
         self.margin = ft.margin.Margin(
             left=metrics.margin_left,
             right=metrics.margin_right,
