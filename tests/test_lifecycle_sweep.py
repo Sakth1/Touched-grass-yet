@@ -19,7 +19,14 @@ from sweep_helpers import mock_page
 
 from core.application.collection_manager import CollectionManager, _EventBridge
 from core.config_manager import ConfigManager
-from utils.models import OSType, ScreenFormFactor, Tick, WatcherConfig
+from utils.models import (
+    NavigationPattern,
+    OSType,
+    ScreenFormFactor,
+    SecondaryNavigationPattern,
+    Tick,
+    WatcherConfig,
+)
 
 _EVENT_TIMEOUT_S = 5.0
 
@@ -241,6 +248,21 @@ class TestAppHeadlessBoot:
         assert app.layout.screen_form_factor is ScreenFormFactor.MOBILE
         assert app.page.navigation_bar is not None
         assert app.navigation_rail is None
+
+    def test_android_boot_without_window_size(self):
+        from app import App
+
+        page = mock_page()
+        page.platform.is_mobile.return_value = True
+        app = App(page)
+
+        assert app._is_mobile is True
+        assert app.layout.screen_form_factor is ScreenFormFactor.MOBILE
+        assert app.layout.navigation is NavigationPattern.BOTTOM_BAR
+        assert app.layout.secondary_navigation is SecondaryNavigationPattern.INLINE
+        assert app.page.navigation_bar is not None
+        assert app.navigation_rail is None
+        assert page.window.width is None  # precondition: mobile reports no size
 
     def test_mobile_settings_renders_inline_picker(self):
         from app import App

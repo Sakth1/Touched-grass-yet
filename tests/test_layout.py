@@ -19,6 +19,7 @@ from utils.models import (
     NavigationPattern,
     Orientation,
     ScreenFormFactor,
+    SecondaryNavigationPattern,
     WindowHeightClass,
     WindowWidthClass,
 )
@@ -132,6 +133,22 @@ class TestNavigationPattern:
         assert (
             app_layout_resolver(1280, 800).navigation is NavigationPattern.EXTENDED_RAIL
         )
+
+    def test_is_mobile_forces_mobile_on_wide_viewport(self):
+        layout = app_layout_resolver(1280, 800, is_mobile=True)
+        assert layout.screen_form_factor is ScreenFormFactor.MOBILE
+        assert layout.navigation is NavigationPattern.BOTTOM_BAR
+        assert layout.secondary_navigation is SecondaryNavigationPattern.INLINE
+        assert layout.padding == 12
+
+    def test_is_mobile_when_window_reports_no_size(self):
+        layout = app_layout_resolver(None, None, is_mobile=True)
+        assert layout.screen_form_factor is ScreenFormFactor.MOBILE
+        assert layout.navigation is NavigationPattern.BOTTOM_BAR
+
+    def test_default_is_size_driven_not_platform_forced(self):
+        layout = app_layout_resolver(1280, 800)
+        assert layout.screen_form_factor is ScreenFormFactor.DESKTOP
 
 
 class TestDesignMetrics:

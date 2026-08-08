@@ -16,6 +16,12 @@ DEFAULT_PAGE_WIDTH = 960
 #: Fallback page height used when the Flet viewport reports ``0``.
 DEFAULT_PAGE_HEIGHT = 800
 
+#: Phone-size defaults used when a mobile platform reports no window size.
+MOBILE_DEFAULT_WIDTH = 400
+
+#: Phone-size default height used when a mobile platform reports no window size.
+MOBILE_DEFAULT_HEIGHT = 800
+
 #: Minimum viewport width enforced after safe-area padding is subtracted.
 MIN_PAGE_WIDTH = 320.0
 
@@ -61,4 +67,4 @@ LATEST_RELEASE_REPO_URL = "https://api.github.com/repos/sakth1/Unscreen/releases
 RELEASES_PAGE_URL = "https://github.com/sakth1/Unscreen/releases/latest"
 
 #: Version reported when package metadata is unavailable (e.g. unbundled runs).
-FALLBACK_APP_VERSION = "0.4.3"
+FALLBACK_APP_VERSION = "0.4.4"
