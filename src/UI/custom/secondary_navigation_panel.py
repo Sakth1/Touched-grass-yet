@@ -1,31 +1,44 @@
 from __future__ import annotations
 
 from dataclasses import field
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import flet as ft
 
 from utils.models import (
     AppLayout,
-    DrawerMetrics,
-    NavigationChangeData,
-    NavigationPattern,
+    SecondaryDrawerMetrics,
+    SecondaryNavigationPattern,
 )
 
 
 @ft.control
-class CustomNavigationDrawerDestination(ft.Container):
+class SecondaryNavigationDestination(ft.Container):
+    """A single secondary-navigation pill (icon + label).
+
+    Parameters
+    ----------
+    icon:
+        Material icon name shown next to the label.
+    label:
+        Destination title.
+    selected:
+        Whether this pill is currently selected.
+    on_select:
+        Callback invoked when this pill is clicked.
+    """
+
     icon: str = ft.Icons.HELP
     label: str = ""
     selected: bool = False
-    on_select: Optional[Callable[["CustomNavigationDrawerDestination"], None]] = None
+    on_select: Optional[Callable[["SecondaryNavigationDestination"], None]] = None
 
     def init(self):
         self._icon = ft.Icon(icon=self.icon, color=self._color())
         self._text = ft.Text(self.label, color=self._color(), size=12)
         self.padding = ft.padding.Padding.only(top=4, bottom=4, left=8, right=8)
         self._display_label = True
-        self.content_controls: list[ft.Control] = (
+        self.content_controls: list[ft.Icon] | list[Union[ft.Icon, ft.Text]] = (
             [self._icon, self._text] if self._display_label else [self._icon]
         )
         self.content: Optional[ft.Control] = ft.Row(controls=self.content_controls)
@@ -63,7 +76,7 @@ class CustomNavigationDrawerDestination(ft.Container):
         self._render()
         return True
 
-    def apply_metrics(self, metrics: DrawerMetrics) -> None:
+    def apply_metrics(self, metrics: SecondaryDrawerMetrics) -> None:
         self.padding = ft.padding.Padding.only(
             top=4,
             bottom=4,
@@ -82,58 +95,56 @@ class CustomNavigationDrawerDestination(ft.Container):
 
 
 @ft.control
-class CustomNavigationDrawer(ft.Container):
-    destinations: list[CustomNavigationDrawerDestination] = field(
+class SecondaryNavigationPanel(ft.Container):
+    """In-screen sub-navigation for a route's secondary sections.
+
+    Renders the destinations of a parent route (e.g. ``/settings``) as
+    selectable pills and reports the chosen index via ``on_change``.
+
+    Parameters
+    ----------
+    destinations:
+        The secondary destinations rendered by this panel.
+    selected_index:
+        Index of the initially selected destination.
+    on_change:
+        Callback fired with a ``ft.Event`` (control = this panel) whenever the
+        selection changes.
+    layout:
+        Resolved :class:`AppLayout`; drives the panel's geometry.
+    """
+
+    destinations: list[SecondaryNavigationDestination] = field(
         default_factory=list, metadata={"skip": True}
     )
     extended: bool = True
-    layout: Optional[AppLayout] = field(default=None, metadata={"skip": True})
-    trailing: Optional[CustomNavigationDrawerDestination] = field(
-        default=None, metadata={"skip": True}
-    )
     selected_index: int = 0
     on_change: Optional[Callable[[ft.Event], None]] = None
+    layout: Optional[AppLayout] = field(default=None, metadata={"skip": True})
 
     def init(self):
         self._layout: Optional[AppLayout] = None
         self.bgcolor = ft.Colors.SURFACE_CONTAINER
 
-        self.final_destinations: list[CustomNavigationDrawerDestination] = [
+        self.final_destinations: list[SecondaryNavigationDestination] = [
             i for i in self.destinations if i is not None
         ]
 
-        self.all_destinations: list[CustomNavigationDrawerDestination] = [
-            *self.final_destinations,
-            self.trailing,
-        ]
-        self.all_destinations = [d for d in self.all_destinations if d is not None]
-
-        for i, dest in enumerate(self.all_destinations):
+        for i, dest in enumerate(self.final_destinations):
             dest.on_select = lambda d, i=i: self._select(i)
 
-        self.drawer_content = [
-            i
-            for i in [
-                *self.final_destinations,
-                ft.Container(expand=True),
-                self.trailing,
-            ]
-            if i is not None
-        ]
-
         self.content = ft.Column(
-            controls=self.drawer_content,
+            controls=self.final_destinations,
             alignment=ft.MainAxisAlignment.SPACE_EVENLY,
             tight=True,
             expand=True,
             run_spacing=0,
         )
 
+        self.alignment = ft.alignment.Alignment.TOP_LEFT
+
         # Apply the initial selection without firing ``on_change`` (avoids a
         # spurious navigation while the shell is still being constructed).
-        self._sync_selection()
-
-    def before_update(self):
         self._sync_selection()
 
     def select_index(self, index: int) -> None:
@@ -145,52 +156,42 @@ class CustomNavigationDrawer(ft.Container):
             if dest.parent is not None:
                 dest.update()
         if self.on_change:
-            dest = self._destination_at(index)
-            self.on_change(
-                ft.Event(
-                    name="FloatingNavigationChange",
-                    control=self,
-                    data=NavigationChangeData(
-                        index=index, label=dest.label if dest is not None else ""
-                    ),
-                )
-            )
-
-    def _destination_at(
-        self, index: int
-    ) -> Optional[CustomNavigationDrawerDestination]:
-        if 0 <= index < len(self.all_destinations):
-            return self.all_destinations[index]
-        return None
+            self.on_change(ft.Event(name="SecondaryNavigationChange", control=self))
 
     def _select(self, index: int) -> None:
         self.select_index(index)
 
-    def _sync_selection(self) -> list[CustomNavigationDrawerDestination]:
-        changed: list[CustomNavigationDrawerDestination] = []
-        for i, dest in enumerate(self.all_destinations):
+    def _sync_selection(self) -> list[SecondaryNavigationDestination]:
+        changed: list[SecondaryNavigationDestination] = []
+        for i, dest in enumerate(self.final_destinations):
             if dest.set_selected(i == self.selected_index):
                 changed.append(dest)
         return changed
 
     def apply_layout(self, layout: AppLayout) -> None:
-        """Re-derive width, padding, spacing, and label mode from a layout."""
+        """Re-derive width, padding, spacing, and label mode from a layout.
+
+        Side-panel layouts (tablet landscape, desktop) render the panel
+        extended with the resolved metrics; inline layouts (phones, tablet
+        portrait) collapse it to zero width so the shell can drop it.
+        """
         self._layout = layout
-        if layout.navigation is NavigationPattern.MINI_RAIL:
-            self._apply_extended(False)
-        else:
-            self._apply_extended(True)
-        self._apply_metrics(self._layout.drawer_metrics)
+        side_panel = (
+            layout.secondary_navigation is SecondaryNavigationPattern.SIDE_PANEL
+        )
+        self._apply_extended(side_panel)
+        self._apply_metrics()
 
     def _apply_extended(self, extended: bool) -> None:
         if extended == self.extended:
             return
         self.extended = extended
-        for dest in self.all_destinations:
+        for dest in self.final_destinations:
             dest.toggle_label()
 
-    def _apply_metrics(self, metrics: DrawerMetrics) -> None:
+    def _apply_metrics(self) -> None:
+        metrics = self._layout.secondary_navigation_metrics
         self.width = metrics.width
         self.content.run_spacing = metrics.item_spacing
-        for dest in self.all_destinations:
+        for dest in self.final_destinations:
             dest.apply_metrics(metrics)

@@ -4,6 +4,7 @@ Modules must import from sibling submodules directly (e.g. ``utils.paths``)
 rather than from the package root to avoid circular imports.
 """
 
+from UI.layout.layout_resolver import app_layout_resolver
 from utils.android import get_activity
 from utils.bus import TickBus
 from utils.constants import (
@@ -19,7 +20,6 @@ from utils.constants import (
 )
 from utils.files import remove_file, timestamped_filename
 from utils.flet_helpers import safe_pop_dialog, safe_update
-from utils.layout import app_layout_resolver
 from utils.models import (
     AppLayout,
     NavigationPattern,

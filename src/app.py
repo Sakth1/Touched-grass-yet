@@ -16,9 +16,15 @@ from UI.custom.navigation_drawer import (
     CustomNavigationDrawer,
     CustomNavigationDrawerDestination,
 )
+from UI.custom.secondary_navigation_panel import (
+    SecondaryNavigationDestination,
+    SecondaryNavigationPanel,
+)
 from UI.dialogs import show_permission_dialog
+from UI.layout.layout_resolver import app_layout_resolver
 from UI.routing import RouteManager
 from UI.screens.analytics_screen import Analytics
+from UI.screens.base_screen import BaseScreen
 from UI.screens.dashboard_screen import Dashboard
 from UI.screens.settings_screen import Settings
 from UI.screens.timeline_screen import Timeline
@@ -29,8 +35,13 @@ from utils.constants import (
     MIN_PAGE_HEIGHT,
     MIN_PAGE_WIDTH,
 )
-from utils.layout import app_layout_resolver
-from utils.models import AppLayout, NavigationPattern, OSType
+from utils.models import (
+    AppLayout,
+    NavigationDestination,
+    NavigationPattern,
+    OSType,
+    SecondaryNavigationPattern,
+)
 from utils.platform import detect_os
 
 logging.basicConfig(
@@ -59,42 +70,60 @@ class App:
         self.analytics_page = Analytics()
         self.settings_page = Settings()
 
-        self.dashboard_view = ft.Container(
-            content=ft.ResponsiveRow(
-                [self.dashboard_page], alignment=ft.MainAxisAlignment.CENTER
-            )
-        )
         self.content_container = ft.Container(expand=True)
 
         self.navigation_rail = None
+        self.secondary_navigation_panel = None
+        self._panel_view = None
+        self.current_view: BaseScreen = None
+        self.populated_options_inline = False
         self.shell = ft.Row(expand=True, controls=[self.content_container])
 
-        route_to_index = {
-            "/dashboard": 0,
-            "/timeline": 1,
-            "/analytics": 2,
-            "/settings": 3,
+        self.section_routes: dict[str, list[str]] = {
+            "/settings": ["/settings/general", "/settings/app-info"],
         }
 
-        route_views = {
-            "/dashboard": self.dashboard_page,
-            "/timeline": self.timeline_page,
-            "/analytics": self.analytics_page,
-            "/settings": self.settings_page,
-        }
+        self.destinations = [
+            NavigationDestination(
+                "/dashboard",
+                "Dashboard",
+                ft.Icons.DASHBOARD,
+                self.dashboard_page,
+            ),
+            NavigationDestination(
+                "/timeline",
+                "Timeline",
+                ft.Icons.TIMELINE,
+                self.timeline_page,
+            ),
+            NavigationDestination(
+                "/analytics",
+                "Analytics",
+                ft.Icons.ANALYTICS,
+                self.analytics_page,
+            ),
+            NavigationDestination(
+                "/settings",
+                "Settings",
+                ft.Icons.SETTINGS,
+                self.settings_page,
+            ),
+        ]
 
         self.route_manager = RouteManager(
             page=self.page,
             container=self.content_container,
-            route_views=route_views,
-            route_to_index=route_to_index,
+            destinations=self.destinations,
+            section_routes=self.section_routes,
         )
 
+        self.page.on_route_change = self.route_manager.handle_route_change
         self.page.on_resize = self._handle_page_resize
         self.page.on_media_change = self._handle_media_change
         self.page.add(self.shell)
 
         self._initiate()
+        self.route_manager.navigate(self.route_manager.current_route)
 
     def _set_window_icon(self) -> None:
         if self.page.platform is not None and self.page.platform.is_desktop():
@@ -163,36 +192,107 @@ class App:
         self.page.height = layout.height
         get_app_state().set_layout(layout)
 
-        match layout.navigation:
+        self._update_layout()
+
+    def _update_layout(self):
+        match self.layout.navigation:
             case NavigationPattern.BOTTOM_BAR:
                 nav = self._ensure_navigation_bar()
-                nav.apply_layout(layout)
+                nav.apply_layout(self.layout)
                 self.shell.controls = [self.content_container]
 
             case NavigationPattern.MINI_RAIL:
                 self.page.navigation_bar = None
-                self._ensure_rail(extended=False).apply_layout(layout)
-                self.shell.controls = [
-                    self.navigation_rail,
-                    self.content_container,
-                ]
+                self._ensure_rail(extended=False).apply_layout(self.layout)
+                self._build_secondary_options(self.layout)
+
+                self.shell.controls = [self.navigation_rail]
+                self._append_secondary_panel()
 
             case NavigationPattern.EXTENDED_RAIL:
                 self.page.navigation_bar = None
-                self._ensure_rail(extended=True).apply_layout(layout)
-                self.shell.controls = [
-                    self.navigation_rail,
-                    self.content_container,
-                ]
+                self._ensure_rail(extended=True).apply_layout(self.layout)
+                self._build_secondary_options(self.layout)
+
+                self.shell.controls = [self.navigation_rail]
+                self._append_secondary_panel()
 
             case _:
                 raise NotImplementedError
 
-        self._apply_content_padding(layout)
-        view = self.content_container.content
-        if view is not None and hasattr(view, "apply_layout"):
-            view.apply_layout(layout)  # type: ignore[attr-defined]
+        self._apply_content_padding(self.layout)
         self.page.update()
+
+    def _append_secondary_panel(self) -> None:
+        """Place the secondary side panel in the shell when it applies.
+
+        The panel is only relevant for side-panel form factors; inline
+        layouts (phones, tablet portrait) render the secondary sections
+        inside the content area, so a leftover panel must not take space.
+        """
+        if (
+            self.secondary_navigation_panel is not None
+            and self.layout.secondary_navigation
+            is SecondaryNavigationPattern.SIDE_PANEL
+        ):
+            self.secondary_navigation_panel.apply_layout(self.layout)
+            self.shell.controls.append(self.secondary_navigation_panel)
+        self.shell.controls.append(self.content_container)
+
+    def _build_secondary_options(self, layout: AppLayout):
+        match layout.secondary_navigation:
+            case SecondaryNavigationPattern.INLINE:
+                self._populate_page_with_options()
+                self.populated_options_inline = True
+            case SecondaryNavigationPattern.SIDE_PANEL:
+                if self.populated_options_inline:
+                    ...
+                self._ensure_secondary_panel()
+                self.populated_options_inline = False
+            case _:
+                raise NotImplementedError
+
+    def _populate_page_with_options(self): ...
+
+    def _ensure_secondary_panel(self):
+        self.current_view = self.route_manager.view_for(
+            self.route_manager.current_route
+        )
+        has_options = self.current_view is not None and getattr(
+            self.current_view, "_secondary_options", False
+        )
+        if not has_options:
+            self.secondary_navigation_panel = None
+            self._panel_view = None
+            return
+
+        # Reuse the panel while the same view owns it so window resizes do
+        # not wipe the current section selection.
+        if (
+            self.secondary_navigation_panel is not None
+            and self._panel_view is self.current_view
+        ):
+            self.secondary_navigation_panel.apply_layout(self.layout)
+            return
+
+        self.secondary_destination: list[NavigationDestination] = (
+            self.current_view._get_secondary_options()
+        )
+
+        self.secondary_navigation_panel = SecondaryNavigationPanel(
+            destinations=[
+                SecondaryNavigationDestination(
+                    icon=dest.icon,
+                    label=dest.label,
+                    selected=i == 0,
+                )
+                for i, dest in enumerate(self.secondary_destination)
+            ],
+            selected_index=0,
+            adaptive=True,
+        )
+        self.secondary_navigation_panel.apply_layout(self.layout)
+        self._panel_view = self.current_view
 
     def _resolve_page_dimensions(self) -> tuple[float, float]:
         page_width = getattr(self.page, "width", 0) or DEFAULT_PAGE_WIDTH
@@ -239,60 +339,39 @@ class App:
         self.page.navigation_bar = CustomNavigationBar(
             destinations=[
                 CustomNavigationBarDestination(
-                    icon=ft.icons.Icons.DASHBOARD,
-                    label="Dashboard",
-                    selected=True,
-                ),
-                CustomNavigationBarDestination(
-                    icon=ft.icons.Icons.TIMELINE,
-                    label="Timeline",
-                    selected=False,
-                ),
-                CustomNavigationBarDestination(
-                    icon=ft.icons.Icons.ANALYTICS,
-                    label="Analytics",
-                    selected=False,
-                ),
-                CustomNavigationBarDestination(
-                    icon=ft.icons.Icons.SETTINGS,
-                    label="Settings",
-                    selected=False,
-                ),
+                    icon=dest.icon,
+                    label=dest.label,
+                    selected=i == 0,
+                )
+                for i, dest in enumerate(self.destinations)
             ],
             selected_index=0,
             adaptive=True,
             label_behavior=ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED,
             on_change=self._handle_navigation_change,
         )
-        self.page.on_route_change = self.route_manager.handle_route_change
         return self.page.navigation_bar
 
     def _ensure_rail(self, extended: bool) -> CustomNavigationDrawer:
         if self.navigation_rail is not None:
             return self.navigation_rail
 
+        settings = next(d for d in self.destinations if d.route == "/settings")
+        main = [d for d in self.destinations if d.route != "/settings"]
+
         self.navigation_rail = CustomNavigationDrawer(
             trailing=CustomNavigationDrawerDestination(
-                icon=ft.icons.Icons.SETTINGS_OUTLINED,
-                label="Settings",
-                tooltip="Settings",
+                icon=ft.Icons.SETTINGS_OUTLINED,
+                label=settings.label,
+                tooltip=settings.label,
             ),
             destinations=[
                 CustomNavigationDrawerDestination(
-                    icon=ft.icons.Icons.DASHBOARD,
-                    label="Dashboard",
-                    tooltip="Dashboard",
-                ),
-                CustomNavigationDrawerDestination(
-                    icon=ft.icons.Icons.TIMELINE,
-                    label="Timeline",
-                    tooltip="Timeline",
-                ),
-                CustomNavigationDrawerDestination(
-                    icon=ft.icons.Icons.ANALYTICS,
-                    label="Analytics",
-                    tooltip="Analytics",
-                ),
+                    icon=dest.icon,
+                    label=dest.label,
+                    tooltip=dest.label,
+                )
+                for dest in main
             ],
             selected_index=0,
             extended=extended,
@@ -302,6 +381,7 @@ class App:
 
     def _handle_navigation_change(self, event: ft.ControlEvent):
         self.route_manager.handle_navigation_change(event)
+        self._update_layout()
 
 
 async def entrypoint(page: ft.Page):

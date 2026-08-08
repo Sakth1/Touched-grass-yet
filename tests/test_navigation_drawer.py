@@ -53,6 +53,58 @@ class TestDrawerConstruction:
         assert second.selected is True
 
 
+class TestDrawerChangeEventData:
+    def test_change_event_carries_index_and_label(self):
+        from utils.models import NavigationChangeData
+
+        first = CustomNavigationDrawerDestination(icon="HOME", label="Dashboard")
+        second = CustomNavigationDrawerDestination(icon="TIMELINE", label="Timeline")
+        drawer = CustomNavigationDrawer(
+            destinations=[first, second],
+            selected_index=0,
+        )
+        events = []
+        drawer.on_change = lambda e: events.append(e)
+
+        drawer.select_index(1)
+
+        assert len(events) == 1
+        assert events[0].name == "FloatingNavigationChange"
+        assert isinstance(events[0].data, NavigationChangeData)
+        assert events[0].data.index == 1
+        assert events[0].data.label == "Timeline"
+
+    def test_change_event_uses_trailing_label(self):
+        first = CustomNavigationDrawerDestination(icon="HOME", label="Dashboard")
+        trailing = CustomNavigationDrawerDestination(icon="SETTINGS", label="Settings")
+        drawer = CustomNavigationDrawer(
+            destinations=[first],
+            trailing=trailing,
+            selected_index=0,
+        )
+        events = []
+        drawer.on_change = lambda e: events.append(e)
+
+        drawer.select_index(1)
+
+        assert events[0].data.index == 1
+        assert events[0].data.label == "Settings"
+
+    def test_no_event_when_index_unchanged(self):
+        first = CustomNavigationDrawerDestination(icon="HOME", label="Dashboard")
+        second = CustomNavigationDrawerDestination(icon="TIMELINE", label="Timeline")
+        drawer = CustomNavigationDrawer(
+            destinations=[first, second],
+            selected_index=0,
+        )
+        events = []
+        drawer.on_change = lambda e: events.append(e)
+
+        drawer.select_index(0)
+
+        assert events == []
+
+
 class TestDrawerResponsiveLayout:
     @staticmethod
     def _drawer(extended=True):
@@ -68,7 +120,7 @@ class TestDrawerResponsiveLayout:
         )
 
     def test_mini_rail_collapses_labels(self):
-        from utils.layout import app_layout_resolver
+        from UI.layout.layout_resolver import app_layout_resolver
 
         drawer = self._drawer(extended=True)
         layout = app_layout_resolver(800, 1280)  # tablet portrait -> mini rail
@@ -80,7 +132,7 @@ class TestDrawerResponsiveLayout:
         assert len(drawer.final_destinations[0].content.controls) == 1  # icon only
 
     def test_expanded_rail_shows_labels(self):
-        from utils.layout import app_layout_resolver
+        from UI.layout.layout_resolver import app_layout_resolver
 
         drawer = self._drawer(extended=True)
         layout = app_layout_resolver(1280, 800)  # desktop -> extended rail
@@ -89,10 +141,12 @@ class TestDrawerResponsiveLayout:
 
         assert drawer.extended is True
         assert len(drawer.final_destinations[0].content.controls) == 2  # icon + label
-        assert 120 <= drawer.width <= 200
+        width = drawer.width
+        assert width is not None
+        assert 120 <= width <= 200
 
     def test_layout_always_wins_over_initial_state(self):
-        from utils.layout import app_layout_resolver
+        from UI.layout.layout_resolver import app_layout_resolver
 
         drawer = self._drawer(extended=True)
         drawer.apply_layout(app_layout_resolver(800, 1280))
@@ -107,7 +161,7 @@ class TestDrawerResponsiveLayout:
         assert drawer.extended is True
 
     def test_reapplying_same_layout_is_idempotent(self):
-        from utils.layout import app_layout_resolver
+        from UI.layout.layout_resolver import app_layout_resolver
 
         drawer = self._drawer(extended=True)
         layout = app_layout_resolver(1280, 800)
@@ -120,7 +174,7 @@ class TestDrawerResponsiveLayout:
         assert drawer.extended is True
 
     def test_width_scales_with_viewport(self):
-        from utils.layout import app_layout_resolver
+        from UI.layout.layout_resolver import app_layout_resolver
 
         drawer = self._drawer(extended=True)
         layout = app_layout_resolver(900, 600)

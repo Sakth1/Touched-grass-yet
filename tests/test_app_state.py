@@ -11,7 +11,8 @@ from core.state.app_state import (
     reset_app_state,
 )
 from core.update_checker import UpdateInfo
-from utils.models import AppLayout, OSType, ScreenFormFactor
+from UI.layout.layout_resolver import app_layout_resolver
+from utils.models import OSType
 
 
 class TestSingleton:
@@ -54,7 +55,7 @@ class TestObservers:
         state = get_app_state()
         fired = []
         state.on_change(KEY_LAYOUT, lambda key: fired.append(key))
-        state.set_layout(AppLayout(ScreenFormFactor.DESKTOP, 1200.0, 800.0, 16.0))
+        state.set_layout(app_layout_resolver(1200, 800))
         assert fired == [KEY_LAYOUT]
 
     def test_unsubscribe_stops_firing(self):
@@ -158,7 +159,7 @@ class TestWatcherHealth:
 class TestUIState:
     def test_layout_and_route(self):
         state = get_app_state()
-        layout = AppLayout(ScreenFormFactor.MOBILE, 500.0, 800.0, 8.0)
+        layout = app_layout_resolver(500, 800)
         state.set_layout(layout)
         assert state.layout is layout
         state.set_route("/settings")
@@ -240,11 +241,19 @@ class TestCollectionManagerWiring:
 class TestRouteManagerWiring:
     def test_navigate_updates_state(self):
         from UI.routing import RouteManager
+        from utils.models import NavigationDestination
 
         page = MagicMock()
         container = MagicMock()
-        views = {"/dashboard": object(), "/timeline": object()}
-        rm = RouteManager(page, container, views, {"/dashboard": 0, "/timeline": 1})
+        views = {
+            "/dashboard": object(),
+            "/timeline": object(),
+        }
+        destinations = [
+            NavigationDestination(route, "Label " + route, "HOME", view)
+            for route, view in views.items()
+        ]
+        rm = RouteManager(page, container, destinations)
         rm.navigate("/timeline")
         assert get_app_state().current_route == "/timeline"
         assert container.update.called

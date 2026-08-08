@@ -274,6 +274,14 @@ class TestAppHeadlessBoot:
         assert app.content_container.content is app.analytics_page
         assert app.route_manager.current_route == "/analytics"
 
+    def test_route_lookup_resolves_screen(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        assert app.route_manager.view_for("/dashboard") is app.dashboard_page
+        assert app.route_manager.view_for("/settings") is app.settings_page
+        assert app.route_manager.view_for("/nope") is None
+
     def test_navigation_rail_select_switches_view(self):
         from app import App
 
@@ -291,15 +299,15 @@ class TestAppHeadlessBoot:
         assert app.content_container.content is app.settings_page
         assert app.route_manager.current_route == "/settings"
 
-    def test_unknown_route_falls_back_to_home(self, caplog):
+    def test_unknown_route_falls_back_to_dashboard(self, caplog):
         from app import App
 
         app = App(self._page(1280, 800))
         with caplog.at_level(logging.WARNING, logger="UI.routing"):
             app.route_manager.navigate("/nope")
         assert "Unknown route" in caplog.text
-        assert app.content_container.content is None
-        assert app.route_manager.current_route == "/home"
+        assert app.content_container.content is app.dashboard_page
+        assert app.route_manager.current_route == "/dashboard"
 
     def test_resize_switches_form_factor(self):
         from app import App

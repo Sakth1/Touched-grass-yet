@@ -44,6 +44,13 @@ class NavigationPattern(Enum):
     EXTENDED_RAIL = 2
 
 
+class SecondaryNavigationPattern(Enum):
+    """Which navigation chrome fits the current window size."""
+
+    SIDE_PANEL = 0
+    INLINE = 1
+
+
 class Orientation(Enum):
     PORTRAIT = 0
     LANDSCAPE = 1
@@ -76,6 +83,62 @@ class RawEvent:
 
 
 @dataclass(frozen=True)
+class DrawerMetrics:
+    """Numbers the custom drawer needs for the current layout."""
+
+    width: float
+    destination_padding: float
+    item_spacing: float
+
+
+@dataclass(frozen=True)
+class SecondaryDrawerMetrics:
+    """Numbers the secondary side panel needs for the current layout."""
+
+    width: float
+    destination_padding: float
+    item_spacing: float
+
+
+@dataclass(frozen=True)
+class NavigationChangeData:
+    """Payload attached to navigation ``on_change`` events.
+
+    Identifies the destination selected in a custom navigation control
+    (bottom bar or drawer) when its ``on_change`` fires.
+    """
+
+    index: int
+    label: str = ""
+
+
+@dataclass(frozen=True)
+class NavigationDestination:
+    """One top-level navigation destination.
+
+    Single source of truth for a main-nav entry: the route it owns, the
+    label shown in the bar/rail, the icon, and the screen instance rendered
+    for it.
+    """
+
+    route: str
+    label: str
+    icon: str
+    view: Any
+
+
+@dataclass(frozen=True)
+class NavBarMetrics:
+    """Numbers the floating bottom navigation bar needs for the current layout."""
+
+    margin_left: float
+    margin_right: float
+    margin_bottom: float
+    destination_padding: float
+    item_spacing: float
+
+
+@dataclass(frozen=True)
 class AppLayout:
     """Resolved responsive metrics for the current page size.
 
@@ -92,11 +155,17 @@ class AppLayout:
     screen_form_factor: ScreenFormFactor
     width: float
     height: float
+    drawer_metrics: DrawerMetrics
+    secondary_navigation_metrics: SecondaryDrawerMetrics
+    nav_bar_metrics: NavBarMetrics
     padding: float = 16.0
     orientation: Orientation = Orientation.LANDSCAPE
     width_class: WindowWidthClass = WindowWidthClass.EXTRA_LARGE
     height_class: WindowHeightClass = WindowHeightClass.MEDIUM
     navigation: NavigationPattern = NavigationPattern.EXTENDED_RAIL
+    secondary_navigation: SecondaryNavigationPattern = (
+        SecondaryNavigationPattern.SIDE_PANEL
+    )
     safe_padding: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
     content_max_width: float = 0.0
     spacing: float = 4.0
