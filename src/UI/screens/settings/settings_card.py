@@ -1,4 +1,5 @@
-import flet as  ft
+import flet as ft
+
 
 class SettingsCard(ft.Card):
     """Section card with a bold title and stacked controls."""

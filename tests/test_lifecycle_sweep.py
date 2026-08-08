@@ -242,6 +242,71 @@ class TestAppHeadlessBoot:
         assert app.page.navigation_bar is not None
         assert app.navigation_rail is None
 
+    def test_mobile_settings_renders_inline_picker(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+
+        content = app.content_container.content
+        assert isinstance(content, SettingsCard)
+        tiles = content.content.content.controls[1:]
+        assert [tile.title.value for tile in tiles] == ["General", "Data", "App Info"]
+
+    def test_mobile_picker_tile_navigates_to_section(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+
+        tiles = app.content_container.content.content.content.controls[1:]
+        tiles[1].on_click(None)  # Data
+
+        assert app.route_manager.current_route == "/settings/data"
+        assert app.content_container.content is app.settings_page.data_section
+
+    def test_mobile_section_stays_open_after_layout_refresh(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings/data")
+        app._update_layout()
+
+        assert app.content_container.content is app.settings_page.data_section
+        assert not isinstance(app.content_container.content, SettingsCard)
+
+    def test_mobile_picker_not_shown_for_plain_routes(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app._update_layout()
+
+        assert app.content_container.content is app.dashboard_page
+        assert not isinstance(app.content_container.content, SettingsCard)
+
+    def test_desktop_resize_restores_screen_from_inline_picker(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+
+        page = app.page
+        page.width = 1280
+        page.height = 800
+        page.media = None
+        page.navigation_bar = None
+        app._handle_page_resize(None)
+
+        assert app.content_container.content is app.settings_page
+        assert app.navigation_rail is not None
+        assert page.navigation_bar is None
+
     def test_navigate_every_route(self):
         from app import App
 
@@ -273,6 +338,40 @@ class TestAppHeadlessBoot:
         app.page.navigation_bar.select_index(2)
         assert app.content_container.content is app.analytics_page
         assert app.route_manager.current_route == "/analytics"
+
+    def test_navigation_bar_reused_across_layout_updates(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        bar = app.page.navigation_bar
+
+        app._update_layout()
+        app._update_layout()
+
+        assert app.page.navigation_bar is bar
+
+    def test_navigation_bar_selection_survives_click_cycle(self):
+        from app import App
+        from UI.screens.settings.settings_card import SettingsCard
+
+        app = App(self._page(400, 800))
+        app.page.navigation_bar.select_index(2)
+        assert app.page.navigation_bar.selected_index == 2
+
+        app.page.navigation_bar.select_index(3)
+        assert app.page.navigation_bar.selected_index == 3
+        assert app.route_manager.current_route == "/settings"
+        assert isinstance(app.content_container.content, SettingsCard)
+
+    def test_navigation_bar_seeded_from_current_route(self):
+        from app import App
+
+        app = App(self._page(400, 800))
+        app.route_manager.navigate("/analytics")
+        app.page.navigation_bar = None
+        app._update_layout()
+
+        assert app.page.navigation_bar.selected_index == 2
 
     def test_route_lookup_resolves_screen(self):
         from app import App

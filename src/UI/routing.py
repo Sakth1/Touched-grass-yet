@@ -89,7 +89,9 @@ class RouteManager:
                 self._page, "navigation_bar", None
             )
             if nav is not None:
-                nav.select_index(idx)
+                # Programmatic sync must not re-enter the change handler:
+                # the app would re-navigate and clobber the view we just set.
+                nav.select_index(idx, app_init=True)
 
             navigate = getattr(self._page, "navigate", None)
             if callable(navigate):

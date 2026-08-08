@@ -28,6 +28,7 @@ from UI.routing import RouteManager
 from UI.screens.analytics_screen import Analytics
 from UI.screens.base_screen import BaseScreen
 from UI.screens.dashboard_screen import Dashboard
+from UI.screens.settings.settings_card import SettingsCard
 from UI.screens.settings_screen import Settings
 from UI.screens.timeline_screen import Timeline
 from utils.constants import (
@@ -101,6 +102,8 @@ class App:
         self._panel_view = None
         self.current_view: BaseScreen = None
         self.populated_options_inline = False
+        self._inline_picker_view: object = None
+        self._inline_picker_content: object = None
         self.shell = ft.Row(expand=True, controls=[self.content_container])
 
         self.section_routes: dict[str, list[str]] = {
@@ -249,6 +252,7 @@ class App:
             case NavigationPattern.BOTTOM_BAR:
                 nav = self._ensure_navigation_bar()
                 nav.apply_layout(self.layout)
+                self._populate_page_with_options()
                 self.shell.controls = [self.content_container]
 
             case NavigationPattern.MINI_RAIL:
@@ -295,14 +299,64 @@ class App:
                 self._populate_page_with_options()
                 self.populated_options_inline = True
             case SecondaryNavigationPattern.SIDE_PANEL:
-                if self.populated_options_inline:
-                    ...
                 self._ensure_secondary_panel()
+                if (
+                    self._inline_picker_view is not None
+                    and self.content_container.content is self._inline_picker_content
+                ):
+                    self.content_container.content = self.current_view
                 self.populated_options_inline = False
             case _:
                 raise NotImplementedError
 
-    def _populate_page_with_options(self): ...
+    def _populate_page_with_options(self):
+        """Render the section picker inline for phone / tablet-portrait layouts.
+
+        Replaces the content area with a settings card listing the current
+        view's sections. The picker only appears on the parent route (e.g.
+        ``/settings``); opening a sub-route keeps the section itself on
+        screen, so tiles stay clickable.
+        """
+        self.current_view = self.route_manager.view_for(
+            self.route_manager.current_route
+        )
+        has_options = self.current_view is not None and getattr(
+            self.current_view, "_secondary_options", False
+        )
+        if not has_options:
+            self.secondary_navigation_panel = None
+            self._panel_view = None
+            return
+
+        parent_route = next(
+            (d.route for d in self.destinations if d.view is self.current_view), None
+        )
+        if self.route_manager.current_route != parent_route:
+            return
+
+        if (
+            self._inline_picker_view is self.current_view
+            and self.content_container.content is self._inline_picker_content
+        ):
+            return
+
+        self.secondary_destination: list[NavigationDestination] = (
+            self.current_view._get_secondary_options()
+        )
+        self._inline_picker_content = SettingsCard(
+            title="Settings",
+            controls=[
+                ft.ListTile(
+                    leading=ft.Icon(dest.icon),
+                    title=ft.Text(dest.label),
+                    trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT),
+                    on_click=lambda e, d=dest: self.route_manager.navigate(d.route),
+                )
+                for dest in self.secondary_destination
+            ],
+        )
+        self._inline_picker_view = self.current_view
+        self.content_container.content = self._inline_picker_content
 
     def _ensure_secondary_panel(self):
         self.current_view = self.route_manager.view_for(
@@ -412,16 +466,22 @@ class App:
         )
 
     def _ensure_navigation_bar(self):
+        if self.page.navigation_bar is not None:
+            return self.page.navigation_bar
+
+        selected_index = self.route_manager._index_for_route(
+            self.route_manager.current_route
+        )
         self.page.navigation_bar = CustomNavigationBar(
             destinations=[
                 CustomNavigationBarDestination(
                     icon=dest.icon,
                     label=dest.label,
-                    selected=i == 0,
+                    selected=i == selected_index,
                 )
                 for i, dest in enumerate(self.destinations)
             ],
-            selected_index=0,
+            selected_index=selected_index,
             adaptive=True,
             label_behavior=ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED,
             on_change=self._handle_navigation_change,

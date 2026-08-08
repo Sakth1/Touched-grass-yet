@@ -5,9 +5,9 @@ import flet as ft
 
 import core.auto_start as auto_start
 from core.config_manager import ConfigManager
+from UI.screens.settings.settings_card import SettingsCard
 from utils.flet_helpers import show_snack_bar
 from utils.models import OSType
-from UI.screens.settings.settings_card import SettingsCard
 from utils.platform import detect_os
 
 logger = logging.getLogger(__name__)

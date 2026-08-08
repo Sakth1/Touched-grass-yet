@@ -104,7 +104,7 @@ class CustomNavigationBar(ft.Container):
         for dest in changed:
             if dest.parent is not None:
                 dest.update()
-        if self.on_change:
+        if self.on_change and not app_init:
             dest = self._destination_at(index)
             self.on_change(
                 ft.Event(
