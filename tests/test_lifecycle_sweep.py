@@ -299,6 +299,68 @@ class TestAppHeadlessBoot:
         assert app.content_container.content is app.settings_page
         assert app.route_manager.current_route == "/settings"
 
+    def test_secondary_panel_builds_with_sections(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        panel = app.secondary_navigation_panel
+        assert panel is not None
+        assert [d.label for d in panel.final_destinations] == [
+            "General",
+            "Data",
+            "App Info",
+        ]
+        assert panel.selected_index == 0
+        assert app.settings_page.content is app.settings_page.general_section
+
+    def test_secondary_panel_select_navigates_to_section(self):
+        from app import App
+        from utils.models import SecondaryNavigationChangeData
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        event = ft.Event(
+            name="SecondaryNavigationChange",
+            control=app.secondary_navigation_panel,
+            data=SecondaryNavigationChangeData(
+                index=1, label="Data", route="/settings/data"
+            ),
+        )
+        app._handle_secondary_change(event)
+        assert app.route_manager.current_route == "/settings/data"
+        assert app.content_container.content is app.settings_page.data_section
+
+    def test_secondary_panel_index_fallback_navigates_to_section(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        control = type("PanelStub", (), {"selected_index": 1})()
+        event = ft.Event(
+            name="SecondaryNavigationChange",
+            control=control,
+        )
+        app._handle_secondary_change(event)
+        assert app.route_manager.current_route == "/settings/data"
+
+    def test_secondary_panel_change_out_of_range_ignored(self):
+        from app import App
+
+        app = App(self._page(1280, 800))
+        app.route_manager.navigate("/settings")
+        app._update_layout()
+        control = type("PanelStub", (), {"selected_index": 9})()
+        event = ft.Event(
+            name="SecondaryNavigationChange",
+            control=control,
+        )
+        app._handle_secondary_change(event)
+        assert app.route_manager.current_route == "/settings"
+
     def test_unknown_route_falls_back_to_dashboard(self, caplog):
         from app import App
 

@@ -61,13 +61,18 @@ class TestSubRouteNavigation:
         ]
 
     @staticmethod
-    def _manager(views: dict | None = None, sections=None) -> RouteManager:
+    def _manager(
+        views: dict | None = None,
+        sections=None,
+        section_views: dict | None = None,
+    ) -> RouteManager:
         reset_app_state()
         return RouteManager(
             page=_PageStub(),
             container=_ContainerStub(),
             destinations=TestSubRouteNavigation._destinations(views),
             section_routes=sections,
+            section_views=section_views,
         )
 
     def test_sub_route_targets_parent_view_and_announces_route(self):
@@ -131,6 +136,43 @@ class TestSubRouteNavigation:
         assert rm._container.content is view
         assert view.sub_routes == ["/settings/does-not-exist"]
         assert rm._index_for_route("/settings/does-not-exist") == 3
+
+    def test_registered_section_view_replaces_parent_on_navigation(self):
+        parent = _PlainView()
+        section = _ViewStub()
+        rm = self._manager(
+            views={"/settings": parent},
+            sections={"/settings": ["/settings/data"]},
+            section_views={"/settings/data": section},
+        )
+        rm.navigate("/settings/data")
+        assert rm._container.content is section
+        assert section.sub_routes == ["/settings/data"]
+        assert rm.current_route == "/settings/data"
+
+    def test_section_view_wins_over_parent_when_registered(self):
+        parent = _ViewStub()
+        section = _PlainView()
+        rm = self._manager(
+            views={"/settings": parent},
+            sections={"/settings": ["/settings/general", "/settings/data"]},
+            section_views={"/settings/data": section},
+        )
+        rm.navigate("/settings/data")
+        assert rm._container.content is section
+        rm.navigate("/settings/general")
+        assert rm._container.content is parent
+        assert parent.sub_routes == ["/settings/general"]
+
+    def test_view_for_section_still_resolves_to_parent_screen(self):
+        parent = _PlainView()
+        section = _PlainView()
+        rm = self._manager(
+            views={"/settings": parent},
+            sections={"/settings": ["/settings/data"]},
+            section_views={"/settings/data": section},
+        )
+        assert rm.view_for("/settings/data") is parent
 
     def test_navigate_pushes_route_to_page(self):
         view = _PlainView()

@@ -107,6 +107,90 @@ class TestConfigProperties:
         cm.load()
         assert cm.get_interval("foreground", 30.0) == 10.0
 
+    def test_set_interval_adds_and_replaces_override(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        cm.set_interval("foreground", 7.5)
+        assert cm.get_interval("foreground", 2.0) == 7.5
+
+        cm.set_interval("foreground", 3.0)
+        assert cm.get_interval("foreground", 2.0) == 3.0
+        cm.save()
+
+        cm2 = ConfigManager(path=str(tmp_path / "config.json"))
+        cm2.load()
+        assert cm2.get_interval("foreground", 2.0) == 3.0
+
+    def test_set_interval_with_non_positive_removes_override(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        cm.set_interval("afk", 5.0)
+        cm.set_interval("afk", 0)
+        assert cm.get_interval("afk", 5.0) == 5.0
+
+    def test_watchers_enabled_setter_roundtrip(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        cm.watchers_enabled = ["afk", "power"]
+        assert cm.watchers_enabled == ["afk", "power"]
+        cm.save()
+
+        cm2 = ConfigManager(path=str(tmp_path / "config.json"))
+        cm2.load()
+        assert cm2.watchers_enabled == ["afk", "power"]
+
+    def test_log_level_setter_uppercases(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        cm.log_level = "debug"
+        assert cm.log_level == "DEBUG"
+
+    def test_theme_mode_default_and_roundtrip(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        assert cm.theme_mode == "system"
+        cm.theme_mode = "dark"
+        assert cm.theme_mode == "dark"
+        cm.save()
+
+        cm2 = ConfigManager(path=str(tmp_path / "config.json"))
+        cm2.load()
+        assert cm2.theme_mode == "dark"
+
+    def test_auto_update_and_start_maximized_defaults(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        assert cm.auto_update_enabled is True
+        assert cm.start_maximized is True
+        cm.auto_update_enabled = False
+        cm.start_maximized = False
+        assert cm.auto_update_enabled is False
+        assert cm.start_maximized is False
+
+    def test_afk_thresholds_defaults_and_clamping(self, tmp_path):
+        from core.config_manager import ConfigManager
+
+        cm = ConfigManager(path=str(tmp_path / "config.json"))
+        assert cm.afk_idle_threshold_s == 60.0
+        assert cm.afk_away_threshold_s == 300.0
+
+        cm.afk_idle_threshold_s = 15
+        cm.afk_away_threshold_s = -5
+        assert cm.afk_idle_threshold_s == 15.0
+        assert cm.afk_away_threshold_s == 0.0
+        cm.save()
+
+        cm2 = ConfigManager(path=str(tmp_path / "config.json"))
+        cm2.load()
+        assert cm2.afk_idle_threshold_s == 15.0
+        assert cm2.afk_away_threshold_s == 0.0
+
     def test_get_interval_falls_back_to_default(self, tmp_path):
         from core.config_manager import ConfigManager
 

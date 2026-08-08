@@ -113,6 +113,19 @@ class NavigationChangeData:
 
 
 @dataclass(frozen=True)
+class SecondaryNavigationChangeData:
+    """Payload attached to ``SecondaryNavigationPanel.on_change`` events.
+
+    Identifies the section destination selected in the in-screen secondary
+    navigation panel; ``route`` is the sub-route it owns.
+    """
+
+    index: int
+    label: str = ""
+    route: str = ""
+
+
+@dataclass(frozen=True)
 class NavigationDestination:
     """One top-level navigation destination.
 

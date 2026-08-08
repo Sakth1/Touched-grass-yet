@@ -99,6 +99,52 @@ class TestPanelConstruction:
 
         assert events == []
 
+    def test_select_index_fires_on_change_with_route_data(self):
+        from utils.models import SecondaryNavigationChangeData
+
+        first = SecondaryNavigationDestination(
+            icon="HOME", label="App Info", route="/settings/app-info"
+        )
+        second = SecondaryNavigationDestination(
+            icon="SETTINGS", label="General", route="/settings/general"
+        )
+        panel = SecondaryNavigationPanel(
+            destinations=[first, second],
+            selected_index=0,
+        )
+        events = []
+        panel.on_change = lambda e: events.append(e)
+
+        panel.select_index(1)
+
+        assert len(events) == 1
+        assert events[0].control is panel
+        assert isinstance(events[0].data, SecondaryNavigationChangeData)
+        assert events[0].data.index == 1
+        assert events[0].data.label == "General"
+        assert events[0].data.route == "/settings/general"
+
+    def test_clicking_destination_selects_and_fires_change(self):
+        first = SecondaryNavigationDestination(
+            icon="HOME", label="App Info", route="/settings/app-info"
+        )
+        second = SecondaryNavigationDestination(
+            icon="SETTINGS", label="General", route="/settings/general"
+        )
+        panel = SecondaryNavigationPanel(
+            destinations=[first, second],
+            selected_index=0,
+        )
+        events = []
+        panel.on_change = lambda e: events.append(e)
+
+        second._handle_click(None)
+
+        assert panel.selected_index == 1
+        assert len(events) == 1
+        assert events[0].data.index == 1
+        assert events[0].data.route == "/settings/general"
+
 
 class TestPanelResponsiveLayout:
     @staticmethod

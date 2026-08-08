@@ -46,6 +46,31 @@ class TestPauseResume:
         config.load()
         assert config.collection_enabled
 
+    async def test_restart_is_noop_when_not_running(self, tmp_path):
+        from unittest.mock import AsyncMock
+
+        from core.application.collection_manager import CollectionManager
+
+        cm = CollectionManager()
+        cm.start = AsyncMock()
+        cm.stop = AsyncMock()
+        await cm.restart()
+        cm.stop.assert_not_awaited()
+        cm.start.assert_not_awaited()
+
+    async def test_restart_stops_then_starts_when_running(self, tmp_path):
+        from unittest.mock import AsyncMock
+
+        from core.application.collection_manager import CollectionManager
+
+        cm = CollectionManager()
+        cm._running = True
+        cm.start = AsyncMock()
+        cm.stop = AsyncMock()
+        await cm.restart()
+        cm.stop.assert_awaited_once()
+        cm.start.assert_awaited_once()
+
     async def test_pause_when_already_paused_is_noop(self, tmp_path):
         from core.application.collection_manager import CollectionManager
 

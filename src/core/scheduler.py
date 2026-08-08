@@ -24,6 +24,27 @@ class Scheduler:
     def register(self, watcher: Watcher) -> None:
         self._watchers.append(watcher)
 
+    @property
+    def watcher_names(self) -> list[str]:
+        return [w.config.name for w in self._watchers]
+
+    def update_interval(self, name: str, interval_s: float) -> bool:
+        """Mutate a running watcher's poll interval in place.
+
+        ``_run_loop`` re-reads ``cfg.interval_s`` on every iteration, so
+        the change takes effect on the next sleep. Returns ``True`` when a
+        watcher with that name was found.
+        """
+        for w in self._watchers:
+            cfg = getattr(w, "config", None)
+            if cfg is None or cfg.name != name:
+                continue
+            cfg.interval_s = max(0.1, float(interval_s))
+            logger.info("Watcher %s interval updated to %ss", name, cfg.interval_s)
+            return True
+        logger.warning("No watcher named %s to update", name)
+        return False
+
     async def start(self) -> None:
         self._running = True
         for w in self._watchers:

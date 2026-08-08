@@ -8,6 +8,7 @@ import flet as ft
 from utils.models import (
     AppLayout,
     SecondaryDrawerMetrics,
+    SecondaryNavigationChangeData,
     SecondaryNavigationPattern,
 )
 
@@ -22,6 +23,8 @@ class SecondaryNavigationDestination(ft.Container):
         Material icon name shown next to the label.
     label:
         Destination title.
+    route:
+        Sub-route this destination owns (e.g. ``/settings/data``).
     selected:
         Whether this pill is currently selected.
     on_select:
@@ -30,6 +33,7 @@ class SecondaryNavigationDestination(ft.Container):
 
     icon: str = ft.Icons.HELP
     label: str = ""
+    route: str = ""
     selected: bool = False
     on_select: Optional[Callable[["SecondaryNavigationDestination"], None]] = None
 
@@ -156,10 +160,28 @@ class SecondaryNavigationPanel(ft.Container):
             if dest.parent is not None:
                 dest.update()
         if self.on_change:
-            self.on_change(ft.Event(name="SecondaryNavigationChange", control=self))
+            dest = self._destination_at(index)
+            self.on_change(
+                ft.Event(
+                    name="SecondaryNavigationChange",
+                    control=self,
+                    data=SecondaryNavigationChangeData(
+                        index=index,
+                        label=dest.label if dest is not None else "",
+                        route=dest.route if dest is not None else "",
+                    ),
+                )
+            )
 
     def _select(self, index: int) -> None:
         self.select_index(index)
+
+    def _destination_at(
+        self, index: int
+    ) -> Optional[SecondaryNavigationDestination]:
+        if 0 <= index < len(self.final_destinations):
+            return self.final_destinations[index]
+        return None
 
     def _sync_selection(self) -> list[SecondaryNavigationDestination]:
         changed: list[SecondaryNavigationDestination] = []

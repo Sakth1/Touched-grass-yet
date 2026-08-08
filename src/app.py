@@ -6,8 +6,10 @@ import flet as ft
 from core.application.collection_manager import CollectionManager
 from core.auto_start import enable as enable_auto_start
 from core.auto_start import is_enabled as is_auto_start_enabled
-from core.logging_setup import setup_file_logging
+from core.config_manager import ConfigManager
+from core.logging_setup import apply_root_level, setup_file_logging
 from core.state.app_state import get_app_state
+from core.update_checker import UpdateChecker
 from UI.custom.navigation_bar import (
     CustomNavigationBar,
     CustomNavigationBarDestination,
@@ -34,12 +36,14 @@ from utils.constants import (
     DEFAULT_PAGE_WIDTH,
     MIN_PAGE_HEIGHT,
     MIN_PAGE_WIDTH,
+    RELEASES_PAGE_URL,
 )
 from utils.models import (
     AppLayout,
     NavigationDestination,
     NavigationPattern,
     OSType,
+    SecondaryNavigationChangeData,
     SecondaryNavigationPattern,
 )
 from utils.platform import detect_os
@@ -51,24 +55,44 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+_THEME_MODES = {
+    "system": ft.ThemeMode.SYSTEM,
+    "light": ft.ThemeMode.LIGHT,
+    "dark": ft.ThemeMode.DARK,
+}
+
+
+def _theme_mode_from_config(mode: str) -> ft.ThemeMode:
+    return _THEME_MODES.get(mode, ft.ThemeMode.SYSTEM)
+
 
 class App:
     def __init__(self, page: ft.Page):
         self.page = page
         self.page.title = "Unscreen"
-        self.page.theme_mode = ft.ThemeMode.SYSTEM
+
+        self.config = ConfigManager()
+        self.config.load()
+        self.page.theme_mode = _theme_mode_from_config(self.config.theme_mode)
         self._set_window_icon()
 
-        self._schedule_maximize()  # REMOVE THIS BS OF A CODE WHEN flet #6101 IS FIXED
+        if self.config.start_maximized:
+            # REMOVE THIS BS OF A CODE WHEN flet #6101 IS FIXED
+            self._schedule_maximize()
 
         setup_file_logging()
+        apply_root_level(self.config.log_level)
 
-        self.collection_manager = CollectionManager()
+        self.collection_manager = CollectionManager(config=self.config)
 
         self.dashboard_page = Dashboard()
         self.timeline_page = Timeline()
         self.analytics_page = Analytics()
-        self.settings_page = Settings()
+        self.settings_page = Settings(
+            config=self.config,
+            collection_manager=self.collection_manager,
+            page=self.page,
+        )
 
         self.content_container = ft.Container(expand=True)
 
@@ -80,7 +104,7 @@ class App:
         self.shell = ft.Row(expand=True, controls=[self.content_container])
 
         self.section_routes: dict[str, list[str]] = {
-            "/settings": ["/settings/general", "/settings/app-info"],
+            "/settings": ["/settings/general", "/settings/data", "/settings/app-info"],
         }
 
         self.destinations = [
@@ -110,11 +134,16 @@ class App:
             ),
         ]
 
+        section_views = {
+            dest.route: dest.view
+            for dest in self.settings_page._get_secondary_options()
+        }
         self.route_manager = RouteManager(
             page=self.page,
             container=self.content_container,
             destinations=self.destinations,
             section_routes=self.section_routes,
+            section_views=section_views,
         )
 
         self.page.on_route_change = self.route_manager.handle_route_change
@@ -149,6 +178,9 @@ class App:
         ):
             enable_auto_start()
 
+        if self.config.auto_update_enabled:
+            self.page.run_task(self._startup_update_check)
+
         if detect_os() == OSType.ANDROID:
             from core.collectors.android.usage_stats import check_usage_stats_permission
 
@@ -170,6 +202,24 @@ class App:
             width, height, media=getattr(self.page, "media", None)
         )
         self._apply_layout(self.layout)
+
+    async def _startup_update_check(self) -> None:
+        """Silently look for a newer release; notify via snackbar when found."""
+        try:
+            info = await asyncio.to_thread(UpdateChecker().check_for_update)
+        except Exception:
+            logger.exception("Startup update check failed")
+            return
+        if info is None:
+            return
+        snack = ft.SnackBar(
+            content=ft.Text(f"Update v{info.version} is available"),
+            action="View",
+            on_action=lambda _e: self.page.launch_url(RELEASES_PAGE_URL),
+            open=True,
+        )
+        self.page.overlay.append(snack)
+        self.page.update()
 
     def _handle_page_resize(self, _event):
         self._apply_responsive_layout()
@@ -284,15 +334,41 @@ class App:
                 SecondaryNavigationDestination(
                     icon=dest.icon,
                     label=dest.label,
+                    route=dest.route,
                     selected=i == 0,
                 )
                 for i, dest in enumerate(self.secondary_destination)
             ],
             selected_index=0,
             adaptive=True,
+            on_change=self._handle_secondary_change,
         )
         self.secondary_navigation_panel.apply_layout(self.layout)
         self._panel_view = self.current_view
+
+    def _handle_secondary_change(self, event: ft.ControlEvent):
+        """Navigate to the section behind the pill the user selected.
+
+        Mirrors :meth:`UI.routing.RouteManager.handle_navigation_change`:
+        the panel ships a :class:`SecondaryNavigationChangeData` payload
+        carrying the sub-route; index-based resolution stays as a fallback
+        for callers that only know the selection index.
+        """
+        destinations = getattr(self, "secondary_destination", None)
+        data = getattr(event, "data", None)
+        if isinstance(data, SecondaryNavigationChangeData):
+            if data.route:
+                self.route_manager.navigate(data.route)
+                return
+            index = data.index
+        else:
+            index = getattr(getattr(event, "control", None), "selected_index", None)
+        try:
+            index = int(index)
+        except (TypeError, ValueError):
+            index = -1
+        if destinations is not None and 0 <= index < len(destinations):
+            self.route_manager.navigate(destinations[index].route)
 
     def _resolve_page_dimensions(self) -> tuple[float, float]:
         page_width = getattr(self.page, "width", 0) or DEFAULT_PAGE_WIDTH

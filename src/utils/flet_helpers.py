@@ -22,3 +22,13 @@ def safe_update(control: ft.Control) -> None:
         logger.warning(
             "safe_update suppressed unexpected error: %s", exc, exc_info=True
         )
+
+
+def show_snack_bar(page: ft.Page, message: str) -> None:
+    """Show a transient snack bar via the page overlay (flet 0.86 pattern)."""
+    snack = ft.SnackBar(
+        content=ft.Text(message),
+        open=True,
+    )
+    page.overlay.append(snack)
+    safe_update(page)

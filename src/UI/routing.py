@@ -22,6 +22,7 @@ class RouteManager:
         container: ft.Container,
         destinations: list[NavigationDestination],
         section_routes: dict[str, list[str]] | None = None,
+        section_views: dict[str, object] | None = None,
     ):
         self._page: ft.Page = page
         self._container: ft.Container = container
@@ -29,6 +30,8 @@ class RouteManager:
         self._route_views: dict[str, object] = {
             d.route: d.view for d in self._destinations
         }
+        #: Sub-routes (e.g. ``/settings/data``) → the section view to render.
+        self._section_views: dict[str, object] = dict(section_views or {})
         self._route_to_index: dict[str, int] = {
             d.route: i for i, d in enumerate(self._destinations)
         }
@@ -58,6 +61,8 @@ class RouteManager:
         try:
             parent = self._parent_for(route)
             new_view = self._route_views.get(route)
+            if new_view is None:
+                new_view = self._section_views.get(route)
             if new_view is None and parent is not None:
                 new_view = self._route_views.get(parent)
 

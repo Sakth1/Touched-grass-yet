@@ -45,6 +45,19 @@ def get_log_path() -> str | None:
     return None
 
 
+def apply_root_level(level: str) -> None:
+    """Set the root logger and file-handler level to ``level`` (e.g. "DEBUG")."""
+    normalized = str(level).upper()
+    if normalized not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        logging.getLogger(__name__).warning("Ignoring unknown log level: %r", level)
+        return
+    logging.getLogger().setLevel(normalized)
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, (RotatingFileHandler, logging.StreamHandler)):
+            handler.setLevel(normalized)
+    logging.getLogger(__name__).info("Log level set to %s", normalized)
+
+
 def clear_logs() -> None:
     log_dir = os.path.join(get_data_dir(), LOG_DIR)
     if not os.path.isdir(log_dir):
